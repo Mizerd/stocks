@@ -93,14 +93,16 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
               }}
             />
           )}
-          <span
-            style={{
-              position: 'absolute', left: 0, top: `${(baseY / H) * 100}%`, transform: 'translateY(-120%)',
-              padding: '0 6px 0 0', fontSize: 11, fontWeight: 500, color: 'var(--brass)', background: 'var(--paper)', whiteSpace: 'nowrap',
-            }}
-          >
-            {t(intraday ? 'overview.base1' : 'overview.baseN')} <span className="num">{f.num(base)}</span>
-          </span>
+          {selection.hover === null && selection.anchor === null && (
+            <span
+              style={{
+                position: 'absolute', left: 0, top: `${(baseY / H) * 100}%`, transform: 'translateY(-120%)',
+                padding: '0 6px 0 0', fontSize: 11, fontWeight: 500, color: 'var(--brass)', background: 'var(--paper)', whiteSpace: 'nowrap',
+              }}
+            >
+              {t(intraday ? 'overview.base1' : 'overview.baseN')} <span className="num">{f.num(base)}</span>
+            </span>
+          )}
           <div
             tabIndex={0}
             role="group"
