@@ -1,10 +1,10 @@
 {
   "title": "Atranka",
-  "leadP": "Susiaurinkite sąrašą pagal tai, kas jums svarbu, tada pažymėkite iki keturių akcijų ir palyginkite jas viename grafike.",
+  "lead": "Susiaurinkite {n} stebimų akcijų sąrašą pagal tai, kas jums svarbu, tada pažymėkite iki keturių ir palyginkite jas viename grafike.",
   "presets": "Paruoštos atrankos",
   "pre": [
     "Dividendų mokėtojos",
-    "Augimas už protingą kainą",
+    "Europos didžiosios bendrovės",
     "Didžiosios technologijos",
     "Baltijos rinka"
   ],
@@ -24,7 +24,9 @@
     "F": "Finansai",
     "E": "Energetika",
     "H": "Sveikata",
-    "U": "Komunalinės paslaugos"
+    "U": "Komunalinės paslaugos",
+    "I": "Pramonė",
+    "M": "Žaliavos"
   },
   "reg": {
     "US": "JAV",
@@ -38,11 +40,9 @@
   ],
   "any": "nesvarbu",
   "noLimit": "be ribos",
-  "save": "Išsaugoti atranką",
   "results": "Rezultatai",
-  "found": "Rasta",
-  "of": "iš",
-  "picked": "palyginimui pažymėta",
+  "find": "Ieškoti pagal simbolį ar pavadinimą",
+  "found": "Rasta {n} iš {total} · palyginimui pažymėta {picked}/{max}",
   "heads": [
     "Simbolis",
     "Pavadinimas",
@@ -56,9 +56,10 @@
   ],
   "pickL": "Pažymėti palyginimui",
   "emptyH": "Nė viena akcija neatitinka šių filtrų.",
-  "emptyP": "Pabandykite atlaisvinti P/E arba kapitalizacijos ribą.",
+  "emptyP": "Pabandykite atlaisvinti kurią nors ribą arba išvalyti paiešką.",
   "cmp": "Palyginimas",
   "cmpNote": "Grąža procentais nuo laikotarpio pradžios",
+  "cmpSince": "Grąža procentais nuo {date}",
   "ranges": [
     "1 mėn.",
     "6 mėn.",
@@ -68,47 +69,18 @@
   "cmpEmpty": "Pažymėkite akcijas lentelėje, ir jos atsiras čia.",
   "rmL": "Pašalinti iš palyginimo",
   "chart": "Pasirinktų akcijų grąžos palyginimas",
-  "xl": [
-    [
-      "10-13",
-      "10-20",
-      "10-27",
-      "11-03",
-      "11-10"
-    ],
-    [
-      "bir.",
-      "lie.",
-      "rgp.",
-      "rgs.",
-      "spa.",
-      "lap."
-    ],
-    [
-      "gru.",
-      "vas.",
-      "bal.",
-      "bir.",
-      "rgp.",
-      "spa."
-    ],
-    [
-      "2022",
-      "2023",
-      "2024",
-      "2025",
-      "2026"
-    ]
-  ],
   "side": "Greta",
   "mk": [
+    "Birža",
+    "Valiuta",
     "Kaina",
     "Šiandien",
     "Rinkos kapitalizacija",
     "P/E",
     "Dividendų pajamingumas",
     "Grąža per 1 m.",
-    "Beta"
+    "52 sav. žemiausia",
+    "52 sav. aukščiausia"
   ],
   "sideNote": "Paryškinta geriausia kiekvienos eilutės reikšmė."
 }
