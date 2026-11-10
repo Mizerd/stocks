@@ -1,0 +1,79 @@
+{
+  "dayno": "{n}-oji metų prekybos diena",
+  "lon": "Londonas",
+  "ny": "Niujorkas",
+  "langLabel": "Kalba",
+  "themeLabel": "Perjungti šviesią ir tamsią temą",
+  "tag": "akcijų kainų sekimas ir vizualizavimas",
+  "search": "Ieškoti akcijos, indekso ar ETF",
+  "open": "Rinka atidaryta",
+  "closeIn": "Iki uždarymo varpo {t}",
+  "navLabel": "Pagrindinė navigacija",
+  "n1": "Apžvalga",
+  "n2": "Akcija",
+  "n3": "Portfelis ir įspėjimai",
+  "n4": "Atranka ir palyginimas",
+  "delay": "JAV tikruoju laiku · Šiaurės ir Baltijos šalys vėluoja · „Euronext“ dienos pabaigos",
+  "rgLabel": "Laikotarpis",
+  "foot1": "Rinkos duomenys: „Nasdaq“, „Nasdaq Nordic“, „Nasdaq Baltic“, „Euronext“ ir ECB; vėlavimas nurodytas prie kiekvienos kainos. Tai nėra investavimo rekomendacija.",
+  "fData": "Duomenų šaltiniai",
+  "fKeys": "Spartieji klavišai",
+  "closed": "Rinka uždaryta",
+  "openIn": "Iki atidarymo varpo {t}",
+  "hm": "{h} val. {m} min.",
+  "min": "{m} min.",
+  "realtime": "Tikruoju laiku",
+  "delayed": "Vėluoja 15 min.",
+  "eod": "Dienos pabaigos",
+  "asOf": "{t} duomenys",
+  "loading": "Kraunami rinkos duomenys…",
+  "error": "Rinkos duomenys šiuo metu nepasiekiami.",
+  "retry": "Bandyti dar kartą",
+  "partial": "Kai kurių kotiruočių įkelti nepavyko: {list}.",
+  "noResults": "Užklausos „{q}“ neatitinka nė viena akcija ar indeksas.",
+  "cbLabel": "Paletė neskiriantiems spalvų",
+  "unavailable": "Nėra duomenų",
+  "index": "Indeksas",
+  "notFoundH": "Tokio puslapio nėra.",
+  "backHome": "Grįžti į apžvalgą",
+  "aboutTitle": "Duomenų šaltiniai",
+  "keysTitle": "Spartieji klavišai",
+  "keySearch": "Perkelti žymeklį į paieškos lauką",
+  "keyEsc": "Uždaryti paieškos rezultatus",
+  "keyEnter": "Atidaryti pirmą paieškos rezultatą",
+  "srcMarket": "Rinka",
+  "srcSource": "Šaltinis",
+  "srcFresh": "Šviežumas",
+  "srcStatus": "Būsena",
+  "srcOk": "Atsako",
+  "srcDown": "Neatsako",
+  "srcChecking": "Tikrinama…",
+  "srcNote": "„{brand}“ rodo tik tuos skaičius, kuriuos šaltinis iš tikrųjų skelbia. Jei šaltinis skaičiaus neturi, puslapyje rodomas brūkšnys. Aprėptis: {n} akcijos ir {m} indeksai.",
+  "srcRows": [
+    [
+      "JAV („Nasdaq“, NYSE)",
+      "Vieša „Nasdaq“ kotiruočių paslauga",
+      "Paskutinis sandoris tikruoju laiku; finansiniai rodikliai kasdien"
+    ],
+    [
+      "Kopenhaga, Helsinkis",
+      "„Nasdaq Nordic“",
+      "Vėluoja 15 min."
+    ],
+    [
+      "Amsterdamas, Paryžius, Milanas",
+      "„Euronext“ istorinių kainų rinkmenos",
+      "Dienos pabaigos"
+    ],
+    [
+      "Vilnius, Talinas",
+      "„Nasdaq Baltic“",
+      "Vėluoja 15 min."
+    ],
+    [
+      "Valiutų kursai",
+      "Europos Centrinio Banko orientaciniai kursai",
+      "Kasdien"
+    ]
+  ]
+}

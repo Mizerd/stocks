@@ -1,0 +1,153 @@
+{
+  "secT": "Technology",
+  "todayAt": "today, 18:46",
+  "watchOn": "Watching",
+  "watchOff": "Watch",
+  "toPf": "Add to portfolio",
+  "cmp": "Compare",
+  "mkAlert": "Create alert",
+  "ranges": [
+    "1D",
+    "5D",
+    "1M",
+    "6M",
+    "1Y",
+    "5Y"
+  ],
+  "per": [
+    "today",
+    "past 5 days",
+    "past month",
+    "past 6 months",
+    "past year",
+    "past 5 years"
+  ],
+  "typeLabel": "Chart type",
+  "types": [
+    "Line",
+    "Candles"
+  ],
+  "ind": "Indicators",
+  "indL": [
+    "SMA 20",
+    "SMA 50",
+    "Bollinger bands",
+    "Volume",
+    "RSI"
+  ],
+  "draw": "Drawing tools",
+  "tools": [
+    "Crosshair",
+    "Trend line",
+    "Horizontal line",
+    "Fibonacci levels",
+    "Rectangle",
+    "Text",
+    "Ruler",
+    "Clear drawings"
+  ],
+  "o": "O",
+  "h": "H",
+  "l": "L",
+  "c": "C",
+  "vol": "Volume",
+  "chart": "AAPL price chart",
+  "alertTag": "Alert",
+  "stats": "Key figures",
+  "sk": [
+    "Open",
+    "Day range",
+    "Previous close",
+    "Volume",
+    "Avg. volume (3M)",
+    "Market cap",
+    "P/E (TTM)",
+    "Earnings per share",
+    "Dividend · yield",
+    "Beta (5Y)"
+  ],
+  "mln": "M",
+  "w52": "52-week range",
+  "w52n": "below the high",
+  "alertH": "Price alert",
+  "alertP": "We will let you know when AAPL crosses your level. The line shows on the chart right away.",
+  "alertDir": "Direction",
+  "dirs": [
+    "Rises above",
+    "Falls below"
+  ],
+  "alertPrice": "Price, USD",
+  "alertBtn": "Save alert",
+  "alertOk": "Saved: you will hear when AAPL",
+  "alertUp": "rises above",
+  "alertDn": "falls below",
+  "fin": "Financials",
+  "finTabs": [
+    "Revenue",
+    "Earnings per share"
+  ],
+  "fy25": "FY 2025",
+  "fy26": "FY 2026",
+  "finU": [
+    "USD bn",
+    "USD"
+  ],
+  "qs": [
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4"
+  ],
+  "about": "About the company",
+  "aboutP": "Apple designs and sells smartphones, computers, tablets, wearables and the services around them.",
+  "facts": [
+    [
+      "Sector",
+      "Technology"
+    ],
+    [
+      "Industry",
+      "Consumer electronics"
+    ],
+    [
+      "Headquarters",
+      "Cupertino, USA"
+    ],
+    [
+      "Founded",
+      "1976"
+    ],
+    [
+      "ISIN",
+      "US0378331005"
+    ]
+  ],
+  "an": "Analyst view",
+  "anAria": "35 analysts: 24 say buy, 9 hold, 2 sell",
+  "buy": "Buy",
+  "hold": "Hold",
+  "sell": "Sell",
+  "target": "Avg. price target",
+  "peers": "Similar companies",
+  "peersCmp": "Compare on a chart",
+  "cSym": "Symbol",
+  "cName": "Name",
+  "cDay": "Day",
+  "cPrice": "Price",
+  "cChg": "Change",
+  "cCap": "Market cap",
+  "mon": [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+  ]
+}

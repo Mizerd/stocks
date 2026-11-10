@@ -1,0 +1,114 @@
+{
+  "title": "Screener",
+  "leadP": "Narrow the list by what matters to you, then tick up to four stocks and compare them on one chart.",
+  "presets": "Ready-made screens",
+  "pre": [
+    "Dividend payers",
+    "Growth at a fair price",
+    "Big tech",
+    "Baltic market"
+  ],
+  "filters": "Filters",
+  "clear": "Clear",
+  "fSec": "Sector",
+  "fReg": "Region",
+  "fCap": "Market cap",
+  "fPe": "P/E",
+  "fDy": "Dividend yield",
+  "fDir": "Today",
+  "sec": {
+    "T": "Technology",
+    "C": "Communications",
+    "D": "Consumer discretionary",
+    "S": "Consumer staples",
+    "F": "Financials",
+    "E": "Energy",
+    "H": "Health care",
+    "U": "Utilities"
+  },
+  "reg": {
+    "US": "USA",
+    "EU": "Europe",
+    "BAL": "Baltics"
+  },
+  "dirs": [
+    "All",
+    "Rising",
+    "Falling"
+  ],
+  "any": "any",
+  "noLimit": "no limit",
+  "save": "Save this screen",
+  "results": "Results",
+  "found": "Found",
+  "of": "of",
+  "picked": "ticked for comparison",
+  "heads": [
+    "Symbol",
+    "Name",
+    "Sector",
+    "Price",
+    "Day",
+    "Market cap",
+    "P/E",
+    "Div.",
+    "1Y return"
+  ],
+  "pickL": "Tick to compare",
+  "emptyH": "No stock matches these filters.",
+  "emptyP": "Try loosening the P/E or market cap limit.",
+  "cmp": "Compare",
+  "cmpNote": "Return in percent since the start of the period",
+  "ranges": [
+    "1M",
+    "6M",
+    "1Y",
+    "5Y"
+  ],
+  "cmpEmpty": "Tick stocks in the table and they will appear here.",
+  "rmL": "Remove from comparison",
+  "chart": "Return comparison of the selected stocks",
+  "xl": [
+    [
+      "Oct 13",
+      "Oct 20",
+      "Oct 27",
+      "Nov 3",
+      "Nov 10"
+    ],
+    [
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov"
+    ],
+    [
+      "Dec",
+      "Feb",
+      "Apr",
+      "Jun",
+      "Aug",
+      "Oct"
+    ],
+    [
+      "2022",
+      "2023",
+      "2024",
+      "2025",
+      "2026"
+    ]
+  ],
+  "side": "Side by side",
+  "mk": [
+    "Price",
+    "Today",
+    "Market cap",
+    "P/E",
+    "Dividend yield",
+    "1Y return",
+    "Beta"
+  ],
+  "sideNote": "The best value in each row is shown in bold."
+}

@@ -1,0 +1,87 @@
+{
+  "leadK": "Dienos santrauka · atnaujinta 18:46",
+  "lead": "Technologijos traukia rinką aukštyn, energetika ilsisi.",
+  "ixLabel": "Indeksas",
+  "ranges": [
+    "1 d.",
+    "1 sav.",
+    "1 mėn.",
+    "3 mėn.",
+    "1 m.",
+    "5 m."
+  ],
+  "per": [
+    "šiandien",
+    "per savaitę",
+    "per mėnesį",
+    "per 3 mėnesius",
+    "per metus",
+    "per 5 metus"
+  ],
+  "base1": "Ankst. uždarymas",
+  "baseN": "Laikotarpio pradžia",
+  "chart": "kainos grafikas",
+  "baro": "Rinkos barometras",
+  "baroAria": "Barometro rodyklė ties 64 iš 100 – giedra",
+  "baroNow": "Giedra",
+  "baroL": [
+    "Audra",
+    "Lietus",
+    "Permaininga",
+    "Giedra",
+    "Sausra"
+  ],
+  "baroNote": "Rodmuo sudaromas iš kylančių ir krentančių akcijų santykio, kintamumo ir apyvartos. Vakar buvo 58.",
+  "movers": "Dienos judėjimai",
+  "mv": [
+    "Brangsta",
+    "Pinga",
+    "Aktyviausios"
+  ],
+  "watch": "Stebimieji",
+  "manage": "Tvarkyti sąrašą",
+  "cSym": "Simbolis",
+  "cName": "Pavadinimas",
+  "cDay": "Diena",
+  "cPrice": "Kaina",
+  "cChg": "Pokytis",
+  "cVol": "Apyvarta",
+  "volU": " mln.",
+  "sectors": "Sektoriai šiandien",
+  "sectorsNote": "Plytelės dydis atitinka sektoriaus svorį indekse",
+  "sec": {
+    "T": "Technologijos",
+    "F": "Finansai",
+    "H": "Sveikata",
+    "C": "Komunikacijos",
+    "D": "Vartojimo prekės",
+    "I": "Pramonė",
+    "E": "Energetika",
+    "U": "Komunalinės paslaugos",
+    "M": "Žaliavos"
+  },
+  "news": "Naujienos",
+  "allNews": "Visos naujienos",
+  "nw": [
+    [
+      "Sektoriai",
+      "Puslaidininkių gamintojai veda technologijų sektorių į trečią augimo dieną",
+      "prieš 12 min."
+    ],
+    [
+      "Žaliavos",
+      "Naftai pingant energetikos akcijos atiduoda savaitės prieaugį",
+      "prieš 38 min."
+    ],
+    [
+      "Baltijos rinka",
+      "Vilniaus birža: ramus antradienis ir kukli apyvarta",
+      "prieš 2 val."
+    ],
+    [
+      "Makroekonomika",
+      "Ką investuotojams reiškia šios savaitės infliacijos duomenys",
+      "prieš 3 val."
+    ]
+  ]
+}

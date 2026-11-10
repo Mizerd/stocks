@@ -1,0 +1,87 @@
+{
+  "leadK": "Daily brief · updated 18:46",
+  "lead": "Tech pulls the market higher while energy takes a breather.",
+  "ixLabel": "Index",
+  "ranges": [
+    "1D",
+    "1W",
+    "1M",
+    "3M",
+    "1Y",
+    "5Y"
+  ],
+  "per": [
+    "today",
+    "past week",
+    "past month",
+    "past 3 months",
+    "past year",
+    "past 5 years"
+  ],
+  "base1": "Prev. close",
+  "baseN": "Start of period",
+  "chart": "price chart",
+  "baro": "Market barometer",
+  "baroAria": "Barometer needle at 64 of 100, fair",
+  "baroNow": "Fair",
+  "baroL": [
+    "Stormy",
+    "Rain",
+    "Change",
+    "Fair",
+    "Very dry"
+  ],
+  "baroNote": "The reading blends advancers versus decliners, volatility and volume. Yesterday it stood at 58.",
+  "movers": "Daily movers",
+  "mv": [
+    "Gainers",
+    "Losers",
+    "Most active"
+  ],
+  "watch": "Watchlist",
+  "manage": "Manage list",
+  "cSym": "Symbol",
+  "cName": "Name",
+  "cDay": "Day",
+  "cPrice": "Price",
+  "cChg": "Change",
+  "cVol": "Volume",
+  "volU": "M",
+  "sectors": "Sectors today",
+  "sectorsNote": "Tile size follows the sector weight in the index",
+  "sec": {
+    "T": "Technology",
+    "F": "Financials",
+    "H": "Health care",
+    "C": "Communications",
+    "D": "Consumer",
+    "I": "Industrials",
+    "E": "Energy",
+    "U": "Utilities",
+    "M": "Materials"
+  },
+  "news": "News",
+  "allNews": "All news",
+  "nw": [
+    [
+      "Sectors",
+      "Chipmakers lead tech to a third straight day of gains",
+      "12 min ago"
+    ],
+    [
+      "Commodities",
+      "Energy shares give back the week’s gains as crude slips",
+      "38 min ago"
+    ],
+    [
+      "Baltic market",
+      "Vilnius exchange: a quiet Tuesday on modest volume",
+      "2 h ago"
+    ],
+    [
+      "Macro",
+      "What this week’s inflation data means for investors",
+      "3 h ago"
+    ]
+  ]
+}

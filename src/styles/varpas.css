@@ -1,0 +1,115 @@
+/* Varpas — canonical stylesheet extracted from the design.
+   Tokens first, then base, then components. Everything is scoped under .vp
+   (the app root). Add .t-dark for the dark theme and .cb for the
+   colour-blind (blue / orange) gain-loss palette. */
+
+/* ---------- Tokens ---------- */
+body{margin:0;background:#F2F4F3}
+body:has(.t-dark){background:#040605}
+
+.vp{
+  --paper:#F2F4F3;   /* page background (bottom layer) */
+  --card:#FFFFFF;    /* panel background */
+  --ink:#0A1411;     /* primary text, rules, solid controls */
+  --ink2:#2E3A35;    /* secondary text, labels */
+  --ink3:#4A5650;    /* tertiary text, axis labels */
+  --hair:#B9C1B6;    /* hairline dividers, panel borders, grid lines */
+  --brass:#7A4A00;   /* accent as text or line (active nav, alerts, SMA 20) */
+  --gild:#B9780A;    /* accent as decoration only (logo dot, barometer arc) */
+  --up:#005F38;      /* gain */
+  --down:#A51A08;    /* loss */
+  --upbg:#CFEBD9;    /* gain badge background */
+  --downbg:#FBD5CB;  /* loss badge background */
+  --sel:#E4E9DC;     /* selected / hover fill, chart area fill, bar tracks */
+  font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.45;
+  color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased
+}
+.vp.t-dark{--paper:#040605;--card:#0B100E;--ink:#F4F6F0;--ink2:#CBD2CA;--ink3:#A4AEA6;--hair:#323D38;--brass:#F2BE5C;--gild:#F2BE5C;--up:#1FBF62;--down:#F2503F;--upbg:#0A3320;--downbg:#330C09;--sel:#1A2320}
+.vp.cb{--up:#0A4F9E;--down:#8F3D00;--upbg:#D4E4F7;--downbg:#F7DFC8}
+.vp.cb.t-dark{--up:#7CC0FF;--down:#FFB25E;--upbg:#10304A;--downbg:#46300F}
+
+/* ---------- Base ---------- */
+a{color:inherit;text-decoration:none}
+.vp *{box-sizing:border-box}
+.vp :focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+:where(.vp) button,:where(.vp) input,:where(.vp) select{font:inherit;color:inherit}
+:where(.vp) button{background:none;border:0;padding:0;cursor:pointer}
+
+.ser{font-family:'Newsreader',Georgia,serif}                 /* headlines, section titles */
+.num{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums} /* every figure */
+.lbl{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+.up{color:var(--up)}.dn{color:var(--down)}
+.hl:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1376px;margin:0 auto;padding:0 clamp(16px,2.8vw,40px)}
+.dbl{height:6px;border-top:3px solid var(--ink);border-bottom:1px solid var(--ink)} /* masthead / footer double rule */
+
+/* Panel: every main section. Inside a panel --paper resolves to the panel
+   colour, so chart labels, hollow candles and inverted text match it. */
+.pnl{padding:18px 22px 22px;border:1px solid var(--hair);border-top:2px solid var(--ink);border-radius:2px;background:var(--card);--paper:var(--card)}
+@media (max-width:640px){.pnl{padding:14px 14px 18px}}
+
+/* ---------- Header ---------- */
+.srch:focus-within{outline:2px solid var(--brass);outline-offset:2px}
+.nav a{padding:12px 2px 10px;border-bottom:2px solid transparent;font-weight:500;color:var(--ink2)}
+.nav a:hover{color:var(--ink)}
+.nav a.on{color:var(--ink);border-bottom-color:var(--brass)}
+.tape{display:flex;width:max-content;animation:tape 90s linear infinite}
+.tape:hover{animation-play-state:paused}
+@keyframes tape{to{transform:translateX(-50%)}}   /* list is rendered twice for a seamless loop */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}} /* live dots */
+
+/* ---------- Controls ---------- */
+.seg{display:flex;border:1px solid var(--ink);border-radius:2px}        /* segmented control */
+.seg button{padding:5px 10px;min-height:30px;font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:1px solid var(--hair)}
+.seg button.on{background:var(--ink);color:var(--paper)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 14px;border:1px solid var(--ink);border-radius:2px;font-size:13px;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--sel)}
+.btn.pri{background:var(--ink);color:var(--paper)}
+
+/* Toggle chip (chart indicators): selected = tinted */
+.chip{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:3px 10px;border:1px solid var(--hair);border-radius:2px;font-size:12px;font-weight:500;color:var(--ink2);text-align:left}
+.chip:hover{border-color:var(--ink2)}
+.chip.on{border-color:var(--ink);color:var(--ink);background:var(--sel)}
+/* Filter chip (screener sectors, regions): selected = solid */
+.chip--solid.on{color:var(--paper);background:var(--ink)}
+
+.tool{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:2px;color:var(--ink2)} /* drawing tools rail */
+.tool:hover{background:var(--sel)}
+.tool.on{background:var(--ink);color:var(--paper)}
+
+.fld{width:100%;height:38px;padding:0 10px;border:1px solid var(--ink);border-radius:2px;background:var(--paper);font-size:14px} /* text input, select */
+.rng{width:100%;height:22px;margin:4px 0 0;accent-color:var(--ink)}   /* range slider */
+.ck{width:16px;height:16px;margin:0;accent-color:var(--ink)}           /* checkbox */
+
+.sw{position:relative;flex:none;width:40px;height:22px;border:1px solid var(--ink);border-radius:11px} /* switch: <button role="switch"> */
+.sw span{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--ink3);transition:left .15s}
+.sw.on{background:var(--ink)}
+.sw.on span{left:21px;background:var(--paper)}
+
+/* ---------- Data display ---------- */
+.bdg{display:inline-block;min-width:76px;padding:3px 8px;border-radius:2px;text-align:right;font-weight:500;background:var(--sel)} /* change badge */
+.bdg.up{background:var(--upbg)}.bdg.dn{background:var(--downbg)}
+.row:hover{background:var(--sel)}                                       /* table row (46px tall, hairline below) */
+.th{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);font-weight:600;white-space:nowrap} /* sortable header */
+.th:hover,.th.on{color:var(--ink)}
+
+.ix{text-align:left;padding:12px 14px 10px;border-top:3px solid transparent;display:flex;flex-direction:column;gap:2px;min-width:0} /* index selector card */
+.ix:hover,.ix.on{background:var(--sel)}
+.ix.on{border-top-color:var(--brass)}
+
+/* ---------- Charts (SVG, preserveAspectRatio="none", strokes non-scaling) ---------- */
+.sl{fill:none;stroke:var(--ink);stroke-width:1.75;vector-effect:non-scaling-stroke;stroke-linejoin:round} /* price line, sparkline; 2px for main and compare lines */
+.sl.up{stroke:var(--up)}.sl.dn{stroke:var(--down)}
+.l20{stroke:var(--brass)}                               /* SMA 20: solid accent */
+.l50{stroke:var(--ink2);stroke-dasharray:6 4}           /* SMA 50: dashed */
+.lbb{stroke:var(--ink3);stroke-width:1;stroke-dasharray:1 3} /* Bollinger: dotted */
+.cu{fill:var(--paper);stroke:var(--up);stroke-width:1.2;vector-effect:non-scaling-stroke}   /* rising candle / volume bar: hollow */
+.cd{fill:var(--down);stroke:var(--down);stroke-width:1.2;vector-effect:non-scaling-stroke}  /* falling candle / volume bar: solid */
+
+/* ---------- Motion and small screens ---------- */
+@media (prefers-reduced-motion:reduce){.tape,.live{animation:none!important}.sw span{transition:none}}
+@media (max-width:640px){.hm .tile{grid-column:span 6!important;grid-row:span 1!important}} /* sector heatmap: two columns on phones */

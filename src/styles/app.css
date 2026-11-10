@@ -1,0 +1,27 @@
+/* Additions to the canonical stylesheet for states the design left open:
+   search results, loading and error notes, and small-screen fixes. */
+
+.srch{position:relative}
+.srch-list{position:absolute;top:calc(100% + 5px);left:-1px;right:-1px;z-index:20;margin:0;padding:4px 0;list-style:none;max-height:340px;overflow-y:auto;border:1px solid var(--ink);border-radius:2px;background:var(--card)}
+.srch-list a,.srch-list p{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:12px;align-items:center;margin:0;padding:8px 12px;font-size:13px}
+.srch-list a.on,.srch-list a:hover{background:var(--sel)}
+.srch input::-webkit-search-cancel-button{display:none}
+.srch input::placeholder{color:var(--ink3)}
+
+.icon-btn{display:flex;align-items:center;justify-content:center;width:34px;height:32px;border:1px solid var(--ink);border-radius:2px}
+.icon-btn:hover{background:var(--sel)}
+.icon-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+.note{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px 12px;text-align:center;color:var(--ink2)}
+.note p{margin:0}
+.skel{display:block;border-radius:2px;background:var(--sel);animation:pulse 2s ease infinite}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+
+.clip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scroll-x{overflow-x:auto}
+.th{display:inline-flex;align-items:center;gap:4px}
+
+@media (max-width:640px){
+  .nav{gap:0 18px!important}
+  .nav .nav-note{flex-basis:100%;margin-left:0!important;padding-top:0!important}
+}

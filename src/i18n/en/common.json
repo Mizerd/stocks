@@ -1,0 +1,79 @@
+{
+  "dayno": "Trading day {n} of the year",
+  "lon": "London",
+  "ny": "New York",
+  "langLabel": "Language",
+  "themeLabel": "Switch between light and dark theme",
+  "tag": "stock price tracking and visualisation",
+  "search": "Search a stock, index or ETF",
+  "open": "Market open",
+  "closeIn": "Closing bell in {t}",
+  "navLabel": "Main navigation",
+  "n1": "Overview",
+  "n2": "Stock",
+  "n3": "Portfolio & alerts",
+  "n4": "Screener & compare",
+  "delay": "US real-time · Nordic and Baltic delayed · Euronext end of day",
+  "rgLabel": "Range",
+  "foot1": "Market data from Nasdaq, Nasdaq Nordic, Nasdaq Baltic, Euronext and the ECB; delays are shown next to each price. Not investment advice.",
+  "fData": "Data sources",
+  "fKeys": "Keyboard shortcuts",
+  "closed": "Market closed",
+  "openIn": "Opening bell in {t}",
+  "hm": "{h} h {m} min",
+  "min": "{m} min",
+  "realtime": "Real-time",
+  "delayed": "Delayed 15 min",
+  "eod": "End of day",
+  "asOf": "as of {t}",
+  "loading": "Loading market data…",
+  "error": "Market data is unavailable right now.",
+  "retry": "Try again",
+  "partial": "Some quotes could not be loaded: {list}.",
+  "noResults": "No stock or index matches “{q}”.",
+  "cbLabel": "Colour-blind palette",
+  "unavailable": "Not available",
+  "index": "Index",
+  "notFoundH": "This page does not exist.",
+  "backHome": "Back to the overview",
+  "aboutTitle": "Data sources",
+  "keysTitle": "Keyboard shortcuts",
+  "keySearch": "Focus the search field",
+  "keyEsc": "Close the search results",
+  "keyEnter": "Open the first search result",
+  "srcMarket": "Market",
+  "srcSource": "Source",
+  "srcFresh": "Freshness",
+  "srcStatus": "Status",
+  "srcOk": "Responding",
+  "srcDown": "Not responding",
+  "srcChecking": "Checking…",
+  "srcNote": "{brand} only shows figures a source actually publishes. Where a source has no figure, the page shows a dash. The covered universe is {n} stocks and {m} indices.",
+  "srcRows": [
+    [
+      "USA (Nasdaq, NYSE)",
+      "Nasdaq public quote service",
+      "Real-time last sale; fundamentals daily"
+    ],
+    [
+      "Copenhagen, Helsinki",
+      "Nasdaq Nordic",
+      "Delayed 15 min"
+    ],
+    [
+      "Amsterdam, Paris, Milan",
+      "Euronext historical price files",
+      "End of day"
+    ],
+    [
+      "Vilnius, Tallinn",
+      "Nasdaq Baltic",
+      "Delayed 15 min"
+    ],
+    [
+      "Exchange rates",
+      "European Central Bank reference rates",
+      "Daily"
+    ]
+  ]
+}
