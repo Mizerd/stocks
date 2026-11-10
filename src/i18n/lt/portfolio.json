@@ -1,85 +1,18 @@
 {
-  "acct": "Pagrindinis portfelis · bazinė valiuta EUR",
   "title": "Portfelis",
-  "imp": "Importuoti",
-  "exp": "Eksportuoti CSV",
-  "addTx": "Pridėti sandorį",
   "sVal": "Portfelio vertė",
   "cashIn": "iš jų grynieji",
   "sDay": "Šiandien",
   "sPl": "Bendras pelnas",
   "sInv": "Investuota",
-  "since": "nuo 2024 m. kovo",
   "perf": "Rezultatai",
-  "ranges": [
-    "1 mėn.",
-    "3 mėn.",
-    "6 mėn.",
-    "Nuo m. pr.",
-    "1 m.",
-    "Visas"
-  ],
   "pfL": "Portfelis",
   "ahead": "Lenkiate indeksą",
   "behind": "Atsiliekate nuo indekso",
   "pp": "proc. p.",
-  "chart": "Portfelio ir S&P 500 grąžos palyginimas",
-  "xl": [
-    [
-      "10-13",
-      "10-20",
-      "10-27",
-      "11-03",
-      "11-10"
-    ],
-    [
-      "rgp.",
-      "rgs.",
-      "spa.",
-      "lap."
-    ],
-    [
-      "bir.",
-      "lie.",
-      "rgp.",
-      "rgs.",
-      "spa.",
-      "lap."
-    ],
-    [
-      "sau.",
-      "kov.",
-      "geg.",
-      "lie.",
-      "rgs.",
-      "lap."
-    ],
-    [
-      "gru.",
-      "vas.",
-      "bal.",
-      "bir.",
-      "rgp.",
-      "spa."
-    ],
-    [
-      "2024",
-      "2025",
-      "2026"
-    ]
-  ],
   "alloc": "Pasiskirstymas",
   "allocNote": "Pagal sektorių, dalis nuo visos vertės",
-  "sec": {
-    "T": "Technologijos",
-    "S": "Kasdienio vartojimo prekės",
-    "H": "Sveikata",
-    "U": "Komunalinės paslaugos",
-    "C": "Komunikacijos",
-    "X": "Grynieji pinigai"
-  },
   "hold": "Pozicijos",
-  "fxNote": "Vertės perskaičiuotos eurais, 1 USD = 0,92 EUR",
   "cSym": "Simbolis",
   "cName": "Pavadinimas",
   "cQty": "Kiekis",
@@ -93,40 +26,48 @@
   "alerts": "Įspėjimai",
   "active": "aktyvūs",
   "of": "iš",
-  "ac": [
-    "Kaina pakils virš",
-    "Kaina nukris žemiau",
-    "Dienos pokytis viršys",
-    "Kirs 50 d. slankųjį vidurkį",
-    "Kaina pakils virš"
-  ],
   "nowP": "Dabar",
   "left": "liko",
-  "fired": "Suveikė šiandien 17:12",
   "paused": "Sustabdytas",
   "todayIs": "šiandien",
-  "swL": "Įspėjimas",
-  "newAlert": "Naujas įspėjimas",
-  "fSym": "Simbolis",
-  "fCond": "Sąlyga",
-  "fVal": "Reikšmė",
-  "fNotify": "Pranešti",
-  "nMail": "El. paštu",
-  "nPush": "Naršyklėje",
-  "fBtn": "Sukurti įspėjimą",
-  "c1": "Kaina pakils virš",
-  "c2": "Kaina nukris žemiau",
-  "c3": "Dienos pokytis viršys, %",
-  "c4": "Kirs slankųjį vidurkį",
-  "c5": "Apyvarta viršys vidurkį, kartais",
-  "tx": "Paskutiniai sandoriai",
-  "txAll": "Visa istorija",
-  "tk": {
-    "B": "Pirkimas",
-    "S": "Pardavimas",
-    "D": "Dividendai"
-  },
   "divs": "Dividendai",
   "divNote": "numatoma per 12 mėn.",
-  "divYield": "pajamingumas"
+  "divYield": "pajamingumas",
+  "acct": "Pavyzdinis portfelis · bazinė valiuta EUR",
+  "demo": "Iliustracinis portfelis. Pozicijos, pirkimo kainos ir įspėjimų ribos yra išgalvotos; visos šio puslapio vertės apskaičiuotos pagal tikras kotiruotes ir ECB valiutų kursus.",
+  "demoTag": "Pavyzdys",
+  "ranges": [
+    "1 mėn.",
+    "3 mėn.",
+    "6 mėn.",
+    "Nuo m. pr.",
+    "1 m."
+  ],
+  "perfNote": "Hipotetinis rezultatas: šiandienos pozicijos laikomos visą laikotarpį, perskaičiuota šiandienos valiutų kursais.",
+  "chart": "Pavyzdinio portfelio ir indekso „{index}“ grąžos palyginimas",
+  "fxNote": "Vertės perskaičiuotos eurais pagal {date} ECB kursus: {rates}",
+  "sec": {
+    "T": "Technologijos",
+    "C": "Komunikacijos",
+    "D": "Pasirenkamo vartojimo prekės",
+    "S": "Kasdienio vartojimo prekės",
+    "F": "Finansai",
+    "E": "Energetika",
+    "H": "Sveikata",
+    "U": "Komunalinės paslaugos",
+    "I": "Pramonė",
+    "M": "Žaliavos",
+    "X": "Grynieji pinigai"
+  },
+  "cond": {
+    "priceAbove": "Kaina pakils virš",
+    "priceBelow": "Kaina nukris žemiau",
+    "dailyMove": "Dienos pokytis viršys"
+  },
+  "alertsNote": "Pavyzdiniai įspėjimai, lyginami su tikromis kainomis. „{brand}“ pranešimų nesiunčia.",
+  "reached": "Riba pasiekta",
+  "statusActive": "Aktyvus",
+  "divEmpty": "Duomenų šaltiniai šių pozicijų dividendų neskelbia.",
+  "divKnown": "žinoma {n} iš {m} pozicijų",
+  "missing": "Nėra kotiruotės: {list}."
 }

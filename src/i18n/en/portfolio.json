@@ -1,85 +1,18 @@
 {
-  "acct": "Main portfolio · base currency EUR",
   "title": "Portfolio",
-  "imp": "Import",
-  "exp": "Export CSV",
-  "addTx": "Add transaction",
   "sVal": "Portfolio value",
   "cashIn": "of which cash",
   "sDay": "Today",
   "sPl": "Total gain",
   "sInv": "Invested",
-  "since": "since March 2024",
   "perf": "Performance",
-  "ranges": [
-    "1M",
-    "3M",
-    "6M",
-    "YTD",
-    "1Y",
-    "All"
-  ],
   "pfL": "Portfolio",
   "ahead": "Ahead of the index by",
   "behind": "Behind the index by",
   "pp": "pp",
-  "chart": "Portfolio return compared with the S&P 500",
-  "xl": [
-    [
-      "Oct 13",
-      "Oct 20",
-      "Oct 27",
-      "Nov 3",
-      "Nov 10"
-    ],
-    [
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov"
-    ],
-    [
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov"
-    ],
-    [
-      "Jan",
-      "Mar",
-      "May",
-      "Jul",
-      "Sep",
-      "Nov"
-    ],
-    [
-      "Dec",
-      "Feb",
-      "Apr",
-      "Jun",
-      "Aug",
-      "Oct"
-    ],
-    [
-      "2024",
-      "2025",
-      "2026"
-    ]
-  ],
   "alloc": "Allocation",
   "allocNote": "By sector, share of total value",
-  "sec": {
-    "T": "Technology",
-    "S": "Consumer staples",
-    "H": "Health care",
-    "U": "Utilities",
-    "C": "Communications",
-    "X": "Cash"
-  },
   "hold": "Holdings",
-  "fxNote": "Values converted to euros, 1 USD = 0.92 EUR",
   "cSym": "Symbol",
   "cName": "Name",
   "cQty": "Qty",
@@ -93,40 +26,48 @@
   "alerts": "Alerts",
   "active": "active",
   "of": "of",
-  "ac": [
-    "Price rises above",
-    "Price falls below",
-    "Daily move exceeds",
-    "Crosses the 50-day moving average",
-    "Price rises above"
-  ],
   "nowP": "Now",
   "left": "to go",
-  "fired": "Triggered today at 17:12",
   "paused": "Paused",
   "todayIs": "today",
-  "swL": "Alert",
-  "newAlert": "New alert",
-  "fSym": "Symbol",
-  "fCond": "Condition",
-  "fVal": "Value",
-  "fNotify": "Notify me",
-  "nMail": "By email",
-  "nPush": "In the browser",
-  "fBtn": "Create alert",
-  "c1": "Price rises above",
-  "c2": "Price falls below",
-  "c3": "Daily move exceeds, %",
-  "c4": "Crosses a moving average",
-  "c5": "Volume exceeds average, times",
-  "tx": "Recent transactions",
-  "txAll": "Full history",
-  "tk": {
-    "B": "Buy",
-    "S": "Sell",
-    "D": "Dividend"
-  },
   "divs": "Dividends",
   "divNote": "expected over 12 months",
-  "divYield": "yield"
+  "divYield": "yield",
+  "acct": "Example portfolio · base currency EUR",
+  "demo": "An illustrative portfolio. The holdings, purchase prices and alert levels are invented; every valuation on this page is computed from real quotes and ECB exchange rates.",
+  "demoTag": "Example",
+  "ranges": [
+    "1M",
+    "3M",
+    "6M",
+    "YTD",
+    "1Y"
+  ],
+  "perfNote": "Hypothetical: today’s holdings held for the whole period, converted at today’s exchange rates.",
+  "chart": "Example portfolio return compared with the {index}",
+  "fxNote": "Values converted to euros at ECB rates of {date}: {rates}",
+  "sec": {
+    "T": "Technology",
+    "C": "Communications",
+    "D": "Consumer discretionary",
+    "S": "Consumer staples",
+    "F": "Financials",
+    "E": "Energy",
+    "H": "Health care",
+    "U": "Utilities",
+    "I": "Industrials",
+    "M": "Materials",
+    "X": "Cash"
+  },
+  "cond": {
+    "priceAbove": "Price rises above",
+    "priceBelow": "Price falls below",
+    "dailyMove": "Daily move exceeds"
+  },
+  "alertsNote": "Example alerts, shown against live prices. {brand} sends no notifications.",
+  "reached": "Level reached",
+  "statusActive": "Active",
+  "divEmpty": "The data sources publish no dividend for these holdings.",
+  "divKnown": "known for {n} of {m} holdings",
+  "missing": "No quote for: {list}."
 }
