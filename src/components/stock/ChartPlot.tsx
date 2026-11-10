@@ -101,7 +101,8 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
   const x = (i: number) => (slotOf(i) + 0.5) * slotWidth;
   const barWidth = Math.min(27, Math.max(1.4, slotWidth * 0.6));
 
-  const extremes = bars.flatMap((bar) => [bar.l, bar.h]);
+  // The line only draws closes, so fitting the axis to highs and lows would leave it half empty.
+  const extremes = type === 'line' ? bars.map((bar) => bar.c) : bars.flatMap((bar) => [bar.l, bar.h]);
   if (shown.bb) bands.forEach((band) => band && extremes.push(band.lower, band.upper));
   const scale = scaleOf(extremes, 0.07);
   const y = (value: number) => yOf(value, scale, PLOT_H);
