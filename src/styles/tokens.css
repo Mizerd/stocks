@@ -18,7 +18,9 @@ body:has(.t-dark){background:#000000}
   --upbg:#DDF3E4;    /* gain badge background */
   --downbg:#FCE3E0;  /* loss badge background */
   --sel:#EBEDF1;     /* selected / hover fill, chart area fill, bar tracks */
+  --mark:#5A37D8;    /* the point picked on a chart: dot and price tag */
+  --onmark:#FFFFFF;  /* text on --mark */
 }
-.vp.t-dark{--paper:#000000;--card:#111214;--ink:#F5F6F8;--ink2:#C4C8CE;--ink3:#979CA5;--hair:#2A2D32;--brass:#F2B84B;--gild:#F2B84B;--up:#2FC46B;--down:#FF5C50;--upbg:#0E2D1B;--downbg:#3A1513;--sel:#1E2024}
-.vp.cb{--up:#0B5FC0;--down:#B23F00;--upbg:#DCE9FA;--downbg:#FCE6D6}
+.vp.t-dark{--paper:#000000;--card:#111214;--ink:#F5F6F8;--ink2:#C4C8CE;--ink3:#979CA5;--hair:#2A2D32;--brass:#F2B84B;--gild:#F2B84B;--up:#2FC46B;--down:#FF5C50;--upbg:#0E2D1B;--downbg:#3A1513;--sel:#1E2024;--mark:#4DA3FF;--onmark:#000000}
+.vp.cb{--up:#0B5FC0;--down:#B23F00;--upbg:#DCE9FA;--downbg:#FCE6D6;--mark:var(--ink);--onmark:var(--paper)}
 .vp.cb.t-dark{--up:#5EADFF;--down:#FF8D3F;--upbg:#0E2A47;--downbg:#3D2410}
