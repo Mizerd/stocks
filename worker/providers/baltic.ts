@@ -1,6 +1,6 @@
 import { unzipSync, strFromU8 } from 'fflate';
 import type { Candle, Instrument, Quote } from '../../shared/types';
-import { EXCHANGES, zonedParts, zonedTime } from '../../shared/exchanges';
+import { EXCHANGES, zonedParts, zonedTime, type Exchange } from '../../shared/exchanges';
 import { cachedBytes, cachedText, daysAgo, isoDay, num, UpstreamError } from '../http';
 import { bucket } from './nasdaq';
 import { emptyFundamentals, NO_EXTRAS, type DetailExtras, type Intraday, type Provider } from './provider';
@@ -42,6 +42,13 @@ function parseAsOf(text: string | null): string | null {
   const m = text?.match(/(\d{2})\.(\d{2})\.(\d{4}) (\d{2}:\d{2})/);
   if (!m) return null;
   return zonedTime(`${m[3]}-${m[2]}-${m[1]}`, m[4], 'Europe/Vilnius').toISOString();
+}
+
+// The list page keeps refreshing its "last update" stamp after the close, so cap it at the bell.
+function quoteTime(asOf: string | null, ex: Exchange): string {
+  const stamp = parseAsOf(asOf) ?? new Date().toISOString();
+  const close = zonedTime(zonedParts(new Date(stamp), ex.timezone).day, ex.close, ex.timezone).toISOString();
+  return stamp < close ? stamp : close;
 }
 
 // The exchange's price-history export is an .xlsx file. Columns:
@@ -120,7 +127,7 @@ export const baltic: Provider = {
       high: lastBar?.h ?? null,
       low: lastBar?.l ?? null,
       volume: row?.volume ?? null,
-      time: parseAsOf(list.asOf) ?? new Date().toISOString(),
+      time: quoteTime(list.asOf, ex),
       freshness: 'delayed',
       ...emptyFundamentals(),
     };
