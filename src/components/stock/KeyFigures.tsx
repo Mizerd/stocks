@@ -17,8 +17,8 @@ function YearRange({ low, high, price }: { low: number; high: number; price: num
         </span>
       </div>
       <div aria-hidden="true" style={{ position: 'relative', height: 18, marginTop: 8 }}>
-        <span style={{ position: 'absolute', left: 0, right: 0, top: 8, height: 2, background: 'var(--ink)' }} />
-        <span style={{ position: 'absolute', left: `${position}%`, top: 3, width: 12, height: 12, marginLeft: -6, borderRadius: '50%', background: 'var(--gild)', boxShadow: '0 0 0 3px var(--paper)' }} />
+        <span style={{ position: 'absolute', left: 0, right: 0, top: 7, height: 4, borderRadius: 2, background: 'var(--sel)', boxShadow: 'inset 0 0 0 1px var(--hair)' }} />
+        <span style={{ position: 'absolute', left: `${position}%`, top: 2, width: 14, height: 14, marginLeft: -7, borderRadius: '50%', background: 'var(--gild)', boxShadow: '0 0 0 3px var(--paper)' }} />
       </div>
       <div className="num" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 12 }}>
         <span>{f.price(low)}</span>
@@ -52,7 +52,7 @@ export function KeyFigures({ summary }: { summary: StockSummary }) {
 
   return (
     <>
-      <h2 className="ser" style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 500 }}>{t('stock.stats')}</h2>
+      <h2 className="ser pnl-title" style={{ marginBottom: 8 }}>{t('stock.stats')}</h2>
       {rows.map((row) => (
         <LeaderRow key={row.key} label={t(`stock.sk.${row.key}`)} numeric>{row.value}</LeaderRow>
       ))}

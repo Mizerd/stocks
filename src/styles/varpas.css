@@ -1,91 +1,120 @@
-/* Varpas — canonical stylesheet extracted from the design.
-   Colour tokens live in tokens.css; this file has the base and components. Everything is scoped under .vp
-   (the app root). Add .t-dark for the dark theme and .cb for the
-   colour-blind (blue / orange) gain-loss palette. */
+/* Varpas: base and component styles. Colour tokens live in tokens.css.
+   Everything is scoped under .vp (the app root); .t-dark switches to the dark
+   theme and .cb to the colour-blind (blue / orange) gain-loss palette. */
 
 /* ---------- Base ---------- */
-.vp{font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.45;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
+.vp{
+  --radius:14px;
+  --radius-sm:10px;
+  --gap:16px;
+  --gutter:clamp(16px,3vw,56px);
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;font-optical-sizing:auto;
+  color:var(--ink);background:var(--paper);color-scheme:light;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-text-size-adjust:100%;text-size-adjust:100%;
+}
+.vp.t-dark{color-scheme:dark}
 a{color:inherit;text-decoration:none}
 .vp *{box-sizing:border-box}
 .vp :focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 :where(.vp) button,:where(.vp) input,:where(.vp) select{font:inherit;color:inherit}
-:where(.vp) button{background:none;border:0;padding:0;cursor:pointer}
+:where(.vp) button{background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:where(.vp) a{-webkit-tap-highlight-color:transparent}
+:where(.vp) h1,:where(.vp) h2,:where(.vp) h3{text-wrap:balance}
 
-.ser{font-family:'Newsreader',Georgia,serif}                 /* headlines, section titles */
-.num{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums} /* every figure */
-.lbl{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+.ser{font-family:'Newsreader',Georgia,'Times New Roman',serif;font-optical-sizing:auto}  /* headlines, section titles */
+.num{font-variant-numeric:tabular-nums;font-feature-settings:'tnum','cv08'}                /* every figure; cv08 tells I from 1 in tickers */
+.lbl{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:600}
 .up{color:var(--up)}.dn{color:var(--down)}
 .hl:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.link{font-size:13px;font-weight:600;color:var(--brass);white-space:nowrap}
+.link:hover{text-decoration:underline;text-underline-offset:3px}
 
 /* ---------- Layout ---------- */
-.wrap{max-width:1376px;margin:0 auto;padding:0 clamp(16px,2.8vw,40px)}
-.dbl{height:6px;border-top:3px solid var(--ink);border-bottom:1px solid var(--ink)} /* masthead / footer double rule */
+.wrap{max-width:1840px;margin:0 auto;padding-left:max(var(--gutter),env(safe-area-inset-left));padding-right:max(var(--gutter),env(safe-area-inset-right))}
 
 /* Panel: every main section. Inside a panel --paper resolves to the panel
    colour, so chart labels, hollow candles and inverted text match it. */
-.pnl{padding:18px 22px 22px;border:1px solid var(--hair);border-top:2px solid var(--ink);border-radius:2px;background:var(--card);--paper:var(--card)}
-@media (max-width:640px){.pnl{padding:14px 14px 18px}}
-
-/* ---------- Header ---------- */
-.srch:focus-within{outline:2px solid var(--brass);outline-offset:2px}
-.nav a{padding:12px 2px 10px;border-bottom:2px solid transparent;font-weight:500;color:var(--ink2)}
-.nav a:hover{color:var(--ink)}
-.nav a.on{color:var(--ink);border-bottom-color:var(--brass)}
-.tape{display:flex;width:max-content;animation:tape 90s linear infinite}
-.tape:hover{animation-play-state:paused}
-@keyframes tape{to{transform:translateX(-50%)}}   /* list is rendered twice for a seamless loop */
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}} /* live dots */
+.pnl{padding:20px 24px 24px;border:1px solid var(--hair);border-radius:var(--radius);background:var(--card);--paper:var(--card);min-width:0}
+.pnl-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 20px}
+.pnl-title{margin:0;font-size:24px;font-weight:500;line-height:1.15;letter-spacing:-.01em}
+.pnl-title.sm{font-size:20px}
+.pnl-note{margin:4px 0 0;font-size:12.5px;color:var(--ink3);text-wrap:pretty}
 
 /* ---------- Controls ---------- */
-.seg{display:flex;border:1px solid var(--ink);border-radius:2px}        /* segmented control */
-.seg button{padding:5px 10px;min-height:30px;font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap}
-.seg button+button{border-left:1px solid var(--hair)}
-.seg button.on{background:var(--ink);color:var(--paper)}
+/* Segmented control: a quiet track, the chosen option lifted with a fill and ring. */
+.seg{display:inline-flex;max-width:100%;padding:3px;gap:2px;border:1px solid var(--hair);border-radius:var(--radius-sm);overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;min-height:30px;padding:4px 12px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--ink2);white-space:nowrap}
+.seg button:hover{color:var(--ink);background:var(--sel)}
+.seg button.on{background:var(--sel);color:var(--ink);font-weight:600;box-shadow:inset 0 0 0 1px var(--ink3)}
+.seg button:focus-visible{outline-offset:-2px}
 
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 14px;border:1px solid var(--ink);border-radius:2px;font-size:13px;font-weight:500;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 18px;border:1px solid var(--ink3);border-radius:999px;font-size:13.5px;font-weight:600;white-space:nowrap}
 .btn:hover{background:var(--sel)}
-.btn.pri{background:var(--ink);color:var(--paper)}
 
 /* Toggle chip (chart indicators): selected = tinted */
-.chip{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:3px 10px;border:1px solid var(--hair);border-radius:2px;font-size:12px;font-weight:500;color:var(--ink2);text-align:left}
-.chip:hover{border-color:var(--ink2)}
-.chip.on{border-color:var(--ink);color:var(--ink);background:var(--sel)}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:4px 13px;border:1px solid var(--hair);border-radius:999px;font-size:12.5px;font-weight:500;color:var(--ink2);text-align:left;white-space:nowrap}
+.chip:hover{border-color:var(--ink3);color:var(--ink)}
+.chip.on{border-color:var(--ink3);color:var(--ink);background:var(--sel)}
 /* Filter chip (screener sectors, regions): selected = solid */
-.chip--solid.on{color:var(--paper);background:var(--ink)}
+.chip--solid.on{border-color:var(--ink);color:var(--paper);background:var(--ink)}
 
-.tool{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:2px;color:var(--ink2)} /* drawing tools rail */
-.tool:hover{background:var(--sel)}
-.tool.on{background:var(--ink);color:var(--paper)}
+.icon-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--hair);border-radius:var(--radius-sm)}
+.icon-btn:hover{background:var(--sel)}
+.icon-btn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 
-.fld{width:100%;height:38px;padding:0 10px;border:1px solid var(--ink);border-radius:2px;background:var(--paper);font-size:14px} /* text input, select */
-.rng{width:100%;height:22px;margin:4px 0 0;accent-color:var(--ink)}   /* range slider */
-.ck{width:16px;height:16px;margin:0;accent-color:var(--ink)}           /* checkbox */
-
-.sw{position:relative;flex:none;width:40px;height:22px;border:1px solid var(--ink);border-radius:11px} /* switch: <button role="switch"> */
-.sw span{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--ink3);transition:left .15s}
-.sw.on{background:var(--ink)}
-.sw.on span{left:21px;background:var(--paper)}
+.fld{width:100%;height:40px;padding:0 12px;border:1px solid var(--hair);border-radius:var(--radius-sm);background:var(--paper);font-size:14px} /* text input, select */
+.fld:focus{border-color:var(--ink3)}
+.fld::placeholder{color:var(--ink3)}
+.rng{width:100%;height:24px;margin:6px 0 0;accent-color:var(--ink)}   /* range slider */
+.ck{width:18px;height:18px;margin:0;accent-color:var(--ink)}           /* checkbox */
 
 /* ---------- Data display ---------- */
-.bdg{display:inline-block;min-width:76px;padding:3px 8px;border-radius:2px;text-align:right;font-weight:500;background:var(--sel)} /* change badge */
+.bdg{display:inline-block;min-width:72px;padding:3px 8px;border-radius:6px;text-align:right;font-weight:600;background:var(--sel)} /* change badge */
 .bdg.up{background:var(--upbg)}.bdg.dn{background:var(--downbg)}
-.row:hover{background:var(--sel)}                                       /* table row (46px tall, hairline below) */
-.th{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);font-weight:600;white-space:nowrap} /* sortable header */
+.row{transition:background-color .12s}
+.row:hover{background:var(--sel)}
+.th{display:inline-flex;align-items:center;gap:4px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:600;white-space:nowrap} /* sortable header */
 .th:hover,.th.on{color:var(--ink)}
+.cur{font-size:11px;color:var(--ink3)}  /* currency code after a figure */
 
-.ix{text-align:left;padding:12px 14px 10px;border-top:3px solid transparent;display:flex;flex-direction:column;gap:2px;min-width:0} /* index selector card */
-.ix:hover,.ix.on{background:var(--sel)}
-.ix.on{border-top-color:var(--brass)}
+/* Index selector card */
+.ix{text-align:left;padding:12px 14px;border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:2px;min-width:0;box-shadow:inset 0 0 0 1px transparent}
+.ix:hover{background:var(--sel)}
+.ix.on{background:var(--sel);box-shadow:inset 0 0 0 1px var(--ink3)}
+.ix.on .lbl{color:var(--brass)}
 
 /* ---------- Charts (SVG, preserveAspectRatio="none", strokes non-scaling) ---------- */
-.sl{fill:none;stroke:var(--ink);stroke-width:1.75;vector-effect:non-scaling-stroke;stroke-linejoin:round} /* price line, sparkline; 2px for main and compare lines */
+.sl{fill:none;stroke:var(--ink);stroke-width:1.75;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round} /* price line, sparkline; 2px for main and compare lines */
 .sl.up{stroke:var(--up)}.sl.dn{stroke:var(--down)}
 .l20{stroke:var(--brass)}                               /* SMA 20: solid accent */
 .l50{stroke:var(--ink2);stroke-dasharray:6 4}           /* SMA 50: dashed */
 .lbb{stroke:var(--ink3);stroke-width:1;stroke-dasharray:1 3} /* Bollinger: dotted */
 .cu{fill:var(--paper);stroke:var(--up);stroke-width:1.2;vector-effect:non-scaling-stroke}   /* rising candle / volume bar: hollow */
 .cd{fill:var(--down);stroke:var(--down);stroke-width:1.2;vector-effect:non-scaling-stroke}  /* falling candle / volume bar: solid */
+.live{animation:pulse 2s ease infinite}
 
-/* ---------- Motion and small screens ---------- */
-@media (prefers-reduced-motion:reduce){.tape,.live{animation:none!important}.sw span{transition:none}}
-@media (max-width:640px){.hm .tile{grid-column:span 6!important;grid-row:span 1!important}} /* sector heatmap: two columns on phones */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ---------- Touch screens and phones: 44px targets ---------- */
+@media (pointer:coarse),(max-width:640px){
+  .seg button,.chip,.btn,.icon-btn{min-height:44px}
+  .icon-btn{width:44px;height:44px}
+  .fld{height:44px;font-size:16px} /* 16px stops iOS zooming into the field */
+}
+@media (max-width:640px){
+  .vp{--gap:12px;--radius:12px}
+  .pnl{padding:16px 16px 18px}
+  .pnl-title{font-size:21px}
+  .pnl-title.sm{font-size:19px}
+}
+@media (min-width:1800px){
+  .vp{font-size:15px}
+  .pnl{padding:24px 28px 28px}
+  .pnl-title{font-size:26px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .vp *,.vp *::before,.vp *::after{animation:none!important;transition:none!important}
+}

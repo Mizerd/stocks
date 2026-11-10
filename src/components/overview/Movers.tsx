@@ -32,9 +32,9 @@ export function Movers({ stocks, fx }: { stocks: StockSummary[]; fx: FxRates | u
   const largest = Math.max(...rows.map((r) => Math.abs(r.figure)), 0);
 
   return (
-    <section className="pnl" style={{ flex: '1 1 0%' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <PanelTitle size={20}>{t('overview.movers')}</PanelTitle>
+    <section className="pnl">
+      <div className="pnl-head">
+        <PanelTitle small>{t('overview.movers')}</PanelTitle>
         <Seg
           label={t('overview.movers')}
           value={tab}
@@ -42,25 +42,25 @@ export function Movers({ stocks, fx }: { stocks: StockSummary[]; fx: FxRates | u
           options={[{ value: 'gainers', label: labels[0] }, { value: 'losers', label: labels[1] }, { value: 'active', label: labels[2] }]}
         />
       </div>
-      <div style={{ marginTop: 10, borderTop: '1px solid var(--hair)' }}>
+      <div style={{ marginTop: 12 }}>
         {rows.map(({ stock, figure }) => (
           <Link
             key={stock.symbol}
             to={`/stock/${stock.symbol}`}
-            className="row"
-            style={{ display: 'grid', gridTemplateColumns: '54px minmax(0, 1fr) 48px 84px', alignItems: 'center', gap: 10, height: 42, padding: '0 4px', borderBottom: '1px solid var(--hair)' }}
+            className="row tbl-row"
+            style={{ gridTemplateColumns: '60px minmax(0, 1fr) 48px 88px', gap: 10, minHeight: 46, padding: '0 6px' }}
           >
-            <span className="num" style={{ fontSize: 13, fontWeight: 500 }}>{shortSymbol(stock.symbol)}</span>
+            <span className="num" style={{ fontSize: 13, fontWeight: 600 }}>{shortSymbol(stock.symbol)}</span>
             <span className="clip" style={{ fontSize: 13, color: 'var(--ink2)' }}>{stock.name}</span>
-            <span style={{ height: 6, background: 'var(--sel)' }}>
+            <span style={{ height: 6, borderRadius: 3, overflow: 'hidden', background: 'var(--sel)' }}>
               <span
                 style={{
-                  display: 'block', width: `${(Math.abs(figure) / largest) * 100}%`, height: '100%',
+                  display: 'block', width: `${(Math.abs(figure) / largest) * 100}%`, height: '100%', borderRadius: 3,
                   background: tab === 'active' ? 'var(--ink)' : tab === 'gainers' ? 'var(--up)' : 'var(--down)',
                 }}
               />
             </span>
-            <span className={`num ${tab === 'active' ? '' : direction(figure)}`} style={{ fontSize: 13, textAlign: 'right' }}>
+            <span className={`num ${tab === 'active' ? '' : direction(figure)}`} style={{ fontSize: 13, fontWeight: 500, textAlign: 'right' }}>
               {tab === 'active' ? `${f.big(figure)} €` : f.pct(figure)}
             </span>
           </Link>

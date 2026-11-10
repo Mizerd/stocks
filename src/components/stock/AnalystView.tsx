@@ -17,10 +17,10 @@ export function AnalystView({ analysts, summary }: Props) {
 
   return (
     <section className="pnl" style={{ flex: 1 }}>
-      <h2 className="ser" style={{ margin: '0 0 10px', fontSize: 22, fontWeight: 500 }}>{t('stock.an')}</h2>
+      <h2 className="ser pnl-title" style={{ marginBottom: 12 }}>{t('stock.an')}</h2>
       {total > 0 && (
         <>
-          <div role="img" aria-label={t('stock.anAria', { n: total, buy, hold, sell })} style={{ display: 'flex', height: 14, border: '1px solid var(--ink)' }}>
+          <div role="img" aria-label={t('stock.anAria', { n: total, buy, hold, sell })} style={{ display: 'flex', height: 14, border: '1px solid var(--ink)', borderRadius: 4, overflow: 'hidden' }}>
             <span style={{ width: share(buy), background: 'var(--ink)' }} />
             <span style={{ width: share(hold), background: 'repeating-linear-gradient(135deg, var(--ink) 0 1px, transparent 1px 5px)' }} />
             <span style={{ width: share(sell), borderLeft: '1px solid var(--ink)' }} />

@@ -69,8 +69,8 @@ export function PriceChart({ inst }: { inst: Instrument }) {
   }
 
   return (
-    <div className="pnl" style={{ flex: '999 1 640px', minWidth: 0 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px 14px' }}>
+    <div className="pnl">
+      <div className="tb">
         <Seg
           label={t('common.rgLabel')}
           options={RANGES.map((r, i) => ({ value: r, label: rangeLabels[i] }))}
@@ -85,11 +85,11 @@ export function PriceChart({ inst }: { inst: Instrument }) {
         />
         {change !== null && (
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span className={`num ${direction(change)}`} style={{ fontSize: 13 }}>{f.pct(change)}</span>
+            <span className={`num ${direction(change)}`} style={{ fontSize: 13.5, fontWeight: 600 }}>{f.pct(change)}</span>
             <span style={{ fontSize: 12, color: 'var(--ink3)' }}>{list('stock.per')[rangeIndex]}</span>
           </span>
         )}
-        <div role="group" aria-label={t('stock.ind')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginLeft: 'auto' }}>
+        <div role="group" aria-label={t('stock.ind')} className="tb-chips">
           {INDICATORS.map(({ id, swatch }, i) => (
             <button
               key={id}
@@ -97,7 +97,7 @@ export function PriceChart({ inst }: { inst: Instrument }) {
               aria-pressed={shown[id]}
               onClick={() => setShown({ ...shown, [id]: !shown[id] })}
             >
-              <span aria-hidden="true" style={{ width: 14, height: 0, borderTop: swatch }} />
+              <span aria-hidden="true" style={{ flex: 'none', width: 14, height: 0, borderTop: swatch }} />
               {indicatorLabels[i]}
             </button>
           ))}

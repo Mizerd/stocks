@@ -7,7 +7,7 @@ import { useHistories } from '../../lib/api';
 import { direction, useFormat } from '../../lib/format';
 import { alignReturns, COMPARE_RANGES, type CompareRange } from '../../lib/screener';
 
-const CHART_HEIGHT = 300;
+const CHART_HEIGHT = 326;
 
 interface CompareProps {
   picked: StockSummary[];
@@ -36,11 +36,11 @@ export function Compare({ picked, range, onRange, onRemove }: CompareProps) {
   }
 
   return (
-    <div className="pnl" style={{ flex: '999 1 600px', minWidth: 0 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px 20px' }}>
+    <div className="pnl" style={{ flex: '999 1 600px' }}>
+      <div className="pnl-head">
         <div>
           <PanelTitle>{t('screener.cmp')}</PanelTitle>
-          <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--ink3)' }}>
+          <p className="pnl-note">
             {times.length > 0 ? t('screener.cmpSince', { date: f.date(times[0], 'UTC') }) : t('screener.cmpNote')}
           </p>
         </div>
@@ -56,14 +56,14 @@ export function Compare({ picked, range, onRange, onRemove }: CompareProps) {
         {lines.map((line, i) => (
           <span
             key={line.symbol}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 32, padding: '0 4px 0 10px', border: '1px solid var(--hair)', borderRadius: 2, fontSize: 13 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, padding: '0 2px 0 12px', border: '1px solid var(--hair)', borderRadius: 999, fontSize: 13 }}
           >
             <span aria-hidden="true" style={{ width: 20, borderTop: LINE_SWATCHES[i] }} />
-            <span className="num" style={{ fontWeight: 500 }}>{line.label}</span>
+            <span className="num" style={{ fontWeight: 600 }}>{line.label}</span>
             <span className={`num ${direction(line.total)}`}>{f.pct(line.total, 1)}</span>
             <button
               aria-label={`${t('screener.rmL')}: ${line.label}`}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, color: 'var(--ink3)' }}
+              className="rm"
               onClick={() => onRemove(line.symbol)}
             >
               <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -87,7 +87,6 @@ export function Compare({ picked, range, onRange, onRemove }: CompareProps) {
             series={lines}
             ariaLabel={`${t('screener.chart')}, ${rangeName}: ${summary}`}
             formatX={formatX}
-            height={CHART_HEIGHT}
             xLabels={range === '5Y' ? 4 : 6}
           />
         )}

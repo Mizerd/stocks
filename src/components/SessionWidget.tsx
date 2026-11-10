@@ -31,20 +31,16 @@ export function SessionWidget() {
   const left = hours > 0 ? t('common.hm', { h: hours, m: minutes % 60 }) : t('common.min', { m: minutes });
 
   return (
-    <div style={{ flex: '0 1 300px', minWidth: 240 }}>
+    <div className="sess">
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 600 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 600, whiteSpace: 'nowrap' }}>
           <span
             className={session.isOpen ? 'live' : ''}
-            style={{
-              width: 7, height: 7, borderRadius: '50%',
-              background: session.isOpen ? 'var(--up)' : 'var(--ink3)',
-              animation: session.isOpen ? 'pulse 2s ease infinite' : undefined,
-            }}
+            style={{ width: 8, height: 8, borderRadius: '50%', background: session.isOpen ? 'var(--up)' : 'var(--ink3)' }}
           />
           {t(session.isOpen ? 'common.open' : 'common.closed')}
         </span>
-        <span style={{ color: 'var(--ink2)' }}>{t(session.isOpen ? 'common.closeIn' : 'common.openIn', { t: left })}</span>
+        <span style={{ color: 'var(--ink2)', textAlign: 'right' }}>{t(session.isOpen ? 'common.closeIn' : 'common.openIn', { t: left })}</span>
       </div>
       <div
         role="progressbar"
@@ -52,11 +48,11 @@ export function SessionWidget() {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(session.progress * 100)}
-        style={{ height: 6, marginTop: 8, border: '1px solid var(--ink)', borderRadius: 1 }}
+        style={{ height: 6, marginTop: 7, borderRadius: 3, background: 'var(--sel)', overflow: 'hidden' }}
       >
-        <div style={{ width: `${session.progress * 100}%`, height: '100%', background: 'var(--ink)' }} />
+        <div style={{ width: `${session.progress * 100}%`, height: '100%', borderRadius: 3, background: 'var(--ink)' }} />
       </div>
-      <div className="num" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11, color: 'var(--ink3)' }}>
+      <div className="num" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 4, fontSize: 11, color: 'var(--ink3)' }}>
         <span>{f.time(session.opensAt)}</span>
         <span>{session.label}</span>
         <span>{f.time(session.closesAt)}</span>

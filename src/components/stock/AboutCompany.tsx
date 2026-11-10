@@ -17,10 +17,10 @@ export function AboutCompany({ detail }: { detail: StockDetail }) {
 
   return (
     <>
-      <h2 className="ser" style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 500 }}>{t('stock.about')}</h2>
+      <h2 className="ser pnl-title" style={{ marginBottom: 8 }}>{t('stock.about')}</h2>
       {/* The source writes descriptions in English only. */}
       {detail.description && (
-        <p lang="en" style={{ margin: '0 0 8px', color: 'var(--ink2)', textWrap: 'pretty' }}>{detail.description}</p>
+        <p lang="en" style={{ margin: '0 0 10px', maxWidth: '68ch', color: 'var(--ink2)', lineHeight: 1.6, textWrap: 'pretty' }}>{detail.description}</p>
       )}
       {facts.map((fact) => fact.value && (
         <LeaderRow key={fact.key} label={t(`stock.facts.${fact.key}`)} padding={5}>{fact.value}</LeaderRow>

@@ -18,17 +18,18 @@ export function News({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null;
   return (
     <section className="pnl">
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+      <div className="pnl-head">
         <PanelTitle>{t('overview.news')}</PanelTitle>
-        <a href={`https://nasdaqbaltic.com/statistics/${lang}/news`} target="_blank" rel="noreferrer" className="hl" style={{ fontSize: 13, fontWeight: 500 }}>
+        <a href={`https://nasdaqbaltic.com/statistics/${lang}/news`} target="_blank" rel="noreferrer" className="link">
           {t('overview.allNews')}
         </a>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: '24px 36px', marginTop: 14 }}>
-        {items.slice(0, 4).map((item) => (
-          <article key={item.link} style={{ borderTop: '1px solid var(--hair)', paddingTop: 12 }}>
+      {/* Eight stories fill two rows on wide screens; narrower screens show the first four. */}
+      <div className="news">
+        {items.slice(0, 8).map((item) => (
+          <article key={item.link} style={{ borderTop: '1px solid var(--hair)', paddingTop: 14 }}>
             <p className="lbl" style={{ margin: '0 0 8px', color: 'var(--brass)' }}>{item.issuer}</p>
-            <h3 className="ser" style={{ margin: 0, fontSize: 21, lineHeight: 1.2, fontWeight: 500, textWrap: 'pretty' }}>
+            <h3 className="ser" style={{ margin: 0, fontSize: 20, lineHeight: 1.25, fontWeight: 500, textWrap: 'pretty' }}>
               <a href={item.link} target="_blank" rel="noreferrer" className="hl">{item.title}</a>
             </h3>
             <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--ink3)' }}>{ago(item.time)} · {t('overview.newsSource')}</p>

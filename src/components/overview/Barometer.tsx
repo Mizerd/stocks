@@ -14,7 +14,7 @@ export function Barometer({ value, count }: { value: number | null; count: numbe
   if (value === null) {
     return (
       <section className="pnl">
-        <PanelTitle size={20}>{t('overview.baro')}</PanelTitle>
+        <PanelTitle small>{t('overview.baro')}</PanelTitle>
         <Notice>{t('common.unavailable')}</Notice>
       </section>
     );
@@ -27,7 +27,7 @@ export function Barometer({ value, count }: { value: number | null; count: numbe
 
   return (
     <section className="pnl">
-      <PanelTitle size={20}>{t('overview.baro')}</PanelTitle>
+      <PanelTitle small>{t('overview.baro')}</PanelTitle>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 10 }}>
         <svg viewBox="0 0 200 108" role="img" aria-label={t('overview.baroAria', { n: value, name: zones[zone] })} style={{ width: '100%', maxWidth: 260, height: 'auto' }}>
           <path d="M12 100A88 88 0 0 1 188 100" style={{ fill: 'none', stroke: 'var(--ink)', strokeWidth: 1.5 }} />
@@ -46,7 +46,7 @@ export function Barometer({ value, count }: { value: number | null; count: numbe
           ))}
         </div>
         <p style={{ margin: '14px 0 0', display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span className="num" style={{ fontSize: 30, fontWeight: 500 }}>{value}</span>
+          <span className="num" style={{ fontSize: 32, fontWeight: 600, letterSpacing: '-0.02em' }}>{value}</span>
           <span className="ser" style={{ fontSize: 20, fontStyle: 'italic' }}>{zones[zone]}</span>
         </p>
       </div>

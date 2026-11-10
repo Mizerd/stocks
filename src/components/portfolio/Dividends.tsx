@@ -12,13 +12,13 @@ export function Dividends({ valuation }: { valuation: Valuation }) {
   const payingValue = paying.reduce((sum, p) => sum + p.valueEur, 0);
 
   return (
-    <div className="pnl" style={{ flex: '1 1 360px', minWidth: 0 }}>
+    <div className="pnl" style={{ flex: '1 1 360px' }}>
       <PanelTitle>{t('portfolio.divs')}</PanelTitle>
       {paying.length === 0 && <Notice>{t('portfolio.divEmpty')}</Notice>}
       {paying.length > 0 && (
         <>
           <p style={{ margin: '8px 0 0', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 10px' }}>
-            <span className="num" style={{ fontSize: 24, fontWeight: 500 }}>{f.num(total)} €</span>
+            <span className="num" style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em' }}>{f.num(total)} €</span>
             <span style={{ fontSize: 12.5, color: 'var(--ink3)' }}>
               {t('portfolio.divNote')} · {t('portfolio.divYield')} <span className="num">{f.plainPct((total / payingValue) * 100)}</span>
             </span>
@@ -29,7 +29,7 @@ export function Dividends({ valuation }: { valuation: Valuation }) {
           <div style={{ marginTop: 10, borderTop: '1px solid var(--hair)' }}>
             {paying.map((p) => (
               <div key={p.stock.symbol} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '9px 0', borderBottom: '1px solid var(--hair)' }}>
-                <span className="num" style={{ width: 52, fontWeight: 500 }}>{shortSymbol(p.stock.symbol)}</span>
+                <span className="num" style={{ width: 56, fontWeight: 600 }}>{shortSymbol(p.stock.symbol)}</span>
                 <span className="num" style={{ fontSize: 12.5, color: 'var(--ink2)', whiteSpace: 'nowrap' }}>
                   {f.num(p.holding.quantity, 0)} × {f.price(p.stock.dividend)} {p.stock.currency}
                 </span>

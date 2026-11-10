@@ -30,7 +30,7 @@ function Brief({ stocks, sectors }: { stocks: StockSummary[]; sectors: SectorMov
   return (
     <>
       <p className="lbl" style={{ margin: '0 0 10px' }}>{t('overview.leadK', { t: f.stamp(latest) })}</p>
-      <h1 className="ser" style={{ margin: '0 0 24px', maxWidth: '18em', fontSize: 'clamp(30px, 3.3vw, 46px)', lineHeight: 1.08, fontWeight: 500, letterSpacing: '-0.015em', textWrap: 'balance' }}>
+      <h1 className="ser brief">
         {headline}
       </h1>
     </>
@@ -45,8 +45,8 @@ export function Overview() {
   const fx = useFx();
   const news = useNews(lang);
 
-  if (loading) return <main className="wrap"><Loading height={420} /></main>;
-  if (error || stocks.length === 0) return <main className="wrap"><ErrorNotice height={420} /></main>;
+  if (loading) return <main className="wrap page"><Loading height={420} /></main>;
+  if (error || stocks.length === 0) return <main className="wrap page"><ErrorNotice height={420} /></main>;
 
   const sectors = sectorMoves(stocks);
   const highlights = HIGHLIGHTS.flatMap((symbol) => stocks.filter((s) => s.symbol === symbol));
@@ -54,13 +54,13 @@ export function Overview() {
   return (
     <>
       <TickerTape items={[...indices, ...stocks]} />
-      <main className="wrap" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 30, paddingBottom: 56 }}>
-        <section style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ flex: '999 1 600px', minWidth: 0 }}>
+      <main className="wrap page">
+        <section className="ov-top">
+          <div style={{ minWidth: 0 }}>
             <Brief stocks={stocks} sectors={sectors} />
             {indices.length > 0 && <IndexPanel indices={indices} />}
           </div>
-          <aside style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <aside className="side">
             <Barometer value={barometer(stocks)} count={stocks.length} />
             <Movers stocks={stocks} fx={fx.data} />
           </aside>
@@ -68,7 +68,7 @@ export function Overview() {
         {failed.length > 0 && (
           <p role="status" style={{ margin: 0, fontSize: 12.5, color: 'var(--ink3)' }}>{t('common.partial', { list: failed.join(', ') })}</p>
         )}
-        <section style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        <section className="cols">
           <Highlights stocks={highlights} />
           <Sectors sectors={sectors} />
         </section>

@@ -51,8 +51,9 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
       <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
         <div
           role="img"
+          className="plot-ix"
           aria-label={`${index.name} ${t('overview.chart')}, ${range}: ${f.pct(change)}`}
-          style={{ position: 'relative', flex: '1 1 0%', minWidth: 0, height: H, borderBottom: '1px solid var(--ink)' }}
+          style={{ position: 'relative', flex: '1 1 0%', minWidth: 0, borderBottom: '1px solid var(--ink3)' }}
         >
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height="100%" aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'block' }}>
             <path d="M0 0.5H1000M0 75H1000M0 150H1000M0 225H1000" style={{ fill: 'none', stroke: 'var(--hair)', strokeWidth: 1, vectorEffect: 'non-scaling-stroke' }} />
@@ -64,22 +65,21 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
             <span
               className="live"
               style={{
-                position: 'absolute', left: `${last[0] / 10}%`, top: `${(last[1] / H) * 100}%`, width: 9, height: 9,
-                margin: '-4.5px 0 0 -4.5px', borderRadius: '50%', background: 'var(--brass)',
-                boxShadow: '0 0 0 3px var(--paper)', animation: 'pulse 2s ease infinite',
+                position: 'absolute', left: `${last[0] / 10}%`, top: `${(last[1] / H) * 100}%`, width: 10, height: 10,
+                margin: '-5px 0 0 -5px', borderRadius: '50%', background: 'var(--brass)', boxShadow: '0 0 0 3px var(--paper)',
               }}
             />
           )}
           <span
             style={{
               position: 'absolute', left: 0, top: `${(baseY / H) * 100}%`, transform: 'translateY(-120%)',
-              padding: '0 6px 0 0', fontSize: 11, color: 'var(--brass)', background: 'var(--paper)',
+              padding: '0 6px 0 0', fontSize: 11, fontWeight: 500, color: 'var(--brass)', background: 'var(--paper)', whiteSpace: 'nowrap',
             }}
           >
             {t(intraday ? 'overview.base1' : 'overview.baseN')} <span className="num">{f.num(base)}</span>
           </span>
         </div>
-        <div className="num" style={{ position: 'relative', width: 66, height: H, fontSize: 11, color: 'var(--ink3)', textAlign: 'right' }}>
+        <div className="num plot-ix" style={{ position: 'relative', flex: 'none', width: 60, fontSize: 11, color: 'var(--ink3)', textAlign: 'right' }}>
           {ticks.map((tick) => (
             <span key={tick} style={{ position: 'absolute', right: 0, top: `${(yOf(tick, scale, H) / H) * 100}%`, transform: 'translateY(-50%)' }}>
               {f.num(tick, 0, tick < 100 ? 2 : 0)}
@@ -87,7 +87,7 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
           ))}
         </div>
       </div>
-      <div className="num" style={{ position: 'relative', height: 20, margin: '6px 76px 0 0', fontSize: 11, color: 'var(--ink3)' }}>
+      <div className="num" style={{ position: 'relative', height: 20, margin: '6px 70px 0 0', fontSize: 11, color: 'var(--ink3)' }}>
         {labelTimes.map((time, i) => (
           <span key={i} style={{ position: 'absolute', left: `${Math.min(96, Math.max(4, xOf(time) / 10))}%`, transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
             {xLabel(time)}
@@ -117,25 +117,25 @@ export function IndexPanel({ indices }: { indices: StockSummary[] }) {
 
   return (
     <div className="pnl">
-      <div role="group" aria-label={t('overview.ixLabel')} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', margin: '0 -8px' }}>
+      <div role="group" aria-label={t('overview.ixLabel')} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: 6, margin: '0 -10px' }}>
         {indices.map((ix) => (
           <button key={ix.symbol} className={`ix${ix.symbol === index.symbol ? ' on' : ''}`} aria-pressed={ix.symbol === index.symbol} onClick={() => setSelected(ix.symbol)}>
             <span className="lbl">{ix.name}</span>
-            <span className="num" style={{ fontSize: 19, fontWeight: 500 }}>{f.num(ix.price)}</span>
+            <span className="num" style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-0.01em' }}>{f.num(ix.price)}</span>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <span className={`num ${direction(ix.changePct)}`} style={{ fontSize: 12.5 }}>{f.pct(ix.changePct)}</span>
+              <span className={`num ${direction(ix.changePct)}`} style={{ fontSize: 12.5, fontWeight: 500 }}>{f.pct(ix.changePct)}</span>
               <Sparkline values={ix.spark} change={ix.spark[ix.spark.length - 1] - ix.spark[0]} width={64} height={20} />
             </span>
           </button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px 24px', marginTop: 22 }}>
-        <div>
-          <h2 className="ser" style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>{index.name}</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 14px' }}>
-            <span className="num" style={{ fontSize: 36, fontWeight: 500, letterSpacing: '-0.02em' }}>{f.num(index.price)}</span>
-            <span className={`num ${direction(changePct)}`} style={{ fontSize: 15 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px 24px', marginTop: 20 }}>
+        <div style={{ minWidth: 0 }}>
+          <h2 className="ser pnl-title sm">{index.name}</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 14px', marginTop: 4 }}>
+            <span className="num" style={{ fontSize: 36, fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1.15 }}>{f.num(index.price)}</span>
+            <span className={`num ${direction(changePct)}`} style={{ fontSize: 15, fontWeight: 500 }}>
               {f.signed(change)} ({f.pct(changePct)})
             </span>
             <span style={{ fontSize: 12, color: 'var(--ink3)' }}>{periods[RANGES.indexOf(range)]}</span>

@@ -22,7 +22,7 @@ function markBest(cells: Cell[], values: (number | null)[], want: 'high' | 'low'
 export function SideBySide({ picked, fx }: { picked: StockSummary[]; fx: FxRates | undefined }) {
   const { t, list } = useT();
   const f = useFormat();
-  const columns = `minmax(100px, 1fr) repeat(${picked.length}, minmax(82px, 1fr))`;
+  const columns = `minmax(104px, 1fr) repeat(${picked.length}, minmax(76px, 1fr))`;
 
   const figures = (format: (stock: StockSummary) => string) =>
     picked.map((stock): Cell => ({ text: format(stock), className: 'num' }));
@@ -44,12 +44,12 @@ export function SideBySide({ picked, fx }: { picked: StockSummary[]; fx: FxRates
   const labels = list('screener.mk');
 
   return (
-    <div className="pnl" style={{ flex: '1 1 430px', minWidth: 0 }}>
-      <h2 className="ser" style={{ margin: '0 0 10px', fontSize: 24, fontWeight: 500 }}>{t('screener.side')}</h2>
-      <div style={{ overflowX: 'auto' }}>
-        <div style={{ minWidth: 100 + 90 * picked.length }}>
-          <div className="num" style={{ display: 'grid', gridTemplateColumns: columns, gap: 8, padding: '8px 0', borderBottom: '1px solid var(--ink)', fontWeight: 500 }}>
-            <span />
+    <div className="pnl" style={{ flex: '1 1 430px' }}>
+      <h2 className="ser pnl-title" style={{ marginBottom: 10 }}>{t('screener.side')}</h2>
+      <div className="scroll-x">
+        <div style={{ minWidth: 104 + 84 * picked.length }}>
+          <div className="num" style={{ display: 'grid', gridTemplateColumns: columns, gap: 8, padding: '8px 0', borderBottom: '1px solid var(--hair)', fontWeight: 600 }}>
+            <span className="sbs-k" />
             {picked.map((stock) => (
               <span key={stock.symbol} style={{ textAlign: 'right' }}>{shortSymbol(stock.symbol)}</span>
             ))}
@@ -59,7 +59,7 @@ export function SideBySide({ picked, fx }: { picked: StockSummary[]; fx: FxRates
               key={labels[i]}
               style={{ display: 'grid', gridTemplateColumns: columns, alignItems: 'baseline', gap: 8, padding: '9px 0', borderBottom: '1px solid var(--hair)' }}
             >
-              <span style={{ color: 'var(--ink2)' }}>{labels[i]}</span>
+              <span className="sbs-k" style={{ color: 'var(--ink2)', alignSelf: 'stretch' }}>{labels[i]}</span>
               {cells.map((cell, j) => (
                 <span key={picked[j].symbol} className={cell.className} style={{ fontSize: 13, textAlign: 'right', fontWeight: cell.bold ? 600 : 400 }}>
                   {cell.text}

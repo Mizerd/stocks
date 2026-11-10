@@ -6,8 +6,6 @@ import { direction, useFormat } from '../../lib/format';
 import type { Valuation } from '../../lib/portfolio';
 import { Badge, PanelTitle } from '../ui';
 
-const COLUMNS = '70px minmax(140px, 1.5fr) 64px 92px 108px 116px 92px minmax(190px, 1.3fr) minmax(110px, 1fr)';
-
 export function Holdings({ valuation, fx }: { valuation: Valuation; fx: FxRates }) {
   const { t } = useT();
   const f = useFormat();
@@ -17,62 +15,57 @@ export function Holdings({ valuation, fx }: { valuation: Valuation; fx: FxRates 
 
   return (
     <section className="pnl">
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+      <div className="pnl-head">
         <PanelTitle>{t('portfolio.hold')}</PanelTitle>
         <span style={{ fontSize: 12.5, color: 'var(--ink3)' }}>{t('portfolio.fxNote', { date: f.date(fx.date, 'UTC'), rates })}</span>
       </div>
       <div className="scroll-x" style={{ marginTop: 10 }}>
-        <div style={{ minWidth: 1040 }}>
-          <div className="lbl" style={{ display: 'grid', gridTemplateColumns: COLUMNS, gap: 14, padding: 8, borderBottom: '1px solid var(--ink)' }}>
+        <div className="hd">
+          <div className="lbl tbl-head hd-cols">
             <span>{t('portfolio.cSym')}</span>
             <span>{t('portfolio.cName')}</span>
-            <span style={{ textAlign: 'right' }}>{t('portfolio.cQty')}</span>
-            <span style={{ textAlign: 'right' }}>{t('portfolio.cAvg')}</span>
-            <span style={{ textAlign: 'right' }}>{t('portfolio.cPrice')}</span>
-            <span style={{ textAlign: 'right' }}>{t('portfolio.cVal')}</span>
-            <span style={{ textAlign: 'right' }}>{t('portfolio.cDay')}</span>
-            <span style={{ textAlign: 'right' }}>{t('portfolio.cPl')}</span>
-            <span>{t('portfolio.cW')}</span>
+            <span className="r c-qty">{t('portfolio.cQty')}</span>
+            <span className="r c-avg">{t('portfolio.cAvg')}</span>
+            <span className="r">{t('portfolio.cPrice')}</span>
+            <span className="r">{t('portfolio.cVal')}</span>
+            <span className="r">{t('portfolio.cDay')}</span>
+            <span className="r">{t('portfolio.cPl')}</span>
+            <span className="c-w">{t('portfolio.cW')}</span>
           </div>
           {valuation.positions.map((p) => (
-            <Link
-              key={p.stock.symbol}
-              to={`/stock/${p.stock.symbol}`}
-              className="row"
-              style={{ display: 'grid', gridTemplateColumns: COLUMNS, alignItems: 'center', gap: 14, height: 46, padding: '0 8px', borderBottom: '1px solid var(--hair)' }}
-            >
-              <span className="num" style={{ fontWeight: 500 }}>{shortSymbol(p.stock.symbol)}</span>
-              <span className="clip">{p.stock.name}</span>
-              <span className="num" style={{ fontSize: 13, textAlign: 'right' }}>{f.num(p.holding.quantity, 0)}</span>
-              <span className="num" style={{ fontSize: 13, textAlign: 'right', color: 'var(--ink2)' }}>{f.price(p.holding.avgCost)}</span>
-              <span className="num" style={{ fontSize: 13, textAlign: 'right' }}>
-                {f.price(p.stock.price)} <span style={{ fontSize: 11, color: 'var(--ink3)' }}>{p.stock.currency}</span>
+            <Link key={p.stock.symbol} to={`/stock/${p.stock.symbol}`} className="row tbl-row hd-cols">
+              <span className="num c-sym" style={{ fontWeight: 600 }}>{shortSymbol(p.stock.symbol)}</span>
+              <span className="clip c-name">{p.stock.name}</span>
+              <span className="num r c-qty" style={{ fontSize: 13 }}>{f.num(p.holding.quantity, 0)}</span>
+              <span className="num r c-avg" style={{ fontSize: 13, color: 'var(--ink2)' }}>{f.price(p.holding.avgCost)}</span>
+              <span className="num r c-price" style={{ fontSize: 13 }}>
+                {f.price(p.stock.price)} <span className="cur">{p.stock.currency}</span>
               </span>
-              <span className="num" style={{ textAlign: 'right', fontWeight: 500 }}>{f.num(p.valueEur)} €</span>
-              <span style={{ textAlign: 'right' }}><Badge value={p.stock.changePct} /></span>
-              <span className={`num ${direction(p.gainEur)}`} style={{ fontSize: 13, textAlign: 'right' }}>
+              <span className="num r c-val" style={{ fontWeight: 600 }}>{f.num(p.valueEur)} €</span>
+              <span className="r c-day"><Badge value={p.stock.changePct} /></span>
+              <span className={`num r c-pl ${direction(p.gainEur)}`} style={{ fontSize: 13 }}>
                 {f.signed(p.gainEur)} € · {f.pct(p.gainPct, 1)}
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ flex: '1 1 0%', height: 6, background: 'var(--sel)' }}>
-                  <span style={{ display: 'block', width: `${(p.weight / largest) * 100}%`, height: '100%', background: 'var(--ink)' }} />
+              <span className="c-w hd-w">
+                <span style={{ flex: '1 1 0%', height: 6, borderRadius: 3, overflow: 'hidden', background: 'var(--sel)' }}>
+                  <span style={{ display: 'block', width: `${(p.weight / largest) * 100}%`, height: '100%', borderRadius: 3, background: 'var(--ink)' }} />
                 </span>
                 <span className="num" style={{ width: 52, fontSize: 12.5, textAlign: 'right', color: 'var(--ink2)' }}>{f.plainPct(p.weight * 100, 1)}</span>
               </span>
             </Link>
           ))}
-          <div style={{ display: 'grid', gridTemplateColumns: COLUMNS, alignItems: 'center', gap: 14, height: 48, padding: '0 8px', borderTop: '1px solid var(--ink)', marginTop: -1, fontWeight: 600 }}>
-            <span />
-            <span>{t('portfolio.total')}</span>
-            <span />
-            <span />
-            <span />
-            <span className="num" style={{ textAlign: 'right' }}>{f.num(valuation.holdingsEur)} €</span>
-            <span className={`num ${direction(valuation.dayPct)}`} style={{ fontSize: 12.5, textAlign: 'right', paddingRight: 8 }}>{f.pct(valuation.dayPct)}</span>
-            <span className={`num ${direction(valuation.gainEur)}`} style={{ fontSize: 13, textAlign: 'right' }}>
+          <div className="tbl-row hd-cols tot" style={{ borderTop: '1px solid var(--ink3)', fontWeight: 600 }}>
+            <span className="c-sym" />
+            <span className="c-name">{t('portfolio.total')}</span>
+            <span className="c-qty" />
+            <span className="c-avg" />
+            <span className="c-price" />
+            <span className="num r c-val">{f.num(valuation.holdingsEur)} €</span>
+            <span className={`num r c-day ${direction(valuation.dayPct)}`} style={{ fontSize: 12.5, paddingRight: 8 }}>{f.pct(valuation.dayPct)}</span>
+            <span className={`num r c-pl ${direction(valuation.gainEur)}`} style={{ fontSize: 13 }}>
               {f.signed(valuation.gainEur)} € · {f.pct(valuation.gainPct, 1)}
             </span>
-            <span />
+            <span className="c-w" />
           </div>
         </div>
       </div>

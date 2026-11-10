@@ -35,8 +35,8 @@ export function Performance({ positions, fx, benchmark }: Props) {
   const lead = portfolioReturn - indexReturn;
 
   return (
-    <div className="pnl" style={{ flex: '999 1 600px', minWidth: 0 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px 20px' }}>
+    <div className="pnl" style={{ flex: '999 1 600px' }}>
+      <div className="pnl-head">
         <PanelTitle>{t('portfolio.perf')}</PanelTitle>
         <Seg label={t('common.rgLabel')} value={range} onChange={setRange} options={RANGES.map((r, i) => ({ value: r, label: labels[i] }))} />
       </div>
@@ -63,7 +63,6 @@ export function Performance({ positions, fx, benchmark }: Props) {
               series={[{ label: t('portfolio.pfL'), values: portfolio }, { label: benchmark.name, values: index }]}
               ariaLabel={`${t('portfolio.chart', { index: benchmark.name })}, ${labels[RANGES.indexOf(range)]}: ${f.pct(portfolioReturn, 1)} / ${f.pct(indexReturn, 1)}`}
               formatX={(time) => (range === '1M' || range === '3M' ? f.dateShort(time, 'UTC') : f.month(time))}
-              height={280}
             />
           </div>
           <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--ink3)' }}>{t('portfolio.perfNote')}</p>

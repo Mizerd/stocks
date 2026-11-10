@@ -27,7 +27,7 @@ function UnknownStock({ symbol }: { symbol: string }) {
   const { t } = useT();
   usePageTitle(symbol);
   return (
-    <main className="wrap" style={{ paddingTop: 30, paddingBottom: 56 }}>
+    <main className="wrap page">
       <Notice height={260}>{t('stock.unknown', { symbol })}</Notice>
       <p style={{ textAlign: 'center' }}><Link to="/screener" className="btn">{t('stock.toScreener')}</Link></p>
     </main>
@@ -37,9 +37,11 @@ function UnknownStock({ symbol }: { symbol: string }) {
 function HeroPrice({ summary }: { summary: StockSummary }) {
   const f = useFormat();
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '6px 14px', marginTop: 14 }}>
-      <span className="num" style={{ fontSize: 46, fontWeight: 500, letterSpacing: '-0.03em', lineHeight: 1 }}>{f.price(summary.price)}</span>
-      <span style={{ fontSize: 12, color: 'var(--ink3)' }}>{summary.currency}</span>
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 12px', marginTop: 14 }}>
+      <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <span className="num hero-price">{f.price(summary.price)}</span>
+        <span style={{ fontSize: 13, color: 'var(--ink3)' }}>{summary.currency}</span>
+      </span>
       <span className={`num bdg ${direction(summary.changePct)}`} style={{ fontSize: 15, minWidth: 0 }}>
         {f.signed(summary.change)} ({f.pct(summary.changePct)})
       </span>
@@ -65,25 +67,24 @@ function StockPage({ inst }: { inst: Instrument }) {
   }, [inst.symbol]);
 
   return (
-    <main className="wrap" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 30, paddingBottom: 56 }}>
-      <section style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px 40px', marginBottom: 10 }}>
-        <div>
-          <p className="lbl" style={{ margin: '0 0 8px' }}>
-            <span className="num" style={{ padding: '2px 6px', border: '1px solid var(--ink)', borderRadius: 2, color: 'var(--ink)', letterSpacing: '0.04em' }}>
-              {shortSymbol(inst.symbol)}
-            </span>
-            {'  '}{EXCHANGES[inst.exchange].short} · {inst.sector ? t(`stock.sec.${inst.sector}`) : t('common.index')}
+    <main className="wrap page">
+      <section className="st-head">
+        <div style={{ minWidth: 0 }}>
+          <p className="lbl" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
+            <span className="num st-sym">{shortSymbol(inst.symbol)}</span>
+            <span>{EXCHANGES[inst.exchange].short} · {inst.sector ? t(`stock.sec.${inst.sector}`) : t('common.index')}</span>
           </p>
-          <h1 className="ser" style={{ margin: 0, fontSize: 'clamp(36px, 4vw, 54px)', lineHeight: 1, fontWeight: 500, letterSpacing: '-0.02em' }}>{inst.name}</h1>
-          {detail && <HeroPrice summary={detail.summary} />}
+          <h1 className="ser h1">{inst.name}</h1>
+          {/* Reserve the price line's height so the page does not jump when it arrives. */}
+          {detail ? <HeroPrice summary={detail.summary} /> : <div style={{ height: 62 }} />}
         </div>
         {isStock && <Link className="btn" to={compareTo}>{t('stock.cmp')}</Link>}
       </section>
 
-      <section style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+      <section className="st-top">
         <PriceChart inst={inst} />
-        <aside style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <section className="pnl" style={{ flex: detail?.analysts ? undefined : 1 }}>
+        <aside className="side">
+          <section className="pnl">
             {detail ? <KeyFigures summary={detail.summary} /> : loading ? <Loading height={300} /> : error && <ErrorNotice height={300} />}
           </section>
           {detail?.analysts && <AnalystView analysts={detail.analysts} summary={detail.summary} />}
@@ -91,9 +92,9 @@ function StockPage({ inst }: { inst: Instrument }) {
       </section>
 
       {isStock && detail && (
-        <section style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        <section className="cols">
           <Financials detail={detail} />
-          <section className="pnl" style={{ flex: '1 1 360px', minWidth: 0 }}>
+          <section className="pnl" style={{ flex: '1 1 360px' }}>
             <AboutCompany detail={detail} />
           </section>
         </section>

@@ -60,13 +60,7 @@ export function Search() {
   }
 
   return (
-    <label
-      className="srch"
-      style={{
-        flex: '1 1 280px', display: 'flex', alignItems: 'center', gap: 10, height: 42, padding: '0 12px',
-        border: '1px solid var(--ink)', borderRadius: 2, background: 'var(--card)',
-      }}
-    >
+    <label className="srch">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ flex: '0 0 auto' }}>
         <circle cx="7" cy="7" r="4.75" style={{ fill: 'none', stroke: 'var(--ink2)', strokeWidth: 1.5 }} />
         <path d="M10.6 10.6L14 14" style={{ stroke: 'var(--ink2)', strokeWidth: 1.5, strokeLinecap: 'round' }} />
@@ -90,15 +84,8 @@ export function Search() {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        style={{ flex: '1 1 0%', minWidth: 0, border: 0, outline: 0, background: 'transparent', fontSize: 14 }}
       />
-      <span
-        className="num"
-        aria-hidden="true"
-        style={{ fontSize: 11, color: 'var(--ink3)', border: '1px solid var(--hair)', borderRadius: 2, padding: '1px 6px' }}
-      >
-        /
-      </span>
+      <kbd className="srch-key" aria-hidden="true">/</kbd>
       {open && query.trim() !== '' && (
         // Keep focus in the input when a result is pressed, so the click still lands.
         <ul id="search-results" className="srch-list" role="listbox" onMouseDown={(e) => e.preventDefault()}>
@@ -106,7 +93,7 @@ export function Search() {
           {results.map((inst, i) => (
             <li key={inst.symbol} role="option" aria-selected={i === active}>
               <Link to={`/stock/${inst.symbol}`} className={i === active ? 'on' : ''} tabIndex={-1} onClick={() => go(inst)}>
-                <span className="num" style={{ fontWeight: 500 }}>{shortSymbol(inst.symbol)}</span>
+                <span className="num" style={{ fontWeight: 600 }}>{shortSymbol(inst.symbol)}</span>
                 <span className="clip">{inst.name}</span>
                 <span style={{ fontSize: 11.5, color: 'var(--ink3)' }}>
                   {inst.kind === 'index' ? t('common.index') : EXCHANGES[inst.exchange].short}

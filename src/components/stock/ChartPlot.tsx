@@ -171,13 +171,13 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
 
   return (
     <div>
-      <div className="num" style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', minHeight: 20, fontSize: 11.5, color: 'var(--ink2)' }}>
-        <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{barDate(bar.t)}</span>
+      <div className="num" style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', minHeight: 20, fontSize: 12, color: 'var(--ink2)' }}>
+        <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{barDate(bar.t)}</span>
         <span>{t('stock.o')} {f.price(bar.o)}</span>
         <span>{t('stock.h')} {f.price(bar.h)}</span>
         <span>{t('stock.l')} {f.price(bar.l)}</span>
         <span>{t('stock.c')} {f.price(bar.c)}</span>
-        <span className={direction(change)}>{f.pct(change)}</span>
+        <span className={direction(change)} style={{ fontWeight: 500 }}>{f.pct(change)}</span>
         {shown.sma20 && <span style={{ color: 'var(--brass)' }}>SMA 20 {f.price(sma20[active])}</span>}
         {shown.sma50 && <span>SMA 50 {f.price(sma50[active])}</span>}
         {shown.bb && (
@@ -188,7 +188,7 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 0, height: 430, borderTop: '1px solid var(--hair)', borderBottom: '1px solid var(--ink)' }}>
+        <div className="plot-main" style={{ position: 'relative', flex: 1, minWidth: 0, borderTop: '1px solid var(--hair)', borderBottom: '1px solid var(--ink3)' }}>
           <svg viewBox={`0 0 ${W} ${PLOT_H}`} preserveAspectRatio="none" width="100%" height="100%" role="img" aria-label={label} style={svgStyle}>
             <path d={ticks.map((v) => `M0 ${y(v).toFixed(1)}H${W}`).join('')} style={{ fill: 'none', stroke: 'var(--hair)', strokeWidth: 1, vectorEffect: 'non-scaling-stroke' }} />
             {shown.bb && (
@@ -214,12 +214,11 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
           </svg>
           {type === 'line' && (
             <span
-              className="live"
+              className={intraday ? 'live' : undefined}
               aria-hidden="true"
               style={{
-                position: 'absolute', left: `${(x(last) / W) * 100}%`, top: percentY(bars[last].c), width: 9, height: 9,
-                margin: '-4.5px 0 0 -4.5px', borderRadius: '50%', background: 'var(--brass)', boxShadow: '0 0 0 3px var(--paper)',
-                animation: intraday ? 'pulse 2s ease infinite' : undefined,
+                position: 'absolute', left: `${(x(last) / W) * 100}%`, top: percentY(bars[last].c), width: 10, height: 10,
+                margin: '-5px 0 0 -5px', borderRadius: '50%', background: 'var(--brass)', boxShadow: '0 0 0 3px var(--paper)',
               }}
             />
           )}
@@ -228,8 +227,10 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
             role="group"
             aria-label={t('stock.chartKeys')}
             style={{ position: 'absolute', inset: 0, cursor: 'crosshair', touchAction: 'pan-y' }}
+            onPointerDown={onPointerMove}
             onPointerMove={onPointerMove}
             onPointerLeave={() => setHover(null)}
+            onPointerCancel={() => setHover(null)}
             onKeyDown={onKeyDown}
             onBlur={() => setHover(null)}
           >
@@ -240,7 +241,7 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
                 <span
                   className="num"
                   style={{
-                    position: 'absolute', bottom: -1, left: hoverLeft, transform: 'translate(-50%, 100%)', padding: '1px 6px', fontSize: 11,
+                    position: 'absolute', bottom: -1, left: hoverLeft, transform: 'translate(-50%, 100%)', padding: '1px 6px', borderRadius: 4, fontSize: 11,
                     whiteSpace: 'nowrap', background: 'var(--ink)', color: 'var(--paper)', pointerEvents: 'none', zIndex: 2,
                   }}
                 >
@@ -250,15 +251,15 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
             )}
           </div>
         </div>
-        <div className="num" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: AXIS_WIDTH, height: 430, fontSize: 11, color: 'var(--ink3)' }}>
+        <div className="num plot-main" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: AXIS_WIDTH, fontSize: 11, color: 'var(--ink3)' }}>
           {ticks.map((v) => (
             <span key={v} style={{ position: 'absolute', left: 4, top: percentY(v), transform: 'translateY(-50%)' }}>{f.num(v, tickDecimals)}</span>
           ))}
-          <span style={{ position: 'absolute', left: 0, right: 0, top: percentY(bars[last].c), transform: 'translateY(-50%)', padding: '1px 4px', fontWeight: 500, background: 'var(--ink)', color: 'var(--paper)' }}>
+          <span style={{ position: 'absolute', left: 0, right: 0, top: percentY(bars[last].c), transform: 'translateY(-50%)', padding: '1px 4px', borderRadius: 4, fontWeight: 600, background: 'var(--ink)', color: 'var(--paper)' }}>
             {axisPrice(bars[last].c)}
           </span>
           {hover && (
-            <span style={{ position: 'absolute', left: 0, right: 0, top: hoverTop, transform: 'translateY(-50%)', padding: '0 3px', border: '1px solid var(--ink)', color: 'var(--ink)', background: 'var(--sel)' }}>
+            <span style={{ position: 'absolute', left: 0, right: 0, top: hoverTop, transform: 'translateY(-50%)', padding: '0 3px', border: '1px solid var(--ink3)', borderRadius: 4, color: 'var(--ink)', background: 'var(--sel)' }}>
               {axisPrice(scale.max - hover.y * (scale.max - scale.min))}
             </span>
           )}

@@ -13,6 +13,12 @@
   "n2": "Stock",
   "n3": "Portfolio & alerts",
   "n4": "Screener & compare",
+  "navShort": [
+    "Overview",
+    "Stock",
+    "Portfolio",
+    "Screener"
+  ],
   "delay": "US real-time · Nordic and Baltic delayed · Euronext end of day",
   "rgLabel": "Range",
   "foot1": "Market data from Nasdaq, Nasdaq Nordic, Nasdaq Baltic, Euronext and the ECB; delays are shown next to each price. Not investment advice.",

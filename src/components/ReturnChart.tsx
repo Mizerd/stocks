@@ -29,11 +29,10 @@ interface ReturnChartProps {
   series: { label: string; values: (number | null)[] }[];
   ariaLabel: string;
   formatX(time: number): string;
-  height?: number;
   xLabels?: number;
 }
 
-export function ReturnChart({ times, series, ariaLabel, formatX, height = 300, xLabels = 6 }: ReturnChartProps) {
+export function ReturnChart({ times, series, ariaLabel, formatX, xLabels = 6 }: ReturnChartProps) {
   const f = useFormat();
 
   const values = series.flatMap((s) => s.values).filter((v) => v !== null);
@@ -59,7 +58,8 @@ export function ReturnChart({ times, series, ariaLabel, formatX, height = 300, x
         <div
           role="img"
           aria-label={ariaLabel}
-          style={{ position: 'relative', flex: 1, minWidth: 0, height, borderBottom: '1px solid var(--ink)' }}
+          className="plot-rc"
+          style={{ position: 'relative', flex: 1, minWidth: 0, borderBottom: '1px solid var(--ink3)' }}
         >
           <svg
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -84,7 +84,7 @@ export function ReturnChart({ times, series, ariaLabel, formatX, height = 300, x
             ))}
           </svg>
         </div>
-        <div className="num" style={{ position: 'relative', flex: 'none', width: AXIS_WIDTH, height, fontSize: 11, color: 'var(--ink3)' }}>
+        <div className="num plot-rc" style={{ position: 'relative', flex: 'none', width: AXIS_WIDTH, fontSize: 11, color: 'var(--ink3)' }}>
           {ticks.map((v) => (
             <span
               key={v}

@@ -13,6 +13,12 @@
   "n2": "Akcija",
   "n3": "Portfelis ir įspėjimai",
   "n4": "Atranka ir palyginimas",
+  "navShort": [
+    "Apžvalga",
+    "Akcija",
+    "Portfelis",
+    "Atranka"
+  ],
   "delay": "JAV tikruoju laiku · Šiaurės ir Baltijos šalys vėluoja · „Euronext“ dienos pabaigos",
   "rgLabel": "Laikotarpis",
   "foot1": "Rinkos duomenys: „Nasdaq“, „Nasdaq Nordic“, „Nasdaq Baltic“, „Euronext“ ir ECB; vėlavimas nurodytas prie kiekvienos kainos. Tai nėra investavimo rekomendacija.",

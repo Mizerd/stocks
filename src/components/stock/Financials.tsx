@@ -37,8 +37,8 @@ export function Financials({ detail }: { detail: StockDetail }) {
   const summary = quarters.map((q) => `${f.month(periodTime(q.period), true)} ${label(q.value)}`).join(', ');
 
   return (
-    <div className="pnl" style={{ flex: '999 1 520px', minWidth: 0 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+    <div className="pnl" style={{ flex: '999 1 520px' }}>
+      <div className="pnl-head">
         <PanelTitle>{t('stock.fin')}</PanelTitle>
         <Seg label={t('stock.fin')} options={TABS.map((value, i) => ({ value, label: tabLabels[i] }))} value={tab} onChange={setTab} />
       </div>
@@ -59,18 +59,18 @@ export function Financials({ detail }: { detail: StockDetail }) {
             </span>
             <span style={{ color: 'var(--ink3)' }}>{detail.summary.currency}</span>
           </div>
-          <div role="img" aria-label={`${tabLabels[TABS.indexOf(tab)]}: ${summary}`} style={{ ...grid, height: 320, marginTop: 12, borderBottom: '1px solid var(--ink)' }}>
+          <div role="img" aria-label={`${tabLabels[TABS.indexOf(tab)]}: ${summary}`} className="fin-plot" style={{ ...grid, marginTop: 12, borderBottom: '1px solid var(--ink3)' }}>
             {quarters.map((q) => (
               <div key={q.period} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 8, height: '100%' }}>
                 {q.estimate != null && (
                   <div style={columnStyle}>
                     <span className="num" style={{ marginBottom: 4, fontSize: 11, color: 'var(--ink2)' }}>{label(q.estimate)}</span>
-                    <div style={{ width: '100%', height: height(q.estimate), border: '1.5px solid var(--ink)', borderBottom: 0 }} />
+                    <div style={{ width: '100%', height: height(q.estimate), border: '1.5px solid var(--ink)', borderBottom: 0, borderRadius: '4px 4px 0 0' }} />
                   </div>
                 )}
                 <div style={columnStyle}>
                   <span className="num" style={{ marginBottom: 4, fontSize: 11, fontWeight: 500 }}>{label(q.value)}</span>
-                  <div style={{ width: '100%', height: height(q.value), background: 'var(--ink)' }} />
+                  <div style={{ width: '100%', height: height(q.value), borderRadius: '4px 4px 0 0', background: 'var(--ink)' }} />
                 </div>
               </div>
             ))}
