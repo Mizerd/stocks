@@ -26,7 +26,6 @@ npx wrangler login
 npm run deploy
 ```
 
-Pushing to `main` deploys automatically once the repository has the `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID` secrets.
+Cloudflare rebuilds and deploys the site on every push to `main` (Workers Builds).
 
 To rename the site, edit `src/config/brand.ts`.
