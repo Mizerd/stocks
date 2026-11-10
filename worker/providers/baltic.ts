@@ -1,7 +1,7 @@
 import { unzipSync, strFromU8 } from 'fflate';
 import type { Candle, Instrument, Quote } from '../../shared/types';
 import { EXCHANGES, zonedParts, zonedTime, type Exchange } from '../../shared/exchanges';
-import { cachedBytes, cachedText, daysAgo, isoDay, num, UpstreamError } from '../http';
+import { cachedText, fetchBytes, daysAgo, isoDay, num, UpstreamError } from '../http';
 import { bucket } from './nasdaq';
 import { emptyFundamentals, NO_EXTRAS, type DetailExtras, type Intraday, type Provider } from './provider';
 
@@ -153,7 +153,7 @@ export const baltic: Provider = {
     if (inst.kind === 'index') return indexSeries(inst, years);
     const from = isoDay(daysAgo(Math.round(years * 365.25)));
     const url = `${BASE}/instrument/${inst.providerId}/trading/chart_price_download?start=${from}&end=${isoDay(new Date())}`;
-    return parseBalticXlsx(await cachedBytes(url, 900));
+    return parseBalticXlsx(await fetchBytes(url));
   },
 
   async intraday(inst): Promise<Intraday | null> {

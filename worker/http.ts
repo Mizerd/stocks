@@ -2,36 +2,21 @@ const memory = new Map<string, { expires: number; body: string }>();
 
 export class UpstreamError extends Error {}
 
-// Fetches an upstream URL as text with a timeout, one retry, and two cache layers:
-// a per-isolate map and the edge cache. Only URLs built by the providers come through here.
+// Fetches an upstream URL as text with a timeout and one retry, remembered per isolate.
+// The edge cache is used for whole API responses instead (see index.ts): Workers count every
+// cache call as a subrequest, and one request here already makes up to 32 upstream calls.
 export async function cachedText(url: string, ttlSeconds: number, accept = 'application/json'): Promise<string> {
   const hit = memory.get(url);
   if (hit && hit.expires > Date.now()) return hit.body;
-
-  const cacheKey = new Request(url);
-  const edge = typeof caches === 'undefined' ? undefined : (caches as unknown as { default: Cache }).default;
-  const cached = await edge?.match(cacheKey);
-  let body: string;
-  if (cached) {
-    body = await cached.text();
-  } else {
-    body = await fetchWithRetry(url, accept);
-    await edge?.put(cacheKey, new Response(body, { headers: { 'Cache-Control': `max-age=${ttlSeconds}` } }));
-  }
+  const body = await fetchWithRetry(url, accept);
   memory.set(url, { expires: Date.now() + ttlSeconds * 1000, body });
   if (memory.size > 500) memory.delete(memory.keys().next().value!);
   return body;
 }
 
-export async function cachedBytes(url: string, ttlSeconds: number): Promise<Uint8Array> {
-  const cacheKey = new Request(url);
-  const edge = typeof caches === 'undefined' ? undefined : (caches as unknown as { default: Cache }).default;
-  const cached = await edge?.match(cacheKey);
-  if (cached) return new Uint8Array(await cached.arrayBuffer());
+export async function fetchBytes(url: string): Promise<Uint8Array> {
   const res = await fetchOnce(url, '*/*');
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  await edge?.put(cacheKey, new Response(bytes, { headers: { 'Cache-Control': `max-age=${ttlSeconds}` } }));
-  return bytes;
+  return new Uint8Array(await res.arrayBuffer());
 }
 
 async function fetchOnce(url: string, accept: string): Promise<Response> {

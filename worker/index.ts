@@ -94,15 +94,33 @@ async function route(url: URL): Promise<Response> {
   }
 }
 
+async function respond(request: Request): Promise<Response> {
+  try {
+    return await route(new URL(request.url));
+  } catch (err) {
+    if (err instanceof HttpError) return json({ error: err.message }, err.status);
+    console.error(err);
+    return json({ error: 'The market data source did not respond. Try again shortly.' }, 502);
+  }
+}
+
+interface Context {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
 export default {
-  async fetch(request: Request): Promise<Response> {
+  // Complete responses are kept in the edge cache for as long as their Cache-Control allows.
+  async fetch(request: Request, _env?: unknown, ctx?: Context): Promise<Response> {
     if (request.method !== 'GET') return json({ error: 'Read-only API' }, 405);
-    try {
-      return await route(new URL(request.url));
-    } catch (err) {
-      if (err instanceof HttpError) return json({ error: err.message }, err.status);
-      console.error(err);
-      return json({ error: 'The market data source did not respond. Try again shortly.' }, 502);
+    const edge = typeof caches === 'undefined' ? undefined : (caches as unknown as { default: Cache }).default;
+    const cached = await edge?.match(request);
+    if (cached) return cached;
+    const response = await respond(request);
+    if (edge && response.headers.get('Cache-Control')?.startsWith('public')) {
+      const stored = edge.put(request, response.clone());
+      if (ctx) ctx.waitUntil(stored);
+      else await stored;
     }
+    return response;
   },
 };
