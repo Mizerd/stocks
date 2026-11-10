@@ -1,6 +1,6 @@
 {
-  "leadK": "Dienos santrauka · atnaujinta 18:46",
-  "lead": "Technologijos traukia rinką aukštyn, energetika ilsisi.",
+  "leadK": "Dienos santrauka · atnaujinta {t}",
+  "lead": "Pirmauja sektorius „{best}“, atsilieka „{worst}“: brangsta {adv} iš {n} stebimų akcijų.",
   "ixLabel": "Indeksas",
   "ranges": [
     "1 d.",
@@ -22,8 +22,7 @@
   "baseN": "Laikotarpio pradžia",
   "chart": "kainos grafikas",
   "baro": "Rinkos barometras",
-  "baroAria": "Barometro rodyklė ties 64 iš 100 – giedra",
-  "baroNow": "Giedra",
+  "baroAria": "Barometro rodyklė ties {n} iš 100 – {name}",
   "baroL": [
     "Audra",
     "Lietus",
@@ -31,57 +30,43 @@
     "Giedra",
     "Sausra"
   ],
-  "baroNote": "Rodmuo sudaromas iš kylančių ir krentančių akcijų santykio, kintamumo ir apyvartos. Vakar buvo 58.",
+  "baroNote": "Rodmuo sudaromas iš to, kiek iš {n} stebimų akcijų brangsta, ir jų vidutinio pokyčio dydžio. Tai paprastas vidinis matuoklis, o ne visos rinkos indeksas.",
   "movers": "Dienos judėjimai",
   "mv": [
     "Brangsta",
     "Pinga",
     "Aktyviausios"
   ],
-  "watch": "Stebimieji",
-  "manage": "Tvarkyti sąrašą",
+  "watch": "Rinkos akcentai",
+  "manage": "Visos stebimos akcijos",
   "cSym": "Simbolis",
   "cName": "Pavadinimas",
-  "cDay": "Diena",
+  "cDay": "28 dienos",
   "cPrice": "Kaina",
   "cChg": "Pokytis",
   "cVol": "Apyvarta",
-  "volU": " mln.",
   "sectors": "Sektoriai šiandien",
-  "sectorsNote": "Plytelės dydis atitinka sektoriaus svorį indekse",
+  "sectorsNote": "Vidutinis kiekvieno sektoriaus stebimų akcijų pokytis; plytelės dydis atitinka jų skaičių",
   "sec": {
     "T": "Technologijos",
     "F": "Finansai",
     "H": "Sveikata",
-    "C": "Komunikacijos",
+    "C": "Ryšiai",
     "D": "Vartojimo prekės",
     "I": "Pramonė",
     "E": "Energetika",
     "U": "Komunalinės paslaugos",
     "M": "Žaliavos"
   },
-  "news": "Naujienos",
-  "allNews": "Visos naujienos",
-  "nw": [
-    [
-      "Sektoriai",
-      "Puslaidininkių gamintojai veda technologijų sektorių į trečią augimo dieną",
-      "prieš 12 min."
-    ],
-    [
-      "Žaliavos",
-      "Naftai pingant energetikos akcijos atiduoda savaitės prieaugį",
-      "prieš 38 min."
-    ],
-    [
-      "Baltijos rinka",
-      "Vilniaus birža: ramus antradienis ir kukli apyvarta",
-      "prieš 2 val."
-    ],
-    [
-      "Makroekonomika",
-      "Ką investuotojams reiškia šios savaitės infliacijos duomenys",
-      "prieš 3 val."
-    ]
-  ]
+  "news": "Baltijos bendrovių naujienos",
+  "allNews": "Visi pranešimai",
+  "leadFlat": "Rami sesija: brangsta {adv} iš {n} stebimų akcijų.",
+  "newsSource": "Nasdaq Baltic",
+  "turnover": "apyvarta",
+  "noIntraday": "Šio indekso dienos eigos kainos neskelbiamos. Pasirinkite ilgesnį laikotarpį.",
+  "ago": {
+    "min": "prieš {n} min.",
+    "h": "prieš {n} val.",
+    "d": "prieš {n} d."
+  }
 }

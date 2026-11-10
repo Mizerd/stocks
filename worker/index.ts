@@ -2,6 +2,7 @@ import { findInstrument, INDICES, STOCKS } from '../shared/catalog';
 import type { Instrument, ProviderStatus, Range } from '../shared/types';
 import { detail, history, PROVIDERS, summary } from './market';
 import { fxRates } from './providers/ecb';
+import { balticNews } from './providers/news';
 
 const RANGES: Range[] = ['1D', '5D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 // Keeps one request comfortably under the Workers free-plan limit of 50 subrequests.
@@ -84,6 +85,8 @@ async function route(url: URL): Promise<Response> {
       return json(await detail(instrumentParam(url)), 200, 60);
     case '/api/fx':
       return json(await fxRates(), 200, 3600);
+    case '/api/news':
+      return json(await balticNews(url.searchParams.get('lang') === 'lt' ? 'lt' : 'en'), 200, 300);
     case '/api/status':
       return status();
     default:

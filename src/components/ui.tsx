@@ -6,9 +6,9 @@ import { direction, useFormat } from '../lib/format';
 
 interface SegProps<T extends string> {
   label: string;
-  options: { value: T; label: string; disabled?: boolean }[];
+  options: { value: NoInfer<T>; label: string; disabled?: boolean }[];
   value: T;
-  onChange(value: T): void;
+  onChange(value: NoInfer<T>): void;
 }
 
 // Segmented control: one choice out of a few.

@@ -80,6 +80,13 @@ export interface StockDetail {
   analysts: { buy: number; hold: number; sell: number; target: number | null } | null;
 }
 
+export interface NewsItem {
+  title: string;
+  link: string;
+  time: string;
+  issuer: string;
+}
+
 export interface FxRates {
   date: string;
   // Units of each currency per one euro (ECB reference rates).

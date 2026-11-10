@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { STOCKS } from '../../shared/catalog';
-import type { FxRates, History, Range, StockDetail, StockSummary } from '../../shared/types';
+import type { FxRates, History, NewsItem, Range, StockDetail, StockSummary } from '../../shared/types';
 
 interface Entry {
   time: number;
@@ -123,6 +123,10 @@ export function useHistories(symbols: string[], range: Range) {
 
 export function useDetail(symbol: string) {
   return useApi<StockDetail>(`/api/detail?symbol=${encodeURIComponent(symbol)}`, FRESH_MS);
+}
+
+export function useNews(lang: 'lt' | 'en') {
+  return useApi<NewsItem[]>(`/api/news?lang=${lang}`, 5 * FRESH_MS);
 }
 
 export function useFx() {

@@ -1,6 +1,6 @@
 {
-  "leadK": "Daily brief · updated 18:46",
-  "lead": "Tech pulls the market higher while energy takes a breather.",
+  "leadK": "Daily brief · updated {t}",
+  "lead": "{best} out in front, {worst} at the back: {adv} of {n} tracked stocks are higher.",
   "ixLabel": "Index",
   "ranges": [
     "1D",
@@ -22,8 +22,7 @@
   "baseN": "Start of period",
   "chart": "price chart",
   "baro": "Market barometer",
-  "baroAria": "Barometer needle at 64 of 100, fair",
-  "baroNow": "Fair",
+  "baroAria": "Barometer needle at {n} of 100, {name}",
   "baroL": [
     "Stormy",
     "Rain",
@@ -31,57 +30,43 @@
     "Fair",
     "Very dry"
   ],
-  "baroNote": "The reading blends advancers versus decliners, volatility and volume. Yesterday it stood at 58.",
+  "baroNote": "The reading blends how many of the {n} tracked stocks are rising with the size of their average move. It is a simple in-house gauge, not a market-wide index.",
   "movers": "Daily movers",
   "mv": [
     "Gainers",
     "Losers",
     "Most active"
   ],
-  "watch": "Watchlist",
-  "manage": "Manage list",
+  "watch": "Market highlights",
+  "manage": "All tracked stocks",
   "cSym": "Symbol",
   "cName": "Name",
-  "cDay": "Day",
+  "cDay": "28 days",
   "cPrice": "Price",
   "cChg": "Change",
   "cVol": "Volume",
-  "volU": "M",
   "sectors": "Sectors today",
-  "sectorsNote": "Tile size follows the sector weight in the index",
+  "sectorsNote": "Average move of the tracked stocks in each sector; tile size follows how many there are",
   "sec": {
     "T": "Technology",
     "F": "Financials",
     "H": "Health care",
-    "C": "Communications",
+    "C": "Media & telecoms",
     "D": "Consumer",
     "I": "Industrials",
     "E": "Energy",
     "U": "Utilities",
     "M": "Materials"
   },
-  "news": "News",
-  "allNews": "All news",
-  "nw": [
-    [
-      "Sectors",
-      "Chipmakers lead tech to a third straight day of gains",
-      "12 min ago"
-    ],
-    [
-      "Commodities",
-      "Energy shares give back the week’s gains as crude slips",
-      "38 min ago"
-    ],
-    [
-      "Baltic market",
-      "Vilnius exchange: a quiet Tuesday on modest volume",
-      "2 h ago"
-    ],
-    [
-      "Macro",
-      "What this week’s inflation data means for investors",
-      "3 h ago"
-    ]
-  ]
+  "news": "Baltic company news",
+  "allNews": "All announcements",
+  "leadFlat": "A quiet session: {adv} of {n} tracked stocks are higher.",
+  "newsSource": "Nasdaq Baltic",
+  "turnover": "traded",
+  "noIntraday": "No intraday prices are published for this index. Pick a longer range.",
+  "ago": {
+    "min": "{n} min ago",
+    "h": "{n} h ago",
+    "d": "{n} d ago"
+  }
 }
