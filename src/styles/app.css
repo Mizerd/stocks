@@ -12,6 +12,14 @@
 
 .logo{display:flex;align-items:center;gap:12px}
 .logo svg{flex:none;width:38px;height:38px}
+.bell{display:flex;flex:none;border-radius:50%}
+.bell:hover svg{transform:rotate(-8deg)}
+.bell svg{transform-origin:50% 8%;transition:transform .15s}
+.bell.ringing svg{animation:ring 1s ease-in-out}
+.bell.ringing .clapper{animation:clap 1s ease-in-out}
+@keyframes ring{0%,100%{transform:rotate(0)}15%{transform:rotate(16deg)}35%{transform:rotate(-13deg)}55%{transform:rotate(9deg)}75%{transform:rotate(-5deg)}}
+@keyframes clap{0%,100%{transform:translateX(0)}15%{transform:translateX(-3px)}35%{transform:translateX(3px)}55%{transform:translateX(-2px)}75%{transform:translateX(1px)}}
+@media (prefers-reduced-motion:reduce){.bell svg,.bell.ringing svg,.bell.ringing .clapper{animation:none;transition:none}}
 .logo-name{font-size:36px;font-weight:600;letter-spacing:-.015em;line-height:1}
 .logo-tag{margin-top:2px;font-size:13.5px;font-style:italic;color:var(--ink2);white-space:nowrap}
 
