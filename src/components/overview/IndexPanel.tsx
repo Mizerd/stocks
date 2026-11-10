@@ -3,14 +3,20 @@ import { EXCHANGES, sessionState } from '../../../shared/exchanges';
 import type { History, Range, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { isUnavailable, useHistory } from '../../lib/api';
-import { linePath, scaleOf, spread, yOf } from '../../lib/chart';
+import { linePath, nearestIndex, scaleOf, spread, yOf } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { niceTicks } from '../../lib/indicators';
+import { useChartSelection } from '../../lib/useChartSelection';
+import { ChartSelection, SelectionReadout } from '../ChartSelection';
+import type { Mark } from '../ChartSelection';
 import { FreshnessNote, Loading, Notice, Seg, Sparkline } from '../ui';
 
 const RANGES: Range[] = ['1D', '1W', '1M', '3M', '1Y', '5Y'];
 const W = 1000;
 const H = 300;
+// How far past the last traded point the pointer still snaps to it, in viewBox units.
+const SNAP_SLACK = 20;
+const PLACEHOLDER_HEIGHT = 364;
 
 function IndexChart({ index, history, range }: { index: StockSummary; history: History; range: Range }) {
   const { t } = useT();
@@ -46,16 +52,33 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
     return range === '1Y' ? f.month(time) : f.dateShort(time, 'UTC');
   };
 
+  const xs = points.map(([x]) => x);
+  const selection = useChartSelection(points.length, (share) => nearestIndex(xs, share * W, SNAP_SLACK));
+  const markOf = (i: number | null): Mark | null =>
+    i === null ? null : { t: candles[i].t, c: candles[i].c, left: points[i][0] / 10, top: (points[i][1] / H) * 100 };
+  const marks = {
+    hover: markOf(selection.hover),
+    anchor: markOf(selection.anchor),
+    price: (value: number) => f.num(value),
+    date: (time: number) => (intraday ? f.time(time) : f.date(time, 'UTC')),
+  };
+
   return (
     <>
-      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-        <div
-          role="img"
-          className="plot-ix"
-          aria-label={`${index.name} ${t('overview.chart')}, ${range}: ${f.pct(change)}`}
-          style={{ position: 'relative', flex: '1 1 0%', minWidth: 0, borderBottom: '1px solid var(--ink3)' }}
-        >
-          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height="100%" aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'block' }}>
+      <div style={{ marginTop: 12 }}>
+        <SelectionReadout {...marks} />
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+        <div className="plot-ix" style={{ position: 'relative', flex: '1 1 0%', minWidth: 0, borderBottom: '1px solid var(--ink3)' }}>
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            width="100%"
+            height="100%"
+            role="img"
+            aria-label={`${index.name} ${t('overview.chart')}, ${range}: ${f.pct(change)}`}
+            style={{ position: 'absolute', inset: 0, display: 'block' }}
+          >
             <path d="M0 0.5H1000M0 75H1000M0 150H1000M0 225H1000" style={{ fill: 'none', stroke: 'var(--hair)', strokeWidth: 1, vectorEffect: 'non-scaling-stroke' }} />
             <path d={area} style={{ fill: 'var(--sel)' }} />
             <path d={`M0 ${baseY.toFixed(1)}H${W}`} style={{ fill: 'none', stroke: 'var(--brass)', strokeWidth: 1, strokeDasharray: '4 4', vectorEffect: 'non-scaling-stroke' }} />
@@ -78,6 +101,15 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
           >
             {t(intraday ? 'overview.base1' : 'overview.baseN')} <span className="num">{f.num(base)}</span>
           </span>
+          <div
+            tabIndex={0}
+            role="group"
+            aria-label={`${t('stock.chartKeys')} ${t('common.selMark')}`}
+            style={{ position: 'absolute', inset: 0, cursor: 'crosshair', touchAction: 'pan-y' }}
+            {...selection.handlers}
+          >
+            <ChartSelection {...marks} />
+          </div>
         </div>
         <div className="num plot-ix" style={{ position: 'relative', flex: 'none', width: 60, fontSize: 11, color: 'var(--ink3)', textAlign: 'right' }}>
           {ticks.map((tick) => (
@@ -145,9 +177,9 @@ export function IndexPanel({ indices }: { indices: StockSummary[] }) {
         <Seg label={t('common.rgLabel')} value={range} onChange={setRange} options={RANGES.map((r, i) => ({ value: r, label: rangeLabels[i] }))} />
       </div>
 
-      {history.loading && <Loading height={342} />}
-      {!history.loading && !visible && <Notice height={342}>{t(history.error ? 'common.error' : 'overview.noIntraday')}</Notice>}
-      {visible && <IndexChart index={index} history={visible} range={range} />}
+      {history.loading && <Loading height={PLACEHOLDER_HEIGHT} />}
+      {!history.loading && !visible && <Notice height={PLACEHOLDER_HEIGHT}>{t(history.error ? 'common.error' : 'overview.noIntraday')}</Notice>}
+      {visible && <IndexChart key={`${index.symbol} ${range}`} index={index} history={visible} range={range} />}
     </div>
   );
 }

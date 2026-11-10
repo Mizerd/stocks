@@ -82,5 +82,7 @@
       "Kasdien"
     ]
   ],
-  "ring": "Skambinti varpu"
+  "ring": "Skambinti varpu",
+  "selHint": "Spustelėkite arba palieskite tašką ir matuokite pokytį nuo jo",
+  "selMark": "Klavišu „Enter“ pažymėkite tašką ir matuokite pokytį nuo jo, klavišu „Escape“ žymėjimą panaikinkite."
 }

@@ -82,5 +82,7 @@
       "Daily"
     ]
   ],
-  "ring": "Ring the bell"
+  "ring": "Ring the bell",
+  "selHint": "Click or tap a point to measure the change from it",
+  "selMark": "Press Enter to mark a point and measure the change from it, Escape to clear."
 }

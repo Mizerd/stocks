@@ -40,3 +40,27 @@ export function spread(length: number, count: number): number[] {
   if (length <= count) return Array.from({ length }, (_, i) => i);
   return Array.from({ length: count }, (_, i) => Math.round((i * (length - 1)) / (count - 1)));
 }
+
+// Index of the position closest to x. Null when x lies more than `slack` outside the positions,
+// which is how the untraded part of an intraday chart stays inert.
+export function nearestIndex(positions: number[], x: number, slack = Infinity): number | null {
+  const last = positions.length - 1;
+  if (last < 0 || x < positions[0] - slack || x > positions[last] + slack) return null;
+  let best = 0;
+  for (let i = 1; i <= last; i++) {
+    if (Math.abs(positions[i] - x) < Math.abs(positions[best] - x)) best = i;
+  }
+  return best;
+}
+
+export interface Point {
+  t: number;
+  c: number;
+}
+
+// Change between two points, always measured from the earlier one to the later one.
+export function pointDiff<P extends Point>(a: P, b: P) {
+  const [from, to] = a.t <= b.t ? [a, b] : [b, a];
+  const change = to.c - from.c;
+  return { from, to, change, pct: from.c ? (change / from.c) * 100 : null };
+}

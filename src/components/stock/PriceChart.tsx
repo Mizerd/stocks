@@ -60,7 +60,7 @@ export function PriceChart({ inst }: { inst: Instrument }) {
   function plotArea() {
     if (history) {
       const label = t('stock.chart', { name: shortSymbol(inst.symbol), range: rangeLabels[rangeIndex], pct: f.pct(change) });
-      return <ChartPlot key={`${inst.symbol} ${range}`} history={history} exchange={inst.exchange} type={type} shown={shown} label={label} />;
+      return <ChartPlot key={`${inst.symbol} ${range} ${type}`} history={history} exchange={inst.exchange} type={type} shown={shown} label={label} />;
     }
     if (loading) return <Loading height={PLOT_AREA_HEIGHT} />;
     if (error) return <ErrorNotice height={PLOT_AREA_HEIGHT} />;

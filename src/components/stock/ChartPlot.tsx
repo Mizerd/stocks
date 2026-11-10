@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import type { KeyboardEvent, PointerEvent } from 'react';
 import { EXCHANGES } from '../../../shared/exchanges';
 import type { Candle, ExchangeId, History } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { linePath, scaleOf, yOf } from '../../lib/chart';
+import { linePath, nearestIndex, scaleOf, yOf } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { bollinger, niceTicks, rsi, sma } from '../../lib/indicators';
+import { useChartSelection } from '../../lib/useChartSelection';
+import { ChartSelection, SelectionReadout } from '../ChartSelection';
+import type { Mark } from '../ChartSelection';
 
 export type ChartType = 'line' | 'candles';
 export type Indicator = 'sma20' | 'sma50' | 'bb' | 'vol' | 'rsi';
@@ -19,12 +20,6 @@ const AXIS_WIDTH = 62;
 
 const svgStyle = { position: 'absolute', inset: 0, display: 'block' } as const;
 const subLabelStyle = { position: 'absolute', left: 0, top: -2, paddingRight: 6, background: 'var(--paper)' } as const;
-
-interface Hover {
-  index: number;
-  // Pointer height as a fraction of the plot, 0 at the top.
-  y: number;
-}
 
 interface Props {
   history: History;
@@ -88,7 +83,6 @@ function volumePaths(bars: Candle[], x: (i: number) => number, width: number) {
 export function ChartPlot({ history, exchange, type, shown, label }: Props) {
   const { t } = useT();
   const f = useFormat();
-  const [hover, setHover] = useState<Hover | null>(null);
 
   const intraday = history.interval === 'intraday';
   const closes = history.candles.map((c) => c.c);
@@ -130,11 +124,18 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
   const hasVolume = bars.some((bar) => bar.v !== null);
   const volume = volumePaths(bars, x, barWidth);
 
-  const active = hover?.index ?? last;
+  const barDate = (time: number) => (intraday ? f.time(time) : f.date(time, 'UTC'));
+
+  const xs = bars.map((_, i) => x(i));
+  const selection = useChartSelection(bars.length, (share) => nearestIndex(xs, share * W, slotWidth));
+  const markOf = (i: number | null): Mark | null =>
+    i === null ? null : { t: bars[i].t, c: bars[i].c, left: (x(i) / W) * 100, top: (y(bars[i].c) / PLOT_H) * 100 };
+  const marks = { hover: markOf(selection.hover), anchor: markOf(selection.anchor), price: f.price, date: barDate };
+
+  const active = selection.hover ?? selection.anchor ?? last;
   const bar = bars[active];
   const before = history.candles[history.warmup + active - 1]?.c ?? history.prevClose;
   const change = before ? (bar.c / before - 1) * 100 : null;
-  const barDate = (time: number) => (intraday ? f.time(time) : f.date(time, 'UTC'));
 
   function axisDate(time: number): string {
     if (intraday) return f.time(time);
@@ -148,26 +149,6 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
     const time = intraday ? bars[0].t + slot * BAR_MS : bars[slot].t;
     return { left: `${((slot + 0.5) / slots) * 100}%`, text: axisDate(time) };
   });
-
-  function onPointerMove(event: PointerEvent<HTMLDivElement>) {
-    const box = event.currentTarget.getBoundingClientRect();
-    const slot = Math.floor(((event.clientX - box.left) / box.width) * slots);
-    let index = 0;
-    while (index < last && slotOf(index + 1) <= slot) index++;
-    setHover({ index, y: Math.min(1, Math.max(0, (event.clientY - box.top) / box.height)) });
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape') return setHover(null);
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    const step = event.key === 'ArrowLeft' ? -1 : 1;
-    const index = hover ? Math.min(last, Math.max(0, hover.index + step)) : last;
-    setHover({ index, y: y(bars[index].c) / PLOT_H });
-  }
-
-  const hoverLeft = `${(x(active) / W) * 100}%`;
-  const hoverTop = hover ? `${hover.y * 100}%` : '0';
 
   return (
     <div>
@@ -186,6 +167,8 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
           </span>
         )}
       </div>
+
+      <SelectionReadout {...marks} />
 
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
         <div className="plot-main" style={{ position: 'relative', flex: 1, minWidth: 0, borderTop: '1px solid var(--hair)', borderBottom: '1px solid var(--ink3)' }}>
@@ -225,30 +208,11 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
           <div
             tabIndex={0}
             role="group"
-            aria-label={t('stock.chartKeys')}
+            aria-label={`${t('stock.chartKeys')} ${t('common.selMark')}`}
             style={{ position: 'absolute', inset: 0, cursor: 'crosshair', touchAction: 'pan-y' }}
-            onPointerDown={onPointerMove}
-            onPointerMove={onPointerMove}
-            onPointerLeave={() => setHover(null)}
-            onPointerCancel={() => setHover(null)}
-            onKeyDown={onKeyDown}
-            onBlur={() => setHover(null)}
+            {...selection.handlers}
           >
-            {hover && (
-              <>
-                <span style={{ position: 'absolute', top: 0, bottom: 0, left: hoverLeft, borderLeft: '1px dashed var(--ink2)', pointerEvents: 'none' }} />
-                <span style={{ position: 'absolute', left: 0, right: 0, top: hoverTop, borderTop: '1px dashed var(--ink2)', pointerEvents: 'none' }} />
-                <span
-                  className="num"
-                  style={{
-                    position: 'absolute', bottom: -1, left: hoverLeft, transform: 'translate(-50%, 100%)', padding: '1px 6px', borderRadius: 4, fontSize: 11,
-                    whiteSpace: 'nowrap', background: 'var(--ink)', color: 'var(--paper)', pointerEvents: 'none', zIndex: 2,
-                  }}
-                >
-                  {barDate(bar.t)}
-                </span>
-              </>
-            )}
+            <ChartSelection {...marks} />
           </div>
         </div>
         <div className="num plot-main" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: AXIS_WIDTH, fontSize: 11, color: 'var(--ink3)' }}>
@@ -258,11 +222,6 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
           <span style={{ position: 'absolute', left: 0, right: 0, top: percentY(bars[last].c), transform: 'translateY(-50%)', padding: '1px 4px', borderRadius: 4, fontWeight: 600, background: 'var(--ink)', color: 'var(--paper)' }}>
             {axisPrice(bars[last].c)}
           </span>
-          {hover && (
-            <span style={{ position: 'absolute', left: 0, right: 0, top: hoverTop, transform: 'translateY(-50%)', padding: '0 3px', border: '1px solid var(--ink3)', borderRadius: 4, color: 'var(--ink)', background: 'var(--sel)' }}>
-              {axisPrice(scale.max - hover.y * (scale.max - scale.min))}
-            </span>
-          )}
         </div>
       </div>
 

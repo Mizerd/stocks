@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FxRates, History, StockSummary } from '../shared/types';
+import { nearestIndex, pointDiff } from '../src/lib/chart';
 import { createFormat } from '../src/lib/format';
 import { bollinger, niceTicks, rsi, sma } from '../src/lib/indicators';
 import { barometer, sectorMoves } from '../src/lib/market';
@@ -129,6 +130,36 @@ describe('portfolio maths', () => {
     expect(alertState({ symbol: 'A', type: 'priceAbove', value: 120 }, quotes[0]).status).toBe('reached');
     expect(alertState({ symbol: 'A', type: 'priceBelow', value: 120, paused: true }, quotes[0]).status).toBe('paused');
     expect(alertState({ symbol: 'A', type: 'dailyMove', value: 5 }, quotes[0]).status).toBe('reached');
+  });
+});
+
+describe('chart selection maths', () => {
+  it('snaps to the nearest point', () => {
+    const positions = [10, 20, 40];
+    expect(nearestIndex(positions, 0)).toBe(0);
+    expect(nearestIndex(positions, 14)).toBe(0);
+    expect(nearestIndex(positions, 16)).toBe(1);
+    expect(nearestIndex(positions, 31)).toBe(2);
+    expect(nearestIndex(positions, 900)).toBe(2);
+  });
+
+  it('ignores positions beyond the slack around the points', () => {
+    expect(nearestIndex([10, 20, 40], 45, 5)).toBe(2);
+    expect(nearestIndex([10, 20, 40], 46, 5)).toBeNull();
+    expect(nearestIndex([10, 20, 40], 4, 5)).toBeNull();
+    expect(nearestIndex([], 10)).toBeNull();
+  });
+
+  it('measures the change from the earlier point to the later one', () => {
+    const early = { t: 1, c: 200 };
+    const late = { t: 2, c: 150 };
+    expect(pointDiff(early, late)).toEqual({ from: early, to: late, change: -50, pct: -25 });
+    expect(pointDiff(late, early)).toEqual({ from: early, to: late, change: -50, pct: -25 });
+    expect(pointDiff({ t: 1, c: 80 }, { t: 3, c: 100 })).toMatchObject({ change: 20, pct: 25 });
+  });
+
+  it('has no percentage when the earlier price is zero', () => {
+    expect(pointDiff({ t: 1, c: 0 }, { t: 2, c: 5 }).pct).toBeNull();
   });
 });
 
