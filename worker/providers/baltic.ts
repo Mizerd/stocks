@@ -52,7 +52,7 @@ function quoteTime(asOf: string | null, ex: Exchange): string {
 }
 
 // The exchange's price-history export is an .xlsx file. Columns:
-// Date, Average, Open, High, Low, Close, Last, Adj. factor, Last adjusted, Change %, Bid, Ask, Trades, Volume, ...
+// Date, Average, Open, High, Low, Close, Last (the reported price), Adj. factor, Last adjusted, Change %, Bid, Ask, Trades, Volume, ...
 export function parseBalticXlsx(file: Uint8Array): Candle[] {
   const sheet = unzipSync(file)['xl/worksheets/sheet1.xml'];
   if (!sheet) throw new UpstreamError('Unexpected Nasdaq Baltic export format');
@@ -64,7 +64,7 @@ export function parseBalticXlsx(file: Uint8Array): Candle[] {
       if (!m[2].includes('t="s"') && m[3] !== undefined) cells.set(m[1], Number(m[3]));
     }
     const serial = cells.get('A');
-    const close = cells.get('F') || cells.get('G');
+    const close = cells.get('G') || cells.get('F');
     if (!serial || !close) continue;
     candles.push({
       t: Math.round((serial - 25569) * 86400000),
@@ -79,7 +79,9 @@ export function parseBalticXlsx(file: Uint8Array): Candle[] {
 }
 
 async function shareList() {
-  return parseBalticShareList(await cachedText(`${BASE}/shares`, 60, 'text/html'));
+  const list = parseBalticShareList(await cachedText(`${BASE}/shares`, 120, 'text/html'));
+  if (list.rows.size === 0) throw new UpstreamError('Nasdaq Baltic share list is unavailable');
+  return list;
 }
 
 async function indexSeries(inst: Instrument, years: number): Promise<Candle[]> {
@@ -112,21 +114,34 @@ export const baltic: Provider = {
       };
     }
 
-    const list = await shareList();
-    const row = list.rows.get(inst.providerId);
+    const list = await shareList().catch(() => null);
+    const row = list?.rows.get(inst.providerId);
     const lastBar = daily[daily.length - 1];
-    const price = row?.last ?? lastBar?.c;
-    if (!price) throw new UpstreamError(`Nasdaq Baltic returned no price for ${inst.symbol}`);
-    const prevClose = row?.prevClose ?? price - (row?.change ?? 0);
+    const prevBar = daily[daily.length - 2];
+
+    // Without the live list (it is sometimes refused), fall back to the last daily close.
+    if (!list || row?.last == null) {
+      if (!lastBar || !prevBar) throw new UpstreamError(`Nasdaq Baltic returned no price for ${inst.symbol}`);
+      return {
+        price: lastBar.c, change: lastBar.c - prevBar.c, changePct: (lastBar.c / prevBar.c - 1) * 100, prevClose: prevBar.c,
+        open: lastBar.o, high: lastBar.h, low: lastBar.l, volume: lastBar.v,
+        time: zonedTime(isoDay(new Date(lastBar.t)), ex.close, ex.timezone).toISOString(),
+        freshness: 'eod',
+        ...emptyFundamentals(),
+      };
+    }
+
+    const price = row.last;
+    const prevClose = row.prevClose ?? price - (row.change ?? 0);
     const quote: Quote = {
       price,
-      change: row?.change ?? price - prevClose,
-      changePct: row?.changePct ?? ((price - prevClose) / prevClose) * 100,
+      change: row.change ?? price - prevClose,
+      changePct: row.changePct ?? (price / prevClose - 1) * 100,
       prevClose,
       open: lastBar?.o ?? null,
       high: lastBar?.h ?? null,
       low: lastBar?.l ?? null,
-      volume: row?.volume ?? null,
+      volume: row.volume,
       time: quoteTime(list.asOf, ex),
       freshness: 'delayed',
       ...emptyFundamentals(),

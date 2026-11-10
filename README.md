@@ -115,6 +115,8 @@ respond.
   Euronext's live quote endpoint is deliberately obfuscated and is not used.
 - **P/E and dividend yield exist only for US stocks**, and Nasdaq publishes no dividend for
   NYSE-listed shares (KO, JPM, V, XOM, JNJ). Beta is not available anywhere and was dropped.
+- **Nasdaq Baltic sometimes refuses the live share list** (its bot protection answers with a
+  refusal page). Baltic quotes then fall back to the last daily close and are labelled end of day.
 - **Daily charts end at the last completed session** for US and Nordic stocks; the price in the
   page header is the current quote.
 - **No S&P 500 or STOXX 600**: neither has a keyless source. The overview uses the Nasdaq 100,

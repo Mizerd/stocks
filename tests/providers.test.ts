@@ -1,7 +1,8 @@
 import { strToU8, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { num } from '../worker/http';
-import { parseBalticShareList, parseBalticXlsx } from '../worker/providers/baltic';
+import { STOCKS } from '../shared/catalog';
+import { baltic, parseBalticShareList, parseBalticXlsx } from '../worker/providers/baltic';
 import { parseEcbRates } from '../worker/providers/ecb';
 import { parseEuronextCsv } from '../worker/providers/euronext';
 import { bucket, parseNasdaqRows, parseNasdaqTime } from '../worker/providers/nasdaq';
@@ -100,15 +101,37 @@ describe('Nasdaq Baltic', () => {
     expect(list.rows.get('LT0000115768')).toEqual({ last: 21.45, change: -0.05, changePct: -0.23, volume: 16933, prevClose: 21.5 });
   });
 
+  it('finds no rows in a refusal page', () => {
+    expect(parseBalticShareList('<html>Request unsuccessful.</html>').rows.size).toBe(0);
+  });
+
+  it('falls back to the last daily close when the live list is refused', async () => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response('<html>Request unsuccessful.</html>');
+    try {
+      const day = 24 * 3600 * 1000;
+      const t = Date.UTC(2026, 10, 9);
+      const bars = [{ t, o: 20, h: 20, l: 20, c: 20, v: 10 }, { t: t + day, o: 20, h: 21, l: 20, c: 21, v: 30 }];
+      const quote = await baltic.quote(STOCKS.find((s) => s.symbol === 'IGN1L.VS')!, bars);
+      expect(quote).toMatchObject({ price: 21, change: 1, prevClose: 20, volume: 30, freshness: 'eod' });
+      expect(quote.changePct).toBeCloseTo(5);
+      expect(quote.time).toBe('2026-11-10T14:00:00.000Z');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
   it('parses the price history spreadsheet', () => {
     const sheet = `<worksheet><sheetData>
       <row r="1"><c r="A1" t="s"><v>0</v></c><c r="F1" t="s"><v>5</v></c></row>
-      <row r="2"><c r="A2"><v>46336.0</v></c><c r="C2"><v>21.45</v></c><c r="D2"><v>21.5</v></c><c r="E2"><v>21.4</v></c><c r="F2"><v>21.5</v></c><c r="N2"><v>16933.0</v></c></row>
+      <row r="2"><c r="A2"><v>46336.0</v></c><c r="C2"><v>21.45</v></c><c r="D2"><v>21.5</v></c><c r="E2"><v>21.4</v></c><c r="F2"><v>21.5</v></c><c r="G2"><v>21.45</v></c><c r="N2"><v>16933.0</v></c></row>
       <row r="3"><c r="A3"><v>46335.0</v></c><c r="C3"><v>21.55</v></c><c r="D3"><v>21.55</v></c><c r="E3"><v>21.45</v></c><c r="F3"><v>21.5</v></c><c r="N3"><v>5836.0</v></c></row>
     </sheetData></worksheet>`;
     const candles = parseBalticXlsx(zipSync({ 'xl/worksheets/sheet1.xml': strToU8(sheet) }));
     expect(candles).toHaveLength(2);
-    expect(candles[1]).toEqual({ t: Date.UTC(2026, 10, 10), o: 21.45, h: 21.5, l: 21.4, c: 21.5, v: 16933 });
+    expect(candles[1]).toEqual({ t: Date.UTC(2026, 10, 10), o: 21.45, h: 21.5, l: 21.4, c: 21.45, v: 16933 });
+    // The older row has no Last price, so its Close is used.
+    expect(candles[0].c).toBe(21.5);
   });
 });
 
