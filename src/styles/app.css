@@ -25,3 +25,6 @@
   .nav{gap:0 18px!important}
   .nav .nav-note{flex-basis:100%;margin-left:0!important;padding-top:0!important}
 }
+
+/* Stock page */
+@media (max-width:640px){.x-dates span:nth-child(even){display:none}} /* six dates do not fit under a phone-wide chart */

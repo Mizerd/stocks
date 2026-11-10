@@ -1,129 +1,54 @@
 {
-  "secT": "Technologijos",
-  "todayAt": "šiandien, 18:46",
-  "watchOn": "Stebima",
-  "watchOff": "Stebėti",
-  "toPf": "Į portfelį",
   "cmp": "Palyginti",
-  "mkAlert": "Sukurti įspėjimą",
-  "ranges": [
-    "1 d.",
-    "5 d.",
-    "1 mėn.",
-    "6 mėn.",
-    "1 m.",
-    "5 m."
-  ],
-  "per": [
-    "šiandien",
-    "per 5 dienas",
-    "per mėnesį",
-    "per 6 mėnesius",
-    "per metus",
-    "per 5 metus"
-  ],
+  "unknown": "„{symbol}“ nėra aprėpiamų akcijų sąraše.",
+  "toScreener": "Peržiūrėti aprėpiamas akcijas",
+  "ranges": ["1 d.", "5 d.", "1 mėn.", "6 mėn.", "1 m.", "5 m."],
+  "per": ["šiandien", "per 5 dienas", "per mėnesį", "per 6 mėnesius", "per metus", "per 5 metus"],
   "typeLabel": "Grafiko tipas",
-  "types": [
-    "Linija",
-    "Žvakės"
-  ],
+  "types": ["Linija", "Žvakės"],
   "ind": "Rodikliai",
-  "indL": [
-    "SMA 20",
-    "SMA 50",
-    "Bollingerio juostos",
-    "Apyvarta",
-    "RSI"
-  ],
-  "draw": "Braižymo įrankiai",
-  "tools": [
-    "Kryžius",
-    "Tendencijos linija",
-    "Horizontali linija",
-    "Fibonačio lygiai",
-    "Stačiakampis",
-    "Tekstas",
-    "Liniuotė",
-    "Ištrinti brėžinius"
-  ],
+  "indL": ["SMA 20", "SMA 50", "Bollingerio juostos", "Apyvarta", "RSI"],
   "o": "Atid.",
   "h": "Aukšč.",
   "l": "Žem.",
   "c": "Užd.",
+  "bb": "BB",
   "vol": "Apyvarta",
-  "chart": "AAPL kainos grafikas",
-  "alertTag": "Įspėjimas",
+  "volNone": "šiam laikotarpiui neskelbiama",
+  "chart": "{name} kainos grafikas, {range}: {pct}",
+  "chartKeys": "Kainos grafikas. Rodyklių kairėn ir dešinėn klavišais peržiūrėkite kiekvieno stulpelio reikšmes.",
+  "noIntradayEod": "Ši birža dienos eigos kainų neskelbia. Pasirinkite ilgesnį laikotarpį.",
+  "noIntradayYet": "Šiandien dar neprekiauta. Dienos grafikas atsiras prasidėjus prekybai.",
+  "noHistory": "Šaltinis neturi šio laikotarpio kainų istorijos.",
   "stats": "Pagrindiniai rodikliai",
-  "sk": [
-    "Atidarymo kaina",
-    "Dienos intervalas",
-    "Ankstesnis uždarymas",
-    "Apyvarta",
-    "Vid. apyvarta (3 mėn.)",
-    "Rinkos kapitalizacija",
-    "P/E (12 mėn.)",
-    "Pelnas akcijai (EPS)",
-    "Metinis dividendas",
-    "Beta (5 m.)"
-  ],
-  "mln": " mln.",
+  "sk": {
+    "open": "Atidarymo kaina",
+    "dayRange": "Dienos intervalas",
+    "prevClose": "Ankstesnis uždarymas",
+    "volume": "Apyvarta",
+    "avgVolume": "Vid. apyvarta (3 mėn.)",
+    "marketCap": "Rinkos kapitalizacija",
+    "pe": "P/E (12 mėn.)",
+    "eps": "Pelnas akcijai (12 mėn.)",
+    "dividend": "Dividendai"
+  },
   "w52": "52 savaičių intervalas",
   "w52n": "iki viršūnės",
-  "alertH": "Kainos įspėjimas",
-  "alertP": "Praneškime, kai AAPL kirs jūsų nurodytą ribą. Linija iškart matoma grafike.",
-  "alertDir": "Kryptis",
-  "dirs": [
-    "Pakils virš",
-    "Nukris žemiau"
-  ],
-  "alertPrice": "Kaina, USD",
-  "alertBtn": "Išsaugoti įspėjimą",
-  "alertOk": "Išsaugota: praneš, kai AAPL",
-  "alertUp": "pakils virš",
-  "alertDn": "nukris žemiau",
   "fin": "Finansai",
-  "finTabs": [
-    "Pajamos",
-    "Pelnas akcijai"
-  ],
-  "fy25": "2025 fin. m.",
-  "fy26": "2026 fin. m.",
-  "finU": [
-    "mlrd. USD",
-    "USD"
-  ],
-  "qs": [
-    "I ketv.",
-    "II ketv.",
-    "III ketv.",
-    "IV ketv."
-  ],
+  "finTabs": ["Pajamos", "Pelnas akcijai"],
+  "finReported": "Paskelbta",
+  "finEstimate": "Analitikų prognozė",
+  "finNone": "Šaltinis šios bendrovės ketvirčių rodiklių neskelbia.",
   "about": "Apie įmonę",
-  "aboutP": "„Apple“ kuria ir parduoda išmaniuosius telefonus, kompiuterius, planšetes, nešiojamuosius įrenginius ir su jais susijusias paslaugas.",
-  "facts": [
-    [
-      "Sektorius",
-      "Technologijos"
-    ],
-    [
-      "Pramonė",
-      "Vartojimo elektronika"
-    ],
-    [
-      "Būstinė",
-      "Kupertinas, JAV"
-    ],
-    [
-      "Įkurta",
-      "1976 m."
-    ],
-    [
-      "ISIN",
-      "US0378331005"
-    ]
-  ],
+  "facts": {
+    "sector": "Sektorius",
+    "industry": "Pramonės šaka",
+    "exchange": "Birža",
+    "currency": "Valiuta",
+    "isin": "ISIN"
+  },
   "an": "Analitikų nuomonė",
-  "anAria": "35 analitikai: 24 siūlo pirkti, 9 laikyti, 2 parduoti",
+  "anAria": "Analitikų rekomendacijos ({n}): pirkti – {buy}, laikyti – {hold}, parduoti – {sell}",
   "buy": "Pirkti",
   "hold": "Laikyti",
   "sell": "Parduoti",
@@ -135,19 +60,18 @@
   "cDay": "Diena",
   "cPrice": "Kaina",
   "cChg": "Pokytis",
+  "cPe": "P/E",
   "cCap": "Rinkos kap.",
-  "mon": [
-    "sau.",
-    "vas.",
-    "kov.",
-    "bal.",
-    "geg.",
-    "bir.",
-    "lie.",
-    "rgp.",
-    "rgs.",
-    "spa.",
-    "lap.",
-    "gru."
-  ]
+  "sec": {
+    "T": "Technologijos",
+    "C": "Komunikacijos",
+    "D": "Pasirenkamo vartojimo prekės",
+    "S": "Kasdienio vartojimo prekės",
+    "F": "Finansai",
+    "E": "Energetika",
+    "H": "Sveikata",
+    "U": "Komunalinės paslaugos",
+    "I": "Pramonė",
+    "M": "Žaliavos"
+  }
 }

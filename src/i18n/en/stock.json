@@ -1,129 +1,54 @@
 {
-  "secT": "Technology",
-  "todayAt": "today, 18:46",
-  "watchOn": "Watching",
-  "watchOff": "Watch",
-  "toPf": "Add to portfolio",
   "cmp": "Compare",
-  "mkAlert": "Create alert",
-  "ranges": [
-    "1D",
-    "5D",
-    "1M",
-    "6M",
-    "1Y",
-    "5Y"
-  ],
-  "per": [
-    "today",
-    "past 5 days",
-    "past month",
-    "past 6 months",
-    "past year",
-    "past 5 years"
-  ],
+  "unknown": "“{symbol}” is not in the covered list.",
+  "toScreener": "Browse the covered stocks",
+  "ranges": ["1D", "5D", "1M", "6M", "1Y", "5Y"],
+  "per": ["today", "past 5 days", "past month", "past 6 months", "past year", "past 5 years"],
   "typeLabel": "Chart type",
-  "types": [
-    "Line",
-    "Candles"
-  ],
+  "types": ["Line", "Candles"],
   "ind": "Indicators",
-  "indL": [
-    "SMA 20",
-    "SMA 50",
-    "Bollinger bands",
-    "Volume",
-    "RSI"
-  ],
-  "draw": "Drawing tools",
-  "tools": [
-    "Crosshair",
-    "Trend line",
-    "Horizontal line",
-    "Fibonacci levels",
-    "Rectangle",
-    "Text",
-    "Ruler",
-    "Clear drawings"
-  ],
+  "indL": ["SMA 20", "SMA 50", "Bollinger bands", "Volume", "RSI"],
   "o": "O",
   "h": "H",
   "l": "L",
   "c": "C",
+  "bb": "BB",
   "vol": "Volume",
-  "chart": "AAPL price chart",
-  "alertTag": "Alert",
+  "volNone": "not published for this range",
+  "chart": "{name} price chart, {range}: {pct}",
+  "chartKeys": "Price chart. Use the left and right arrow keys to read each bar.",
+  "noIntradayEod": "This exchange publishes no intraday prices. Pick a longer range to see the chart.",
+  "noIntradayYet": "No trades yet today. The intraday chart appears once the market opens.",
+  "noHistory": "The source has no price history for this range.",
   "stats": "Key figures",
-  "sk": [
-    "Open",
-    "Day range",
-    "Previous close",
-    "Volume",
-    "Avg. volume (3M)",
-    "Market cap",
-    "P/E (TTM)",
-    "Earnings per share",
-    "Dividend · yield",
-    "Beta (5Y)"
-  ],
-  "mln": "M",
+  "sk": {
+    "open": "Open",
+    "dayRange": "Day range",
+    "prevClose": "Previous close",
+    "volume": "Volume",
+    "avgVolume": "Avg. volume (3M)",
+    "marketCap": "Market cap",
+    "pe": "P/E (TTM)",
+    "eps": "Earnings per share (TTM)",
+    "dividend": "Dividend · yield"
+  },
   "w52": "52-week range",
   "w52n": "below the high",
-  "alertH": "Price alert",
-  "alertP": "We will let you know when AAPL crosses your level. The line shows on the chart right away.",
-  "alertDir": "Direction",
-  "dirs": [
-    "Rises above",
-    "Falls below"
-  ],
-  "alertPrice": "Price, USD",
-  "alertBtn": "Save alert",
-  "alertOk": "Saved: you will hear when AAPL",
-  "alertUp": "rises above",
-  "alertDn": "falls below",
   "fin": "Financials",
-  "finTabs": [
-    "Revenue",
-    "Earnings per share"
-  ],
-  "fy25": "FY 2025",
-  "fy26": "FY 2026",
-  "finU": [
-    "USD bn",
-    "USD"
-  ],
-  "qs": [
-    "Q1",
-    "Q2",
-    "Q3",
-    "Q4"
-  ],
+  "finTabs": ["Revenue", "Earnings per share"],
+  "finReported": "Reported",
+  "finEstimate": "Analyst estimate",
+  "finNone": "The source publishes no quarterly figures for this company.",
   "about": "About the company",
-  "aboutP": "Apple designs and sells smartphones, computers, tablets, wearables and the services around them.",
-  "facts": [
-    [
-      "Sector",
-      "Technology"
-    ],
-    [
-      "Industry",
-      "Consumer electronics"
-    ],
-    [
-      "Headquarters",
-      "Cupertino, USA"
-    ],
-    [
-      "Founded",
-      "1976"
-    ],
-    [
-      "ISIN",
-      "US0378331005"
-    ]
-  ],
+  "facts": {
+    "sector": "Sector",
+    "industry": "Industry",
+    "exchange": "Exchange",
+    "currency": "Currency",
+    "isin": "ISIN"
+  },
   "an": "Analyst view",
-  "anAria": "35 analysts: 24 say buy, 9 hold, 2 sell",
+  "anAria": "{n} analysts: {buy} say buy, {hold} hold, {sell} sell",
   "buy": "Buy",
   "hold": "Hold",
   "sell": "Sell",
@@ -135,19 +60,18 @@
   "cDay": "Day",
   "cPrice": "Price",
   "cChg": "Change",
+  "cPe": "P/E",
   "cCap": "Market cap",
-  "mon": [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec"
-  ]
+  "sec": {
+    "T": "Technology",
+    "C": "Communications",
+    "D": "Consumer discretionary",
+    "S": "Consumer staples",
+    "F": "Financials",
+    "E": "Energy",
+    "H": "Health care",
+    "U": "Utilities",
+    "I": "Industrials",
+    "M": "Materials"
+  }
 }
