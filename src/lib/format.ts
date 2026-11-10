@@ -6,6 +6,7 @@ const MINUS = '−';
 const NBSP = ' ';
 
 const LOCALE: Record<Lang, string> = { lt: 'lt-LT', en: 'en-US' };
+const LT_MONTHS = ['sau.', 'vas.', 'kov.', 'bal.', 'geg.', 'bir.', 'lie.', 'rgp.', 'rgs.', 'spa.', 'lap.', 'gru.'];
 const BIG_UNITS: Record<Lang, [number, string][]> = {
   lt: [[1e12, `${NBSP}trln.`], [1e9, `${NBSP}mlrd.`], [1e6, `${NBSP}mln.`], [1e3, `${NBSP}tūkst.`]],
   en: [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']],
@@ -74,8 +75,13 @@ export function createFormat(lang: Lang) {
   }
 
   function month(value: number | string | Date, withYear = false): string {
-    return new Intl.DateTimeFormat(locale, { month: 'short', year: withYear ? 'numeric' : undefined, timeZone: 'UTC' })
-      .format(new Date(value));
+    const d = new Date(value);
+    // Intl prints Lithuanian short months as numbers in some browsers, so they are spelled out here.
+    const name = lang === 'lt'
+      ? LT_MONTHS[d.getUTCMonth()]
+      : new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(d);
+    if (!withYear) return name;
+    return lang === 'lt' ? `${d.getUTCFullYear()} ${name}` : `${name} ${d.getUTCFullYear()}`;
   }
 
   function time(value: number | string | Date, timeZone?: string): string {

@@ -51,7 +51,7 @@ export function niceTicks(min: number, max: number, target = 6): number[] {
   if (!(max > min)) return [min];
   const rough = (max - min) / target;
   const power = 10 ** Math.floor(Math.log10(rough));
-  const step = [1, 2, 5, 10].map((m) => m * power).find((s) => s >= rough) ?? 10 * power;
+  const step = [1, 2, 5, 10].map((m) => m * power).find((s) => s >= rough * (1 - 1e-9)) ?? 10 * power;
   const ticks: number[] = [];
   for (let v = Math.ceil(min / step) * step; v <= max + step * 1e-9; v += step) ticks.push(Number(v.toPrecision(12)));
   return ticks;
