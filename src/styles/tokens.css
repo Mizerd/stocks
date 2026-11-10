@@ -1,25 +1,24 @@
 /* Colour tokens for the light, dark and colour-blind palettes.
    Components only ever use these variables, never raw colours. */
 
-body{margin:0;background:#F2F4F3}
-body:has(.t-dark){background:#040605}
+body{margin:0;background:#F2F3F5}
+body:has(.t-dark){background:#000000}
 
 .vp{
-  --paper:#F2F4F3;   /* page background (bottom layer) */
+  --paper:#F2F3F5;   /* page background (bottom layer) */
   --card:#FFFFFF;    /* panel background */
-  --ink:#0A1411;     /* primary text, rules, solid controls */
-  --ink2:#2E3A35;    /* secondary text, labels */
-  --ink3:#4A5650;    /* tertiary text, axis labels */
-  --hair:#B9C1B6;    /* hairline dividers, panel borders, grid lines */
-  --brass:#7A4A00;   /* accent as text or line (active nav, alerts, SMA 20) */
-  --gild:#B9780A;    /* accent as decoration only (logo dot, barometer arc) */
-  --up:#005F38;      /* gain */
-  --down:#A51A08;    /* loss */
-  --upbg:#CFEBD9;    /* gain badge background */
-  --downbg:#FBD5CB;  /* loss badge background */
-  --sel:#E4E9DC;     /* selected / hover fill, chart area fill, bar tracks */
+  --ink:#0E1014;     /* primary text, rules, solid controls */
+  --ink2:#3C414A;    /* secondary text, labels */
+  --ink3:#5B616B;    /* tertiary text, axis labels */
+  --hair:#D3D6DC;    /* hairline dividers, panel borders, grid lines */
+  --brass:#975A00;   /* accent as text or line (active nav, alerts, SMA 20) */
+  --gild:#D18A12;    /* accent as decoration only (logo dot, barometer arc) */
+  --up:#0A7A3D;      /* gain */
+  --down:#C8261C;    /* loss */
+  --upbg:#DDF3E4;    /* gain badge background */
+  --downbg:#FCE3E0;  /* loss badge background */
+  --sel:#EBEDF1;     /* selected / hover fill, chart area fill, bar tracks */
 }
-.vp.t-dark{--paper:#040605;--card:#0B100E;--ink:#F4F6F0;--ink2:#CBD2CA;--ink3:#A4AEA6;--hair:#323D38;--brass:#F2BE5C;--gild:#F2BE5C;--up:#1FBF62;--down:#F2503F;--upbg:#0A3320;--downbg:#330C09;--sel:#1A2320}
-.vp.cb{--up:#0A4F9E;--down:#8F3D00;--upbg:#D4E4F7;--downbg:#F7DFC8}
-.vp.cb.t-dark{--up:#7CC0FF;--down:#FFB25E;--upbg:#10304A;--downbg:#46300F}
-
+.vp.t-dark{--paper:#000000;--card:#111214;--ink:#F5F6F8;--ink2:#C4C8CE;--ink3:#979CA5;--hair:#2A2D32;--brass:#F2B84B;--gild:#F2B84B;--up:#2FC46B;--down:#FF5C50;--upbg:#0E2D1B;--downbg:#3A1513;--sel:#1E2024}
+.vp.cb{--up:#0B5FC0;--down:#B23F00;--upbg:#DCE9FA;--downbg:#FCE6D6}
+.vp.cb.t-dark{--up:#5EADFF;--down:#FF8D3F;--upbg:#0E2A47;--downbg:#3D2410}
