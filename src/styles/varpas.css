@@ -1,34 +1,10 @@
 /* Varpas — canonical stylesheet extracted from the design.
-   Tokens first, then base, then components. Everything is scoped under .vp
+   Colour tokens live in tokens.css; this file has the base and components. Everything is scoped under .vp
    (the app root). Add .t-dark for the dark theme and .cb for the
    colour-blind (blue / orange) gain-loss palette. */
 
-/* ---------- Tokens ---------- */
-body{margin:0;background:#F2F4F3}
-body:has(.t-dark){background:#040605}
-
-.vp{
-  --paper:#F2F4F3;   /* page background (bottom layer) */
-  --card:#FFFFFF;    /* panel background */
-  --ink:#0A1411;     /* primary text, rules, solid controls */
-  --ink2:#2E3A35;    /* secondary text, labels */
-  --ink3:#4A5650;    /* tertiary text, axis labels */
-  --hair:#B9C1B6;    /* hairline dividers, panel borders, grid lines */
-  --brass:#7A4A00;   /* accent as text or line (active nav, alerts, SMA 20) */
-  --gild:#B9780A;    /* accent as decoration only (logo dot, barometer arc) */
-  --up:#005F38;      /* gain */
-  --down:#A51A08;    /* loss */
-  --upbg:#CFEBD9;    /* gain badge background */
-  --downbg:#FBD5CB;  /* loss badge background */
-  --sel:#E4E9DC;     /* selected / hover fill, chart area fill, bar tracks */
-  font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.45;
-  color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased
-}
-.vp.t-dark{--paper:#040605;--card:#0B100E;--ink:#F4F6F0;--ink2:#CBD2CA;--ink3:#A4AEA6;--hair:#323D38;--brass:#F2BE5C;--gild:#F2BE5C;--up:#1FBF62;--down:#F2503F;--upbg:#0A3320;--downbg:#330C09;--sel:#1A2320}
-.vp.cb{--up:#0A4F9E;--down:#8F3D00;--upbg:#D4E4F7;--downbg:#F7DFC8}
-.vp.cb.t-dark{--up:#7CC0FF;--down:#FFB25E;--upbg:#10304A;--downbg:#46300F}
-
 /* ---------- Base ---------- */
+.vp{font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.45;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
 .vp *{box-sizing:border-box}
 .vp :focus-visible{outline:2px solid var(--brass);outline-offset:2px}
