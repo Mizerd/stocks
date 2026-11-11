@@ -1,7 +1,6 @@
 {
   "title": "Mano sąrašas",
   "sVal": "Vertė",
-  "cashIn": "iš jų grynieji",
   "sDay": "Šiandien",
   "sPl": "Bendras pelnas / nuostolis",
   "sInv": "Investuota",
@@ -25,7 +24,6 @@
   "divs": "Dividendai",
   "divNote": "numatoma per 12 mėn.",
   "divYield": "pajamingumas",
-  "demoTag": "Pavyzdys",
   "ranges": [
     "1 mėn.",
     "3 mėn.",
@@ -51,10 +49,7 @@
   "divEmpty": "Duomenų šaltiniai šių pozicijų dividendų neskelbia.",
   "divKnown": "žinoma {n} iš {m} pozicijų",
   "missing": "Nėra kotiruotės: {list}.",
-  "acctExample": "Pavyzdinis portfelis · bazinė valiuta EUR",
   "acctOwn": "Bazinė valiuta EUR",
-  "demo": "Tai pavyzdys: jo pozicijos ir pirkimo kainos išgalvotos, kotiruotės tikros. Susikurkite savo sąrašą, sekite pasirinktas akcijas ir, įvedę, kiek už jas mokėjote, matykite savo pelną ar nuostolį.",
-  "start": "Kurti savo sąrašą",
   "savedHere": "Saugoma tik šioje naršyklėje.",
   "savedHow": "Kas saugoma",
   "counts": "{n} su pozicija · {m} stebimos",
@@ -102,5 +97,6 @@
   "imported": "Importuota: {n}. Praleista: {m}.",
   "importBad": "Ši rinkmena nėra iš „{brand}“ eksportuotas sąrašas.",
   "addToList": "Pridėti į mano sąrašą",
-  "inList": "Mano sąraše"
+  "inList": "Mano sąraše",
+  "empty": "Jūsų sąrašas tuščias. Pridėkite akcijas, kurias norite stebėti; įrašykite turimą kiekį ir pirkimo kainą, kad matytumėte pelną ar nuostolį."
 }

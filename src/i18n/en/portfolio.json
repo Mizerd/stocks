@@ -1,7 +1,6 @@
 {
   "title": "My list",
   "sVal": "Value",
-  "cashIn": "of which cash",
   "sDay": "Today",
   "sPl": "Total gain / loss",
   "sInv": "Invested",
@@ -25,7 +24,6 @@
   "divs": "Dividends",
   "divNote": "expected over 12 months",
   "divYield": "yield",
-  "demoTag": "Example",
   "ranges": [
     "1M",
     "3M",
@@ -51,10 +49,7 @@
   "divEmpty": "The data sources publish no dividend for these holdings.",
   "divKnown": "known for {n} of {m} holdings",
   "missing": "No quote for: {list}.",
-  "acctExample": "Example portfolio · base currency EUR",
   "acctOwn": "Base currency EUR",
-  "demo": "This is an example: its holdings and purchase prices are invented, the quotes are real. Start your own list to follow the stocks you choose and, if you enter what you paid, see your profit or loss.",
-  "start": "Start my own list",
   "savedHere": "Saved only in this browser.",
   "savedHow": "What is stored",
   "counts": "{n} with a position · {m} watched",
@@ -102,5 +97,6 @@
   "imported": "Imported: {n}. Skipped: {m}.",
   "importBad": "This file is not a list exported from {brand}.",
   "addToList": "Add to my list",
-  "inList": "In my list"
+  "inList": "In my list",
+  "empty": "Your list is empty. Add the stocks you want to follow; enter how many you hold and what you paid to see your profit or loss."
 }

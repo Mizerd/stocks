@@ -7,24 +7,6 @@ export type Holding = ListEntry & { quantity: number; buyPrice: number };
 
 export const hasPosition = (entry: ListEntry): entry is Holding => entry.quantity != null && entry.buyPrice != null;
 
-// An invented example portfolio, shown until the visitor starts a list of their own.
-// Quantities and purchase prices are made up; everything computed from them uses real quotes.
-export const SAMPLE_PORTFOLIO = {
-  cashEur: 1250,
-  benchmark: 'NDX',
-  holdings: [
-    { symbol: 'AAPL', quantity: 40, buyPrice: 262.4 },
-    { symbol: 'NVDA', quantity: 60, buyPrice: 188.2 },
-    { symbol: 'MSFT', quantity: 18, buyPrice: 452.5 },
-    { symbol: 'ASML.AS', quantity: 6, buyPrice: 905 },
-    { symbol: 'KO', quantity: 80, buyPrice: 74.1 },
-    { symbol: 'JNJ', quantity: 25, buyPrice: 214.6 },
-    { symbol: 'NOVO-B.CO', quantity: 45, buyPrice: 312 },
-    { symbol: 'IGN1L.VS', quantity: 300, buyPrice: 20.9 },
-    { symbol: 'TEL1L.VS', quantity: 1500, buyPrice: 1.92 },
-  ] as Holding[],
-};
-
 export interface Position {
   holding: Holding;
   stock: StockSummary;
