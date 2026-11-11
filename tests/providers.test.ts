@@ -8,6 +8,7 @@ import { parseEuronextCsv } from '../worker/providers/euronext';
 import { bucket, parseNasdaqRows, parseNasdaqTime } from '../worker/providers/nasdaq';
 import { parseNewsFeed } from '../worker/providers/news';
 import { parseNordicChart } from '../worker/providers/nordic';
+import { parseLangLink, parseSummary } from '../worker/providers/wikipedia';
 
 describe('num', () => {
   it('reads provider number formats', () => {
@@ -148,5 +149,37 @@ describe('ECB and news', () => {
     expect(parseNewsFeed(xml)).toEqual([
       { title: 'Annual report', link: 'https://view.news.eu.nasdaq.com/view?id=1&lang=en', time: '2026-11-10T14:34:26.000Z', issuer: 'Ignitis' },
     ]);
+  });
+});
+
+describe('Wikipedia', () => {
+  const page = {
+    type: 'standard',
+    description: 'Dutch photolithography company',
+    extract: 'ASML Holding N.V. is a Dutch company.\nIt makes lithography machines.',
+    content_urls: { desktop: { page: 'https://en.wikipedia.org/wiki/ASML' } },
+  };
+
+  it('reads a page summary', () => {
+    expect(parseSummary(JSON.stringify(page), 'en')).toEqual({
+      extract: 'ASML Holding N.V. is a Dutch company. It makes lithography machines.',
+      description: 'Dutch photolithography company',
+      url: 'https://en.wikipedia.org/wiki/ASML',
+      lang: 'en',
+    });
+  });
+
+  it('rejects disambiguation pages, empty extracts and foreign links', () => {
+    expect(parseSummary(JSON.stringify({ ...page, type: 'disambiguation' }), 'en')).toBeNull();
+    expect(parseSummary(JSON.stringify({ ...page, extract: '' }), 'en')).toBeNull();
+    expect(parseSummary(JSON.stringify({ ...page, content_urls: { desktop: { page: 'https://example.com/ASML' } } }), 'en')).toBeNull();
+    expect(parseSummary(JSON.stringify(page), 'lt')).toBeNull();
+  });
+
+  it('finds the Lithuanian article of an English page', () => {
+    const linked = { query: { pages: { 123: { title: 'Ignitis', langlinks: [{ lang: 'lt', '*': 'Ignitis grupė' }] } } } };
+    expect(parseLangLink(JSON.stringify(linked))).toBe('Ignitis grupė');
+    expect(parseLangLink(JSON.stringify({ query: { pages: { 123: { title: 'ASML' } } } }))).toBeNull();
+    expect(parseLangLink(JSON.stringify({ batchcomplete: '' }))).toBeNull();
   });
 });

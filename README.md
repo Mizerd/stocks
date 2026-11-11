@@ -1,6 +1,6 @@
 # Stocks viewer
 
-A read-only website for following US, European and Baltic stock prices.
+A website for following US, European and Baltic stock prices, with a personal list that is kept only in the visitor's browser.
 
 ![Market overview](docs/screenshot.png)
 

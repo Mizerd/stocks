@@ -1,14 +1,56 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { INDICES, STOCKS } from '../../shared/catalog';
 import type { ProviderStatus } from '../../shared/types';
+import { ConfirmBar } from '../components/ConfirmBar';
 import { PanelTitle } from '../components/ui';
+import { brand } from '../config/brand';
 import { useT } from '../i18n';
 import { useApi } from '../lib/api';
+import { deleteBrowserData } from '../lib/myList';
 import { usePageTitle } from '../lib/usePageTitle';
 
 // Which provider check belongs to each row of the sources table.
 const ROW_PROVIDERS: ProviderStatus['provider'][] = ['nasdaq', 'nordic', 'euronext', 'baltic', 'ecb'];
+
+type DeleteStep = 'idle' | 'asking' | 'done';
+
+function Privacy() {
+  const { t, list } = useT();
+  const [step, setStep] = useState<DeleteStep>('idle');
+  return (
+    <section className="pnl" id="privacy">
+      <PanelTitle>{t('common.privTitle')}</PanelTitle>
+      <div className="prv">
+        <p>{t('common.privLead')}</p>
+        <h3>{t('common.privStoredH')}</h3>
+        <p>{t('common.privStored')}</p>
+        <ul>{list('common.privItems').map((item) => <li key={item}>{item}</li>)}</ul>
+        <p>{t('common.privLocal')}</p>
+        <p>{t('common.privKeep')}</p>
+        <div style={{ marginTop: 14 }}>
+          {step === 'asking' ? (
+            <ConfirmBar
+              question={t('common.privDeleteAsk')}
+              confirmLabel={t('common.privDeleteYes')}
+              onConfirm={() => {
+                deleteBrowserData();
+                setStep('done');
+              }}
+              onCancel={() => setStep('idle')}
+            />
+          ) : (
+            <button type="button" className="btn" onClick={() => setStep('asking')}>{t('common.privDelete')}</button>
+          )}
+          <p role="status">{step === 'done' && t('common.privDeleted')}</p>
+        </div>
+        <h3>{t('common.privServerH')}</h3>
+        <p>{t('common.privServer')}</p>
+        {brand.contactEmail && <p>{t('common.privContact', { email: brand.contactEmail })}</p>}
+      </div>
+    </section>
+  );
+}
 
 export function About() {
   const { t, table } = useT();
@@ -61,6 +103,7 @@ export function About() {
           ))}
         </dl>
       </section>
+      <Privacy />
     </main>
   );
 }

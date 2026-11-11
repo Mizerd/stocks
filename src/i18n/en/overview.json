@@ -68,5 +68,8 @@
     "min": "{n} min ago",
     "h": "{n} h ago",
     "d": "{n} d ago"
-  }
+  },
+  "tape": "Latest prices",
+  "live": "Live",
+  "closed": "Closed"
 }

@@ -17,6 +17,8 @@ export const brand = {
   siteUrl: '',
   // Path of the social sharing image inside /public, or empty for none.
   shareImage: '',
+  // Contact address shown in the privacy note on the About page. Leave empty to show none.
+  contactEmail: '',
   // SVG paths of the logo mark, drawn on a 32 x 32 grid.
   logo: {
     outline: 'M16 4.5c-5 0-8 3.9-8 9.2v5.6L5.5 23h21L24 19.3v-5.6c0-5.3-3-9.2-8-9.2z',

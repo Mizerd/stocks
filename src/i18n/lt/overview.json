@@ -68,5 +68,8 @@
     "min": "prieš {n} min.",
     "h": "prieš {n} val.",
     "d": "prieš {n} d."
-  }
+  },
+  "tape": "Naujausios kainos",
+  "live": "Gyvai",
+  "closed": "Uždaryta"
 }

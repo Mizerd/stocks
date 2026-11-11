@@ -73,6 +73,7 @@ export function Search() {
         aria-controls="search-results"
         aria-autocomplete="list"
         autoComplete="off"
+        enterKeyHint="search"
         value={query}
         placeholder={t('common.search')}
         aria-label={t('common.search')}

@@ -3,6 +3,7 @@ import type { Instrument, ProviderStatus, Range } from '../shared/types';
 import { detail, history, PROVIDERS, summary } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
+import { about } from './providers/wikipedia';
 
 const RANGES: Range[] = ['1D', '5D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 // Keeps one request comfortably under the Workers free-plan limit of 50 subrequests.
@@ -87,6 +88,13 @@ async function route(url: URL): Promise<Response> {
       return json(await fxRates(), 200, 3600);
     case '/api/news':
       return json(await balticNews(url.searchParams.get('lang') === 'lt' ? 'lt' : 'en'), 200, 300);
+    case '/api/about': {
+      const lang = url.searchParams.get('lang') === 'lt' ? 'lt' : 'en';
+      const data = await about(instrumentParam(url), lang);
+      if (!data) return json({ unavailable: true }, 200, 86400);
+      // An English fallback for a Lithuanian reader is kept for an hour only, in case the Lithuanian fetch merely failed.
+      return json(data, 200, data.lang === lang ? 86400 : 3600);
+    }
     case '/api/status':
       return status();
     default:

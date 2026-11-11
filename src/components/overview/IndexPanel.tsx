@@ -3,7 +3,7 @@ import { EXCHANGES, sessionState } from '../../../shared/exchanges';
 import type { History, Range, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { isUnavailable, useHistory } from '../../lib/api';
-import { linePath, nearestIndex, scaleOf, spread, yOf } from '../../lib/chart';
+import { linePath, scaleOf, spread, yOf } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { niceTicks } from '../../lib/indicators';
 import { useChartSelection } from '../../lib/useChartSelection';
@@ -52,8 +52,7 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
     return range === '1Y' ? f.month(time) : f.dateShort(time, 'UTC');
   };
 
-  const xs = points.map(([x]) => x);
-  const selection = useChartSelection(points.length, (share) => nearestIndex(xs, share * W, SNAP_SLACK));
+  const selection = useChartSelection(points.map(([x]) => x / W), SNAP_SLACK / W);
   const markOf = (i: number | null): Mark | null =>
     i === null ? null : { t: candles[i].t, c: candles[i].c, left: points[i][0] / 10, top: (points[i][1] / H) * 100 };
   const marks = {
@@ -107,7 +106,7 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
             tabIndex={0}
             role="group"
             aria-label={`${t('stock.chartKeys')} ${t('common.selMark')}`}
-            style={{ position: 'absolute', inset: 0, cursor: 'crosshair', touchAction: 'pan-y' }}
+            className="sel-layer"
             {...selection.handlers}
           >
             <ChartSelection {...marks} />

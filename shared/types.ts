@@ -17,6 +17,8 @@ export interface Instrument {
   sector?: Sector;
   provider: ProviderId;
   providerId: string;
+  // Title of the company's English Wikipedia article.
+  wiki?: string;
 }
 
 export interface Candle {
@@ -78,6 +80,13 @@ export interface StockDetail {
   quarterlyEps: QuarterFigure[];
   quarterlyRevenue: QuarterFigure[];
   analysts: { buy: number; hold: number; sell: number; target: number | null } | null;
+}
+
+export interface CompanyAbout {
+  extract: string;
+  description: string | null;
+  url: string;
+  lang: 'lt' | 'en';
 }
 
 export interface NewsItem {

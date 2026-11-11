@@ -11,6 +11,7 @@ export function Footer() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
           <Link to="/about" className="hl">{t('common.fData')}</Link>
           <Link to="/about#keys" className="hl">{t('common.fKeys')}</Link>
+          <Link to="/about#privacy" className="hl">{t('common.fPrivacy')}</Link>
           <span>© {new Date().getFullYear()} {brand.name}</span>
         </div>
       </div>

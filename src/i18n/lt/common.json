@@ -11,12 +11,12 @@
   "navLabel": "Pagrindinė navigacija",
   "n1": "Apžvalga",
   "n2": "Akcija",
-  "n3": "Portfelis ir įspėjimai",
+  "n3": "Mano sąrašas",
   "n4": "Atranka ir palyginimas",
   "navShort": [
     "Apžvalga",
     "Akcija",
-    "Portfelis",
+    "Mano sąrašas",
     "Atranka"
   ],
   "delay": "JAV tikruoju laiku · Šiaurės ir Baltijos šalys vėluoja · „Euronext“ dienos pabaigos",
@@ -83,6 +83,27 @@
     ]
   ],
   "ring": "Skambinti varpu",
-  "selHint": "Spustelėkite arba palieskite tašką ir matuokite pokytį nuo jo",
-  "selMark": "Klavišu „Enter“ pažymėkite tašką ir matuokite pokytį nuo jo, klavišu „Escape“ žymėjimą panaikinkite."
+  "selHint": "Spustelėkite tašką ir matuokite pokytį nuo jo",
+  "selHintTouch": "Palieskite grafiką – matysite kainą. Bakstelėkite burbulą, kad jį prisegtumėte, tada vilkite ir matuokite – arba naudokite du pirštus.",
+  "selMark": "Klavišu „Enter“ pažymėkite tašką ir matuokite pokytį nuo jo, klavišu „Escape“ žymėjimą panaikinkite.",
+  "cancel": "Atšaukti",
+  "fPrivacy": "Privatumas",
+  "privTitle": "Privatumas",
+  "privLead": "„{brand}“ neturi paskyrų, nenaudoja slapukų, analitikos, reklamos ar sekimo priemonių. Jūsų naršyklė nieko nesisiunčia iš kitų bendrovių: šriftai, scenarijai ir duomenys gaunami tik iš šios svetainės.",
+  "privStoredH": "Kas saugoma šioje naršyklėje",
+  "privStored": "Keli dalykai įrašomi į šios naršyklės vietinę saugyklą („local storage“), kad svetainė juos prisimintų kitą kartą:",
+  "privItems": [
+    "kalba, tema ir paletė neskiriantiems spalvų – įrašoma, kai juos pasirenkate;",
+    "paskutinė atidaryta akcija, kad į ją grąžintų skirtukas „Akcija“;",
+    "jūsų asmeninis sąrašas – įrašomas, kai ką nors pridedate, redaguojate ar importuojate: akcijos ir jūsų įvestas kiekis, pirkimo kaina, pirkimo data bei pastaba, taip pat pasirinkta rikiavimo tvarka."
+  ],
+  "privLocal": "Niekas iš to nesiunčiama nei „{brand}“, nei kam nors kitam, o svetainė negali šių duomenų perskaityti iš kito įrenginio. Vienas dalykas, kurį verta žinoti: kad nubraižytų jūsų sąrašo rezultatų grafiką, puslapis šios svetainės serverio paprašo sąraše esančių akcijų kainų istorijos – lygiai taip pat, kaip atidarius tų akcijų puslapius. Kiekiai, sumokėtos kainos, datos ir pastabos šio įrenginio nepalieka.",
+  "privKeep": "Duomenys saugomi tol, kol juos ištrinate. Mygtukas „Ištrinti mano sąrašą“ puslapyje „Mano sąrašas“ pašalina sąrašą, o „Eksportuoti“ išsaugo jo kopiją rinkmenoje. Žemiau esantis mygtukas pašalina viską, ką „{brand}“ įrašė šioje naršyklėje; tą patį padaro svetainės duomenų išvalymas naršyklės nustatymuose.",
+  "privDelete": "Ištrinti mano duomenis iš šios naršyklės",
+  "privDeleteAsk": "Ištrinti sąrašą ir įrašytus pasirinkimus iš šios naršyklės?",
+  "privDeleteYes": "Ištrinti",
+  "privDeleted": "Ištrinta. „{brand}“ šioje naršyklėje nebeturi nieko įrašyto; nuo šiol daromi pasirinkimai bus įrašomi iš naujo.",
+  "privServerH": "Kas pasiekia serverį",
+  "privServer": "Kaip ir bet kurioje svetainėje, atidarant puslapį jūsų IP adresas ir naršyklės duomenys perduodami prieglobos paslaugų teikėjui „Cloudflare“, kuris juos tvarko ir saugo užklausų žurnalus, kad galėtų pateikti ir apsaugoti svetainę. Rinkos duomenis iš biržų ir ECB surenka šios svetainės serveris; jūsų naršyklė į juos nesikreipia.",
+  "privContact": "Klausimai dėl privatumo: {email}"
 }

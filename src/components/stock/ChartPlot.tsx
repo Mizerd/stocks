@@ -1,7 +1,7 @@
 import { EXCHANGES } from '../../../shared/exchanges';
 import type { Candle, ExchangeId, History } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { linePath, nearestIndex, scaleOf, yOf } from '../../lib/chart';
+import { linePath, scaleOf, yOf } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { bollinger, niceTicks, rsi, sma } from '../../lib/indicators';
 import { useChartSelection } from '../../lib/useChartSelection';
@@ -127,8 +127,7 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
 
   const barDate = (time: number) => (intraday ? f.time(time) : f.date(time, 'UTC'));
 
-  const xs = bars.map((_, i) => x(i));
-  const selection = useChartSelection(bars.length, (share) => nearestIndex(xs, share * W, slotWidth));
+  const selection = useChartSelection(bars.map((_, i) => x(i) / W), slotWidth / W);
   const markOf = (i: number | null): Mark | null =>
     i === null ? null : { t: bars[i].t, c: bars[i].c, left: (x(i) / W) * 100, top: (y(bars[i].c) / PLOT_H) * 100 };
   const marks = { hover: markOf(selection.hover), anchor: markOf(selection.anchor), price: f.price, date: barDate };
@@ -210,7 +209,7 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
             tabIndex={0}
             role="group"
             aria-label={`${t('stock.chartKeys')} ${t('common.selMark')}`}
-            style={{ position: 'absolute', inset: 0, cursor: 'crosshair', touchAction: 'pan-y' }}
+            className="sel-layer"
             {...selection.handlers}
           >
             <ChartSelection {...marks} />

@@ -58,7 +58,7 @@ function Tools() {
 const ICONS: ReactNode[] = [
   <path key="o" d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z" />,
   <path key="s" d="M3 17l5-6 4 3 6-8 3 3M3 21h18" />,
-  <path key="p" d="M12 3a9 9 0 1 0 9 9h-9zM15 2.5V9h6.5A7 7 0 0 0 15 2.5z" />,
+  <path key="l" d="M6.5 3.5h11v17L12 16.5l-5.5 4z" />,
   <path key="c" d="M4 7h9M17 7h3M4 17h3M11 17h9M15 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />,
 ];
 

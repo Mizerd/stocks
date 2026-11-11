@@ -1,44 +1,28 @@
 import type { FxRates, Sector, StockSummary } from '../../shared/types';
 import { toEur } from './api';
+import type { ListEntry, SortKey } from './myList';
 
-export interface Holding {
-  symbol: string;
-  quantity: number;
-  avgCost: number;
-}
+// A list entry with both a quantity and a purchase price. Entries without them are only watched.
+export type Holding = ListEntry & { quantity: number; buyPrice: number };
 
-export type AlertType = 'priceAbove' | 'priceBelow' | 'dailyMove';
+export const hasPosition = (entry: ListEntry): entry is Holding => entry.quantity != null && entry.buyPrice != null;
 
-export interface SampleAlert {
-  symbol: string;
-  type: AlertType;
-  value: number;
-  paused?: boolean;
-}
-
-// An invented example portfolio. Quantities, purchase prices and alert levels are made up;
-// everything computed from them uses real quotes.
+// An invented example portfolio, shown until the visitor starts a list of their own.
+// Quantities and purchase prices are made up; everything computed from them uses real quotes.
 export const SAMPLE_PORTFOLIO = {
   cashEur: 1250,
   benchmark: 'NDX',
   holdings: [
-    { symbol: 'AAPL', quantity: 40, avgCost: 262.4 },
-    { symbol: 'NVDA', quantity: 60, avgCost: 188.2 },
-    { symbol: 'MSFT', quantity: 18, avgCost: 452.5 },
-    { symbol: 'ASML.AS', quantity: 6, avgCost: 905 },
-    { symbol: 'KO', quantity: 80, avgCost: 74.1 },
-    { symbol: 'JNJ', quantity: 25, avgCost: 214.6 },
-    { symbol: 'NOVO-B.CO', quantity: 45, avgCost: 312 },
-    { symbol: 'IGN1L.VS', quantity: 300, avgCost: 20.9 },
-    { symbol: 'TEL1L.VS', quantity: 1500, avgCost: 1.92 },
+    { symbol: 'AAPL', quantity: 40, buyPrice: 262.4 },
+    { symbol: 'NVDA', quantity: 60, buyPrice: 188.2 },
+    { symbol: 'MSFT', quantity: 18, buyPrice: 452.5 },
+    { symbol: 'ASML.AS', quantity: 6, buyPrice: 905 },
+    { symbol: 'KO', quantity: 80, buyPrice: 74.1 },
+    { symbol: 'JNJ', quantity: 25, buyPrice: 214.6 },
+    { symbol: 'NOVO-B.CO', quantity: 45, buyPrice: 312 },
+    { symbol: 'IGN1L.VS', quantity: 300, buyPrice: 20.9 },
+    { symbol: 'TEL1L.VS', quantity: 1500, buyPrice: 1.92 },
   ] as Holding[],
-  alerts: [
-    { symbol: 'AAPL', type: 'priceAbove', value: 360 },
-    { symbol: 'NVDA', type: 'priceBelow', value: 160 },
-    { symbol: 'TSLA', type: 'dailyMove', value: 5 },
-    { symbol: 'NOVO-B.CO', type: 'priceAbove', value: 300, paused: true },
-    { symbol: 'MSFT', type: 'priceAbove', value: 525 },
-  ] as SampleAlert[],
 };
 
 export interface Position {
@@ -65,13 +49,14 @@ export interface Valuation {
   dayPct: number;
 }
 
-// Values every holding in euros. Holdings without a quote or an exchange rate are left out.
-export function valuePortfolio(holdings: Holding[], stocks: StockSummary[], fx: FxRates, cashEur: number): Valuation {
+// Values every entry that has a position, in euros. Watched entries and ones without a quote
+// or an exchange rate are left out.
+export function valuePortfolio(entries: ListEntry[], stocks: StockSummary[], fx: FxRates, cashEur = 0): Valuation {
   const positions: Position[] = [];
-  for (const holding of holdings) {
+  for (const holding of entries.filter(hasPosition)) {
     const stock = stocks.find((s) => s.symbol === holding.symbol);
     const valueEur = stock && toEur(holding.quantity * stock.price, stock.currency, fx);
-    const costEur = stock && toEur(holding.quantity * holding.avgCost, stock.currency, fx);
+    const costEur = stock && toEur(holding.quantity * holding.buyPrice, stock.currency, fx);
     if (!stock || valueEur == null || costEur == null) continue;
     positions.push({
       holding,
@@ -79,7 +64,7 @@ export function valuePortfolio(holdings: Holding[], stocks: StockSummary[], fx: 
       valueEur,
       costEur,
       gainEur: valueEur - costEur,
-      gainPct: (valueEur / costEur - 1) * 100,
+      gainPct: costEur ? (valueEur / costEur - 1) * 100 : 0,
       dayEur: valueEur - valueEur / (1 + stock.changePct / 100),
       dividendEur: stock.dividend == null ? null : toEur(holding.quantity * stock.dividend, stock.currency, fx),
       weight: 0,
@@ -90,7 +75,7 @@ export function valuePortfolio(holdings: Holding[], stocks: StockSummary[], fx: 
   const totalEur = holdingsEur + cashEur;
   const costEur = sum((p) => p.costEur);
   const dayEur = sum((p) => p.dayEur);
-  for (const p of positions) p.weight = p.valueEur / totalEur;
+  for (const p of positions) p.weight = totalEur ? p.valueEur / totalEur : 0;
   return {
     positions: positions.sort((a, b) => b.valueEur - a.valueEur),
     holdingsEur,
@@ -109,7 +94,7 @@ export interface Slice {
   share: number;
 }
 
-// Value per sector, largest first, with cash ("X") last.
+// Value per sector, largest first, with any cash ("X") last.
 export function allocation(valuation: Valuation, cashEur: number): Slice[] {
   const bySector = new Map<Sector, number>();
   for (const p of valuation.positions) {
@@ -119,7 +104,7 @@ export function allocation(valuation: Valuation, cashEur: number): Slice[] {
   const slices: Slice[] = [...bySector.entries()]
     .map(([sector, valueEur]) => ({ sector, valueEur, share: valueEur / valuation.totalEur }))
     .sort((a, b) => b.valueEur - a.valueEur);
-  slices.push({ sector: 'X', valueEur: cashEur, share: cashEur / valuation.totalEur });
+  if (cashEur > 0) slices.push({ sector: 'X', valueEur: cashEur, share: cashEur / valuation.totalEur });
   return slices;
 }
 
@@ -137,31 +122,37 @@ export function portfolioReturns(positions: Position[], closes: number[][], fx: 
   return values.map((v) => (v / values[0] - 1) * 100);
 }
 
-export interface AlertState {
-  status: 'active' | 'paused' | 'reached';
-  // 0..1: how close the price is to the alert level.
-  proximity: number;
-  // Percent the price still has to move; for a daily-move alert, today's move.
-  distancePct: number;
+// One line of the list table: the entry with its quote and, if it has one, its valued position.
+export interface Row {
+  entry: ListEntry;
+  stock?: StockSummary;
+  position?: Position;
 }
 
-export function alertState(alert: SampleAlert, stock: StockSummary): AlertState {
-  let reached: boolean;
-  let proximity: number;
-  let distancePct: number;
-  if (alert.type === 'dailyMove') {
-    distancePct = stock.changePct;
-    reached = Math.abs(stock.changePct) >= alert.value;
-    proximity = Math.abs(stock.changePct) / alert.value;
-  } else {
-    distancePct = (alert.value / stock.price - 1) * 100;
-    reached = alert.type === 'priceAbove' ? stock.price >= alert.value : stock.price <= alert.value;
-    // The bar starts filling once the price is within 12.5% of the level.
-    proximity = 1 - Math.abs(distancePct) / 12.5;
-  }
-  return {
-    status: alert.paused ? 'paused' : reached ? 'reached' : 'active',
-    proximity: reached ? 1 : Math.max(0, Math.min(1, proximity)),
-    distancePct,
-  };
+export function listRows(entries: ListEntry[], stocks: StockSummary[], valuation: Valuation): Row[] {
+  return entries.map((entry) => ({
+    entry,
+    stock: stocks.find((s) => s.symbol === entry.symbol),
+    position: valuation.positions.find((p) => p.holding === entry),
+  }));
+}
+
+const SORT_VALUE: Record<Exclude<SortKey, 'symbol'>, (row: Row) => number | undefined> = {
+  value: (row) => row.position?.valueEur,
+  gain: (row) => row.position?.gainEur,
+  gainPct: (row) => row.position?.gainPct,
+  day: (row) => row.stock?.changePct,
+};
+
+// Largest first (symbols A to Z); rows without the figure go last, in alphabetical order.
+export function sortRows(rows: Row[], key: SortKey): Row[] {
+  const bySymbol = (a: Row, b: Row) => a.entry.symbol.localeCompare(b.entry.symbol);
+  if (key === 'symbol') return [...rows].sort(bySymbol);
+  const value = SORT_VALUE[key];
+  return [...rows].sort((a, b) => {
+    const x = value(a);
+    const y = value(b);
+    if (x == null || y == null) return x == null && y == null ? bySymbol(a, b) : x == null ? 1 : -1;
+    return y - x || bySymbol(a, b);
+  });
 }

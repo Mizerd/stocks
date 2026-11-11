@@ -3,12 +3,15 @@ import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { STOCKS, findInstrument, shortSymbol } from '../../shared/catalog';
 import { EXCHANGES } from '../../shared/exchanges';
 import type { Instrument, StockSummary } from '../../shared/types';
+import { AddToList } from '../components/AddToList';
 import { AboutCompany } from '../components/stock/AboutCompany';
 import { AnalystView } from '../components/stock/AnalystView';
-import { Financials } from '../components/stock/Financials';
 import { KeyFigures } from '../components/stock/KeyFigures';
 import { Peers } from '../components/stock/Peers';
 import { PriceChart } from '../components/stock/PriceChart';
+import { Quarters } from '../components/stock/Quarters';
+import { QuoteLive } from '../components/stock/QuoteLive';
+import { Returns } from '../components/stock/Returns';
 import { ErrorNotice, FreshnessNote, Loading, Notice } from '../components/ui';
 import { useT } from '../i18n';
 import { useDetail } from '../lib/api';
@@ -46,6 +49,7 @@ function HeroPrice({ summary }: { summary: StockSummary }) {
         {f.signed(summary.change)} ({f.pct(summary.changePct)})
       </span>
       <FreshnessNote freshness={summary.freshness} time={summary.time} />
+      <QuoteLive summary={summary} />
     </div>
   );
 }
@@ -78,7 +82,12 @@ function StockPage({ inst }: { inst: Instrument }) {
           {/* Reserve the price line's height so the page does not jump when it arrives. */}
           {detail ? <HeroPrice summary={detail.summary} /> : <div style={{ height: 62 }} />}
         </div>
-        {isStock && <Link className="btn" to={compareTo}>{t('stock.cmp')}</Link>}
+        {isStock && (
+          <div className="st-acts">
+            <AddToList symbol={inst.symbol} />
+            <Link className="btn" to={compareTo}>{t('stock.cmp')}</Link>
+          </div>
+        )}
       </section>
 
       <section className="st-top">
@@ -93,8 +102,11 @@ function StockPage({ inst }: { inst: Instrument }) {
 
       {isStock && detail && (
         <section className="cols">
-          <Financials detail={detail} />
-          <section className="pnl" style={{ flex: '1 1 360px' }}>
+          <section className="pnl st-perf" style={{ flex: '5 1 520px' }}>
+            <Returns inst={inst} price={detail.summary.price} />
+            {detail.quarterlyRevenue.length + detail.quarterlyEps.length > 0 && <Quarters detail={detail} />}
+          </section>
+          <section className="pnl" style={{ flex: '2 1 340px' }}>
             <AboutCompany detail={detail} />
           </section>
         </section>

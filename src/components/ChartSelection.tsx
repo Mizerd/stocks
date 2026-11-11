@@ -52,7 +52,8 @@ export function SelectionReadout({ hover, anchor, price, date }: Props) {
 
   return (
     <div className="num sel-readout" aria-live="polite">
-      {!anchor && <span className="sel-hint">{t('common.selHint')}</span>}
+      {!anchor && <span className="sel-hint by-mouse">{t('common.selHint')}</span>}
+      {!anchor && <span className="sel-hint by-touch">{t('common.selHintTouch')}</span>}
       {anchor && !diff && <span>{date(anchor.t)} · {price(anchor.c)}</span>}
       {diff && (
         <>

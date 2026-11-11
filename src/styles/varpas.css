@@ -26,9 +26,9 @@ a{color:inherit;text-decoration:none}
 .num{font-variant-numeric:tabular-nums;font-feature-settings:'tnum','cv08'}                /* every figure; cv08 tells I from 1 in tickers */
 .lbl{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:600}
 .up{color:var(--up)}.dn{color:var(--down)}
-.hl:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+@media (hover:hover){.hl:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}}
 .link{font-size:13px;font-weight:600;color:var(--brass);white-space:nowrap}
-.link:hover{text-decoration:underline;text-underline-offset:3px}
+@media (hover:hover){.link:hover{text-decoration:underline;text-underline-offset:3px}}
 
 /* ---------- Layout ---------- */
 .wrap{max-width:1840px;margin:0 auto;padding-left:max(var(--gutter),env(safe-area-inset-left));padding-right:max(var(--gutter),env(safe-area-inset-right))}
@@ -46,22 +46,22 @@ a{color:inherit;text-decoration:none}
 .seg{display:inline-flex;max-width:100%;padding:3px;gap:2px;border:1px solid var(--hair);border-radius:var(--radius-sm);overflow-x:auto;scrollbar-width:none}
 .seg::-webkit-scrollbar{display:none}
 .seg button{flex:1 0 auto;min-height:30px;padding:4px 12px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--ink2);white-space:nowrap}
-.seg button:hover{color:var(--ink);background:var(--sel)}
+@media (hover:hover){.seg button:hover{color:var(--ink);background:var(--sel)}}
 .seg button.on{background:var(--sel);color:var(--ink);font-weight:600;box-shadow:inset 0 0 0 1px var(--ink3)}
 .seg button:focus-visible{outline-offset:-2px}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 18px;border:1px solid var(--ink3);border-radius:999px;font-size:13.5px;font-weight:600;white-space:nowrap}
-.btn:hover{background:var(--sel)}
+@media (hover:hover){.btn:hover{background:var(--sel)}}
 
 /* Toggle chip (chart indicators): selected = tinted */
 .chip{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:4px 13px;border:1px solid var(--hair);border-radius:999px;font-size:12.5px;font-weight:500;color:var(--ink2);text-align:left;white-space:nowrap}
-.chip:hover{border-color:var(--ink3);color:var(--ink)}
+@media (hover:hover){.chip:hover{border-color:var(--ink3);color:var(--ink)}}
 .chip.on{border-color:var(--ink3);color:var(--ink);background:var(--sel)}
 /* Filter chip (screener sectors, regions): selected = solid */
 .chip--solid.on{border-color:var(--ink);color:var(--paper);background:var(--ink)}
 
 .icon-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--hair);border-radius:var(--radius-sm)}
-.icon-btn:hover{background:var(--sel)}
+@media (hover:hover){.icon-btn:hover{background:var(--sel)}}
 .icon-btn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 
 .fld{width:100%;height:40px;padding:0 12px;border:1px solid var(--hair);border-radius:var(--radius-sm);background:var(--paper);font-size:14px} /* text input, select */
@@ -74,14 +74,15 @@ a{color:inherit;text-decoration:none}
 .bdg{display:inline-block;min-width:72px;padding:3px 8px;border-radius:6px;text-align:right;font-weight:600;background:var(--sel)} /* change badge */
 .bdg.up{background:var(--upbg)}.bdg.dn{background:var(--downbg)}
 .row{transition:background-color .12s}
-.row:hover{background:var(--sel)}
+@media (hover:hover){.row:hover{background:var(--sel)}}
 .th{display:inline-flex;align-items:center;gap:4px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:600;white-space:nowrap} /* sortable header */
-.th:hover,.th.on{color:var(--ink)}
+.th.on{color:var(--ink)}
+@media (hover:hover){.th:hover{color:var(--ink)}}
 .cur{font-size:11px;color:var(--ink3)}  /* currency code after a figure */
 
 /* Index selector card */
 .ix{text-align:left;padding:12px 14px;border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:2px;min-width:0;box-shadow:inset 0 0 0 1px transparent}
-.ix:hover{background:var(--sel)}
+@media (hover:hover){.ix:hover{background:var(--sel)}}
 .ix.on{background:var(--sel);box-shadow:inset 0 0 0 1px var(--ink3)}
 .ix.on .lbl{color:var(--brass)}
 

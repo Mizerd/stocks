@@ -86,6 +86,8 @@ describe('API routing', () => {
   it('rejects unknown routes, symbols and ranges without calling a provider', async () => {
     expect((await get('/api/nope')).status).toBe(404);
     expect((await get('/api/history?symbol=NOPE&range=1Y')).status).toBe(404);
+    expect((await get('/api/about?symbol=NOPE')).status).toBe(404);
+    expect((await get('/api/about?title=Main_Page')).status).toBe(404);
     expect((await get('/api/history?symbol=AAPL&range=10Y')).status).toBe(400);
     expect((await get('/api/stocks?symbols=AAPL,NOPE')).status).toBe(404);
     expect((await get('/api/stocks')).status).toBe(400);

@@ -13,7 +13,7 @@
 .logo{display:flex;align-items:center;gap:12px}
 .logo svg{flex:none;width:38px;height:38px}
 .bell{display:flex;flex:none;border-radius:50%}
-.bell:hover svg{transform:rotate(-8deg)}
+@media (hover:hover){.bell:hover svg{transform:rotate(-8deg)}}
 .bell svg{transform-origin:50% 8%;transition:transform .15s}
 .bell.ringing svg{animation:ring 1s ease-in-out}
 .bell.ringing .clapper{animation:clap 1s ease-in-out}
@@ -26,7 +26,7 @@
 .sess{min-width:0}
 
 .srch{position:relative;display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;border:1px solid var(--hair);border-radius:12px;background:var(--card);color:var(--ink2)}
-.srch:hover{border-color:var(--ink3)}
+@media (hover:hover){.srch:hover{border-color:var(--ink3)}}
 .srch:focus-within{border-color:var(--ink3);outline:2px solid var(--brass);outline-offset:2px}
 .srch input{flex:1 1 0%;min-width:0;height:100%;border:0;outline:0;background:transparent;font-size:14px;color:var(--ink)}
 .srch input::-webkit-search-cancel-button{display:none}
@@ -34,23 +34,45 @@
 .srch-key{font:inherit;font-size:11px;line-height:1;color:var(--ink3);border:1px solid var(--hair);border-radius:5px;padding:3px 7px}
 .srch-list{position:absolute;top:calc(100% + 6px);left:-1px;right:-1px;z-index:40;margin:0;padding:6px;list-style:none;max-height:min(360px,60vh);overflow-y:auto;border:1px solid var(--hair);border-radius:12px;background:var(--card);box-shadow:0 12px 32px color-mix(in oklab,var(--ink) 16%,transparent)}
 .srch-list a,.srch-list p{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:12px;align-items:center;min-height:44px;margin:0;padding:6px 10px;border-radius:8px;font-size:13.5px;color:var(--ink)}
-.srch-list a.on,.srch-list a:hover{background:var(--sel)}
+.srch-list a.on{background:var(--sel)}
+@media (hover:hover){.srch-list a:hover{background:var(--sel)}}
 
 .nav{display:flex;flex-wrap:wrap;align-items:center;gap:0 28px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
 .tabs{display:flex;gap:4px 28px}
 .tabs a{position:relative;display:flex;align-items:center;min-height:46px;font-weight:500;color:var(--ink2)}
-.tabs a:hover{color:var(--ink)}
+@media (hover:hover){.tabs a:hover{color:var(--ink)}}
 .tabs a.on{color:var(--ink);font-weight:600}
 .tabs a.on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--brass)}
 .tab-ic,.tab-short{display:none}
 .tab-ic{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
 .nav-note{margin:0 0 0 auto;padding:6px 0;font-size:12px;color:var(--ink3)}
 
-/* Ticker tape: clipped to the content column and faded at both ends. */
-.tape-box{overflow:hidden;padding:10px 0;border-bottom:1px solid var(--hair);-webkit-mask-image:linear-gradient(90deg,transparent,var(--ink) 48px,var(--ink) calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,transparent,var(--ink) 48px,var(--ink) calc(100% - 48px),transparent)}
-.tape{display:flex;width:max-content;animation:tape 120s linear infinite}
-.tape:hover{animation-play-state:paused}
+/* Ticker tape: a live pill, then the scrolling quotes clipped to the content column and faded at both ends. */
+.tape-row{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--hair)}
+.tape-box{flex:1;min-width:0;overflow:hidden;padding:4px 0;-webkit-mask-image:linear-gradient(90deg,transparent,var(--ink) 32px,var(--ink) calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,transparent,var(--ink) 32px,var(--ink) calc(100% - 48px),transparent)}
+.tape{display:flex;width:max-content;animation:tape 200s linear infinite}
+.tape:hover,.tape:focus-within{animation-play-state:paused}
+.tape-set{display:flex}
+.tape-item{display:flex;align-items:center;gap:8px;min-height:32px;margin-right:12px;padding:0 12px;border-radius:999px;font-size:12.5px;white-space:nowrap;transition:background-color .12s}
+.tape-item:hover{background:var(--sel)}
+.tape-item:focus-visible{outline-offset:-2px}
 @keyframes tape{to{transform:translateX(-50%)}}   /* list is rendered twice for a seamless loop */
+@media (pointer:coarse),(max-width:640px){.tape-item{min-height:44px}}
+/* Without the animation the tape is a row the reader scrolls by hand. */
+@media (prefers-reduced-motion:reduce){.tape-box{overflow-x:auto;scrollbar-width:none}}
+
+/* A figure that just changed: tinted for a second. */
+.flash{border-radius:4px;animation:flash-up 1.2s ease-out}
+.flash.dn{animation-name:flash-dn}
+@keyframes flash-up{from{background:var(--upbg);box-shadow:0 0 0 3px var(--upbg);color:var(--up)}}
+@keyframes flash-dn{from{background:var(--downbg);box-shadow:0 0 0 3px var(--downbg);color:var(--down)}}
+
+/* Live / closed pill */
+.pill{display:inline-flex;flex:none;align-items:center;gap:6px;height:22px;padding:0 9px;border:1px solid var(--hair);border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.08em;line-height:1;text-transform:uppercase;white-space:nowrap;color:var(--ink3)}
+.pill.on{border-color:var(--down);background:var(--down);color:var(--paper)}
+.pill-dot{position:relative;width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill-dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:currentColor;animation:ping 1.8s ease-out infinite}
+@keyframes ping{from{opacity:.7;transform:scale(1)}to{opacity:0;transform:scale(3.2)}}
 
 .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 32px;margin-top:8px;padding:20px 0 calc(36px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);font-size:12px;color:var(--ink3)}
 .foot p{margin:0;max-width:60em}
@@ -267,7 +289,7 @@
 .hm{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:124px;grid-auto-flow:dense;gap:4px}
 .hm .tile{display:flex;flex-direction:column;justify-content:space-between;min-width:0;padding:10px 12px;border-radius:8px}
 .hm .tile{transition:transform .15s,filter .15s}
-.hm .tile:hover{filter:brightness(1.12);transform:scale(1.015)}
+@media (hover:hover){.hm .tile:hover{filter:brightness(1.12);transform:scale(1.015)}}
 @media (prefers-reduced-motion:reduce){.hm .tile{transition:none}.hm .tile:hover{transform:none}}
 @media (max-width:640px){
   .hm{grid-auto-rows:84px}
@@ -298,7 +320,7 @@
 .scr{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gap);align-items:start}
 .flt-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:20px 32px}
 .flt-tog{display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:-8px -8px -8px 0;border-radius:var(--radius-sm)}
-.flt-tog:hover{background:var(--sel)}
+@media (hover:hover){.flt-tog:hover{background:var(--sel)}}
 .flt-tog svg{transition:transform .15s}
 .flt-tog[aria-expanded="true"] svg{transform:rotate(180deg)}
 .flt[data-open="false"] .flt-body{display:none}
@@ -317,16 +339,9 @@
 
 .clip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* Portfolio alerts */
-.al-row{grid-template-columns:64px minmax(0,1fr) minmax(110px,150px) 110px;gap:8px 18px;padding:12px 4px}
-@media (max-width:640px){
-  .al-row{grid-template-columns:64px minmax(0,1fr) auto;grid-template-areas:"sym cond st" ". bar bar";align-items:start}
-  .al-sym{grid-area:sym;white-space:nowrap}.al-cond{grid-area:cond}.al-bar{grid-area:bar}.al-st{grid-area:st}
-}
-
 /* Remove button inside a compare chip */
 .rm{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;color:var(--ink3)}
-.rm:hover{background:var(--sel);color:var(--ink)}
+@media (hover:hover){.rm:hover{background:var(--sel);color:var(--ink)}}
 @media (pointer:coarse),(max-width:640px){.rm{width:40px;height:40px}}
 
 /* Phones: segmented controls inside panels span the full width, like a native tab switch. */
@@ -335,5 +350,146 @@
   .pnl .seg button{padding:4px 6px}
 }
 
-.fin-plot{height:300px}
-@media (max-width:640px){.fin-plot{height:220px}}
+/* ---------- Stock page: performance, quarterly results, ranges ---------- */
+.st-perf{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:24px 36px;align-content:start}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Phones: the sign and colour carry the verdict; the word stays for screen readers. */
+@media (max-width:640px){.qtr-word{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}}
+
+.ret,.qtr{width:100%;margin-top:10px;border-collapse:collapse}
+.ret th,.ret td,.qtr th,.qtr td{padding:0;font-weight:400;text-align:right;white-space:nowrap}
+.ret thead th,.qtr thead th{padding-bottom:6px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2)}
+.ret tbody th,.qtr tbody th,.qtr thead th:first-child{text-align:left;color:var(--ink2)}
+.ret tbody th,.ret tbody td{height:30px}
+.ret tbody th{width:1%;padding-right:14px;font-weight:500}
+.ret td:nth-child(n+3),.ret thead th:nth-child(n+3){width:1%;padding-left:18px}
+.ret-plot{width:100%;min-width:60px}
+.ret-track{position:relative;display:block;height:14px;background:linear-gradient(var(--ink3),var(--ink3)) 50% 0/1px 100% no-repeat}
+.ret-bar{position:absolute;top:3px;bottom:3px;min-width:1px;animation:grow .5s ease-out}
+.ret-bar.up{border-radius:0 3px 3px 0;background:var(--up);transform-origin:left}
+.ret-bar.dn{border-radius:3px 0 0 3px;background:var(--down);transform-origin:right}
+.ret-tick{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--ink);box-shadow:0 0 0 1px var(--paper)}
+.ret-key{display:inline-block;width:2px;height:11px;margin-right:6px;vertical-align:-1px;background:var(--ink)}
+@media (max-width:640px){.ret tbody th{padding-right:8px;white-space:normal}.ret td:nth-child(n+3),.ret thead th:nth-child(n+3){padding-left:10px}.ret-plot{min-width:36px}}
+@keyframes grow{from{transform:scaleX(0)}}
+
+.qtr thead th{padding-left:10px;white-space:normal;vertical-align:bottom}
+.qtr thead th:first-child{padding-left:0}
+.qtr td,.qtr tbody th{padding:7px 0 7px 10px;border-top:1px solid var(--hair);vertical-align:top;line-height:1.3}
+.qtr tbody th{padding-left:0;font-weight:500}
+.qtr b{display:block;font-weight:600}
+.qtr small{display:block;min-height:1.3em;font-size:11.5px;color:var(--ink3)}
+.qtr small.up{color:var(--up)}.qtr small.dn{color:var(--down)}
+.qtr-bar{display:block;height:3px;margin:3px 0 0 auto;max-width:96px;border-radius:2px;background:var(--sel)}
+.qtr-bar span{display:block;height:100%;margin-left:auto;border-radius:2px;background:var(--ink2);transform-origin:right;animation:grow .5s ease-out}
+
+.rng-dot{position:absolute;top:2px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--gild);box-shadow:0 0 0 3px var(--paper);transition:left .6s ease}
+.src-link{color:var(--ink2);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.src-link:hover{color:var(--ink)}
+@media (pointer:coarse),(max-width:640px){.src-link{display:inline-block;padding:12px 0;margin:-12px 0}}
+
+/* ---------- Touch ---------- */
+/* No double-tap zoom anywhere: scrolling and pinching the page still work. */
+.vp{touch-action:manipulation}
+
+/* The layer over a chart that takes the pointer: a sideways drag is the chart's, an up-down one scrolls the page. */
+.sel-layer{position:absolute;inset:0;cursor:crosshair;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
+/* A long press on a chart must not start a text selection or the iOS callout. */
+.plot-ix,.plot-main,.plot-rc,.x-dates{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.sel-hint.by-touch{display:none}
+@media (pointer:coarse){
+  .sel-hint.by-mouse{display:none}
+  .sel-hint.by-touch{display:inline}
+  /* Room for two lines, so the plot does not jump under the finger when the readout changes. */
+  .sel-readout{min-height:36px;align-content:flex-end}
+}
+
+/* Sideways scrollers keep their swipe to themselves instead of going back a page. */
+.scroll-x,.tb-chips,.seg,.rt .tbl-head{overscroll-behavior-x:contain}
+
+/* ---------- My list ---------- */
+.btn.pri{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.btn.pri:hover{background:var(--ink2);border-color:var(--ink2)}
+.btn[aria-pressed="true"]{background:var(--sel)}
+.st-acts{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+
+.ml-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:18px}
+.ml-saved{margin:10px 0 0;font-size:12.5px;color:var(--ink3)}
+.lt{display:contents}
+.lt-msg{flex-basis:100%;margin:0;font-size:12.5px;color:var(--ink2)}
+.lt-msg:empty{display:none}
+
+/* A question with its two answers */
+.cfm{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:13.5px}
+.cfm-btns{display:flex;gap:8px}
+
+/* Add / edit form */
+.ef{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));gap:14px 16px;align-items:start;width:100%}
+.ef-f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ef-f .fld{min-width:0}
+.ef-f .fld[aria-invalid="true"]{border-color:var(--down)}
+.ef-opt{font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink3)}
+.ef-err{margin:0;font-size:12.5px;color:var(--down)}
+.ef-picked{display:flex;align-items:center;gap:10px;min-height:40px;margin:0;min-width:0}
+.ef-change{min-height:44px;margin-left:auto}
+.ef-btns{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px}
+@media (min-width:1024px){.ef-stock,.ef-note{grid-column:span 2}}
+.pick{position:relative}
+.pick-list{left:0;right:0}
+.pick-list button{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;min-height:44px;padding:6px 10px;border-radius:8px;font-size:13.5px;text-align:left}
+.pick-list button.on,.pick-list button:hover{background:var(--sel)}
+
+/* List rows: the stock link with its edit and remove buttons beside it */
+.hd-item{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--hair)}
+.hd-item>.tbl-row{flex:1 1 0%;min-width:0;border-bottom:0}
+.hd-open{padding:14px 8px}
+.hd-act{display:flex;flex:none;gap:4px}
+.hd-act .icon-btn{width:44px;height:44px;border-color:transparent;color:var(--ink2)}
+.hd.ed .tbl-head,.hd.ed .tot{margin-right:96px}
+.hd-note{display:block;font-size:12px;color:var(--ink3)}
+.hd-sort{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);white-space:nowrap}
+.hd-sort .fld{width:auto}
+.hd.wl{min-width:0}
+.hd.wl .hd-cols{grid-template-columns:68px minmax(120px,1fr) 112px 88px}
+@media (min-width:641px) and (max-width:1023px){
+  .hd.ed:not(.wl){min-width:710px}
+  .hd.ed .hd-cols{grid-template-columns:64px minmax(62px,1fr) 100px 108px 84px minmax(140px,1fr);gap:10px}
+}
+@media (max-width:640px){
+  .hd-item{align-items:flex-start}
+  .hd.ed .tbl-head,.hd.ed .tot{margin-right:0}
+  .hd-act{flex-direction:column;gap:0;padding-top:4px}
+  .hd.wl .tbl-row{grid-template-areas:"sym price" "name day"}
+  .hd.wl .c-price{text-align:right;font-size:15px}
+  .hd-sort{flex:1 1 100%}
+  .hd-sort .fld{flex:1 1 0%}
+}
+
+/* Privacy note */
+.prv{max-width:72ch;color:var(--ink2);line-height:1.6}
+.prv p,.prv ul{margin:10px 0 0}
+.prv ul{padding-left:20px}
+.prv h3{margin:22px 0 0;font-size:14px;font-weight:600;color:var(--ink)}
+.srch-list{overscroll-behavior:contain}
+/* The search box draws the focus ring; a tap must not add a second one on the field inside. */
+.srch input:focus-visible{outline:0}
+/* Results stay above the on-screen keyboard. */
+@media (max-width:640px){.srch-list{max-height:min(288px,36vh)}}
+
+/* Small controls keep their look and get a 44px hit area. */
+@media (pointer:coarse){
+  .srch input{font-size:16px} /* 16px stops iOS zooming into the field */
+  .seg button,.tabs a{min-width:44px}
+  .bell,.logo a,.link,.th,.rm,.foot a{position:relative}
+  .bell::after,.logo a::after,.link::after,.th::after,.rm::after,.foot a::after{content:'';position:absolute}
+  .bell::after{inset:-7px}
+  .logo a::after{inset:-8px 0}
+  .link::after,.th::after,.foot a::after{inset:-14px -6px}
+  .rm::after{inset:-2px}
+  .news .hl{padding-block:12px}
+  .rng{height:44px;margin:-4px 0 -10px}
+}
+/* Tablets: the symbol link fills the height of its table row. */
+@media (pointer:coarse) and (min-width:641px){
+  .rt .c-sym{align-self:stretch;display:flex;align-items:center}
+}

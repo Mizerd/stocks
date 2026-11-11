@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import type { FxRates, History, StockSummary } from '../shared/types';
+import type { Candle, FxRates, History, StockSummary } from '../shared/types';
 import { nearestIndex, pointDiff } from '../src/lib/chart';
 import { createFormat } from '../src/lib/format';
 import { bollinger, niceTicks, rsi, sma } from '../src/lib/indicators';
-import { barometer, sectorMoves } from '../src/lib/market';
-import { alertState, portfolioReturns, valuePortfolio } from '../src/lib/portfolio';
+import { anyMarketOpen, barometer, sectorMoves } from '../src/lib/market';
+import { cleanEntry, isDate, parseDecimal, parseList, serializeList, upsert } from '../src/lib/myList';
+import { allocation, listRows, portfolioReturns, sortRows, valuePortfolio } from '../src/lib/portfolio';
+import { quarterRows } from '../src/lib/quarters';
+import { periodStart, rangePosition, returnSince } from '../src/lib/returns';
 import { filterStocks, NO_FILTERS, parseState, sortStocks, toSearchParams } from '../src/lib/screener';
 import { alignCloses } from '../src/lib/series';
+import { shortSummary } from '../src/lib/text';
+import { dragAxis, onBubble } from '../src/lib/useChartSelection';
 
 const fx: FxRates = { date: '2026-11-09', perEur: { EUR: 1, USD: 1.25 } };
 
@@ -101,7 +106,7 @@ describe('overview maths', () => {
 
 describe('portfolio maths', () => {
   const quotes = [stock({ symbol: 'A', price: 125, changePct: 25, dividend: 2.5 }), stock({ symbol: 'B', currency: 'EUR', price: 10 })];
-  const holdings = [{ symbol: 'A', quantity: 10, avgCost: 100 }, { symbol: 'B', quantity: 50, avgCost: 8 }, { symbol: 'GONE', quantity: 1, avgCost: 1 }];
+  const holdings = [{ symbol: 'A', quantity: 10, buyPrice: 100 }, { symbol: 'B', quantity: 50, buyPrice: 8 }, { symbol: 'GONE', quantity: 1, buyPrice: 1 }];
   const valuation = valuePortfolio(holdings, quotes, fx, 500);
 
   it('values holdings in euros and skips ones without a quote', () => {
@@ -121,15 +126,6 @@ describe('portfolio maths', () => {
 
   it('tracks hypothetical returns over aligned closes', () => {
     expect(portfolioReturns(valuation.positions, [[100, 125], [10, 10]], fx)).toEqual([0, 15.384615384615374]);
-  });
-
-  it('reports how close an alert is', () => {
-    const near = alertState({ symbol: 'A', type: 'priceAbove', value: 130 }, quotes[0]);
-    expect(near.status).toBe('active');
-    expect(near.distancePct).toBeCloseTo(4);
-    expect(alertState({ symbol: 'A', type: 'priceAbove', value: 120 }, quotes[0]).status).toBe('reached');
-    expect(alertState({ symbol: 'A', type: 'priceBelow', value: 120, paused: true }, quotes[0]).status).toBe('paused');
-    expect(alertState({ symbol: 'A', type: 'dailyMove', value: 5 }, quotes[0]).status).toBe('reached');
   });
 });
 
@@ -219,5 +215,195 @@ describe('screener', () => {
     const defaults = parseState(new URLSearchParams());
     expect(toSearchParams(defaults).toString()).toBe('');
     expect(parseState(toSearchParams({ ...defaults, picks: [] })).picks).toEqual([]);
+  });
+});
+
+describe('my list', () => {
+  it('reads decimals with a comma or a point', () => {
+    expect(parseDecimal('1,5')).toBe(1.5);
+    expect(parseDecimal('1.5')).toBe(1.5);
+    expect(parseDecimal(' 1 234,56 ')).toBe(1234.56);
+    expect(parseDecimal('1,234.56')).toBe(1234.56);
+    expect(parseDecimal('1.234,56')).toBe(1234.56);
+    expect(parseDecimal('12')).toBe(12);
+    expect(parseDecimal('abc')).toBeNull();
+    expect(parseDecimal('-3')).toBeNull();
+    expect(parseDecimal('1,2,3')).toBeNull();
+    expect(parseDecimal('')).toBeNull();
+  });
+
+  it('accepts only real calendar dates', () => {
+    expect(isDate('2026-02-28')).toBe(true);
+    expect(isDate('2026-02-30')).toBe(false);
+    expect(isDate('28.02.2026')).toBe(false);
+  });
+
+  it('keeps catalogue stocks and drops bad fields', () => {
+    expect(cleanEntry({ symbol: 'aapl', quantity: 2, buyPrice: 150.5, buyDate: '2025-03-01', note: '  first buy ' }))
+      .toEqual({ symbol: 'AAPL', quantity: 2, buyPrice: 150.5, buyDate: '2025-03-01', note: 'first buy' });
+    expect(cleanEntry({ symbol: 'AAPL', quantity: -1, buyPrice: 'x', buyDate: 'soon', note: 7 })).toEqual({ symbol: 'AAPL' });
+    expect(cleanEntry({ symbol: 'NOPE' })).toBeNull();
+    expect(cleanEntry({ symbol: 'NDX' })).toBeNull();
+    expect(cleanEntry('AAPL')).toBeNull();
+  });
+
+  it('survives corrupt, foreign and duplicated data', () => {
+    expect(parseList(null)).toEqual({ entries: [], skipped: 0 });
+    expect(parseList('{not json')).toEqual({ entries: [], skipped: 0 });
+    expect(parseList('{"version":2,"entries":[{"symbol":"AAPL"}]}')).toEqual({ entries: [], skipped: 0 });
+    expect(parseList('{"version":1,"entries":[{"symbol":"AAPL"},{"symbol":"AAPL","quantity":3},{"symbol":"NOPE"},null]}'))
+      .toEqual({ entries: [{ symbol: 'AAPL' }], skipped: 3 });
+  });
+
+  it('round-trips through its stored form', () => {
+    const entries = [{ symbol: 'AAPL', quantity: 1.5, buyPrice: 200 }, { symbol: 'ASML.AS' }];
+    expect(parseList(serializeList(entries))).toEqual({ entries, skipped: 0 });
+  });
+
+  it('adds new stocks and replaces existing ones', () => {
+    const entries = upsert([{ symbol: 'AAPL' }], { symbol: 'MSFT' });
+    expect(upsert(entries, { symbol: 'AAPL', quantity: 1, buyPrice: 2 })).toEqual([{ symbol: 'AAPL', quantity: 1, buyPrice: 2 }, { symbol: 'MSFT' }]);
+  });
+
+  const quotes = [
+    stock({ symbol: 'A', price: 125, changePct: 1 }),
+    stock({ symbol: 'B', currency: 'EUR', price: 10, changePct: 3 }),
+    stock({ symbol: 'C', price: 50, changePct: -2 }),
+  ];
+  const entries = [{ symbol: 'C' }, { symbol: 'B', quantity: 50, buyPrice: 8 }, { symbol: 'A', quantity: 10, buyPrice: 150 }, { symbol: 'GONE' }];
+  const valuation = valuePortfolio(entries, quotes, fx);
+  const rows = listRows(entries, quotes, valuation);
+  const order = (key: Parameters<typeof sortRows>[1]) => sortRows(rows, key).map((r) => r.entry.symbol);
+
+  it('leaves watched stocks out of value, cost, gain and weights', () => {
+    expect(valuation.positions.map((p) => p.stock.symbol)).toEqual(['A', 'B']);
+    expect(valuation.totalEur).toBe(1500);
+    expect(valuation.costEur).toBe(1600);
+    expect(valuation.gainEur).toBe(-100);
+    expect(valuation.positions[0].gainEur).toBe(-200);
+    expect(valuation.positions.reduce((sum, p) => sum + p.weight, 0)).toBe(1);
+    expect(allocation(valuation, 0).map((s) => s.sector)).toEqual(['T']);
+  });
+
+  it('values nothing when every stock is only watched', () => {
+    const watched = valuePortfolio([{ symbol: 'A' }, { symbol: 'B' }], quotes, fx);
+    expect(watched.positions).toEqual([]);
+    expect(watched.totalEur).toBe(0);
+    expect(watched.gainPct).toBe(0);
+    expect(watched.dayPct).toBe(0);
+  });
+
+  it('pairs every entry with its quote and position', () => {
+    expect(rows.map((r) => [r.entry.symbol, !!r.stock, !!r.position])).toEqual([['C', true, false], ['B', true, true], ['A', true, true], ['GONE', false, false]]);
+  });
+
+  it('sorts largest first with rows lacking the figure last', () => {
+    expect(order('value')).toEqual(['A', 'B', 'C', 'GONE']);
+    expect(order('gain')).toEqual(['B', 'A', 'C', 'GONE']);
+    expect(order('gainPct')).toEqual(['B', 'A', 'C', 'GONE']);
+    expect(order('day')).toEqual(['B', 'A', 'C', 'GONE']);
+    expect(order('symbol')).toEqual(['A', 'B', 'C', 'GONE']);
+  });
+});
+
+describe('chart touch gestures', () => {
+  it('waits for a finger to leave the slop before deciding where it is heading', () => {
+    expect(dragAxis(0, 0)).toBeNull();
+    expect(dragAxis(3, -4)).toBeNull();
+    expect(dragAxis(4, 4, 6)).toBeNull();
+  });
+
+  it('gives sideways drags to the chart and up-down drags to the page', () => {
+    expect(dragAxis(12, 3)).toBe('x');
+    expect(dragAxis(-12, -3)).toBe('x');
+    expect(dragAxis(3, 12)).toBe('y');
+    expect(dragAxis(-2, -30)).toBe('y');
+    expect(dragAxis(8, 8)).toBe('x');
+  });
+
+  it('counts a tap as on the bubble only within reach of it', () => {
+    expect(onBubble(150, 0.5, 300)).toBe(true);
+    expect(onBubble(170, 0.5, 300)).toBe(true);
+    expect(onBubble(180, 0.5, 300)).toBe(false);
+    expect(onBubble(120, 0.5, 300, 40)).toBe(true);
+    expect(onBubble(150, undefined, 300)).toBe(false);
+  });
+});
+
+describe('period returns', () => {
+  const DAY = 24 * 3600 * 1000;
+  const now = Date.UTC(2026, 10, 10, 12);
+  const bar = (daysAgo: number, c: number): Candle => ({ t: now - daysAgo * DAY, o: c, h: c, l: c, c, v: null });
+  const candles = [bar(400, 50), bar(40, 80), bar(8, 100), bar(3, 104), bar(1, 108)];
+
+  it('measures from the last close before the period starts', () => {
+    expect(returnSince(candles, periodStart('1W', now), 110)).toBeCloseTo(10);
+    expect(returnSince(candles, periodStart('1M', now), 110)).toBeCloseTo(37.5);
+    expect(returnSince(candles, periodStart('1Y', now), 110)).toBeCloseTo(120);
+    expect(returnSince(candles, periodStart('1W', now), 90)).toBeCloseTo(-10);
+  });
+
+  it('starts the year-to-date period on 1 January', () => {
+    expect(periodStart('YTD', now)).toBe(Date.UTC(2026, 0, 1));
+    expect(returnSince(candles, periodStart('YTD', now), 110)).toBeCloseTo(120);
+  });
+
+  it('gives no figure when the history is shorter than the period', () => {
+    expect(returnSince(candles, periodStart('5Y', now), 110)).toBeNull();
+    expect(returnSince([], periodStart('1W', now), 110)).toBeNull();
+  });
+
+  it('places a price inside a range', () => {
+    expect(rangePosition(100, 200, 150)).toBe(50);
+    expect(rangePosition(100, 200, 250)).toBe(100);
+    expect(rangePosition(100, 100, 100)).toBeNull();
+  });
+});
+
+describe('quarterly results', () => {
+  const revenue = [{ period: '3/28/2026', value: 100 }, { period: '6/27/2026', value: 110 }, { period: '9/26/2026', value: 99 }];
+  const eps = [{ period: 'Jun 2026', value: 1.9, estimate: 2 }, { period: 'Sep 2026', value: 2.2, estimate: 2 }];
+
+  it('joins revenue and EPS by quarter, latest first', () => {
+    const rows = quarterRows(revenue, eps);
+    expect(rows.map((r) => r.time)).toEqual([Date.UTC(2026, 8), Date.UTC(2026, 5), Date.UTC(2026, 2)]);
+    expect(rows[0].revenueChange).toBeCloseTo(-10);
+    expect(rows[0].surprise).toBeCloseTo(10);
+    expect(rows[1].surprise).toBeCloseTo(-5);
+  });
+
+  it('leaves gaps empty instead of guessing', () => {
+    const oldest = quarterRows(revenue, eps)[2];
+    expect(oldest).toMatchObject({ revenue: 100, revenueChange: null, eps: null, estimate: null, surprise: null });
+    expect(quarterRows([], [{ period: 'Sep 2026', value: 1 }])[0]).toMatchObject({ revenue: null, eps: 1, surprise: null });
+  });
+});
+
+describe('company summary', () => {
+  it('keeps at most three sentences', () => {
+    expect(shortSummary('One is here. Two is here. Three is here. Four is here.')).toBe('One is here. Two is here. Three is here.');
+  });
+
+  it('does not break after abbreviations and initials', () => {
+    const text = 'Apple Inc. is based in the U.S. It makes phones. ASML Holding N.V. is Dutch. Fourth sentence.';
+    expect(shortSummary(text)).toBe('Apple Inc. is based in the U.S. It makes phones. ASML Holding N.V. is Dutch. Fourth sentence.');
+    expect(shortSummary('Nuo 2020 m. spalio 7 d. akcijos kotiruojamos. Grupė veikia Lietuvoje.', 50)).toBe('Nuo 2020 m. spalio 7 d. akcijos kotiruojamos.');
+  });
+
+  it('stops before the character limit at a sentence end', () => {
+    expect(shortSummary('First sentence here. Second sentence is far too long to fit.', 40)).toBe('First sentence here.');
+  });
+
+  it('cuts one overlong sentence at a word', () => {
+    expect(shortSummary('A single sentence that simply never seems to end, whatever happens', 30)).toBe('A single sentence that simply…');
+  });
+});
+
+describe('market hours', () => {
+  it('knows when any tracked market is trading', () => {
+    expect(anyMarketOpen(new Date('2026-11-10T09:00:00Z'))).toBe(true);
+    expect(anyMarketOpen(new Date('2026-11-10T20:30:00Z'))).toBe(true);
+    expect(anyMarketOpen(new Date('2026-11-10T23:00:00Z'))).toBe(false);
+    expect(anyMarketOpen(new Date('2026-11-14T12:00:00Z'))).toBe(false);
   });
 });

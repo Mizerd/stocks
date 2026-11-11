@@ -1,86 +1,101 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { INDICES } from '../../shared/catalog';
-import { Alerts } from '../components/portfolio/Alerts';
 import { Allocation } from '../components/portfolio/Allocation';
 import { Dividends } from '../components/portfolio/Dividends';
+import { EntryForm } from '../components/portfolio/EntryForm';
 import { Holdings } from '../components/portfolio/Holdings';
+import { ListTools } from '../components/portfolio/ListTools';
 import { Performance } from '../components/portfolio/Performance';
+import { Summary } from '../components/portfolio/Summary';
 import { ErrorNotice, Loading } from '../components/ui';
 import { useT } from '../i18n';
 import { useFx, useStocks } from '../lib/api';
-import { direction, useFormat } from '../lib/format';
-import { allocation, SAMPLE_PORTFOLIO, valuePortfolio, type Valuation } from '../lib/portfolio';
+import { useFormat } from '../lib/format';
+import { useMyList } from '../lib/myList';
+import { allocation, SAMPLE_PORTFOLIO, valuePortfolio } from '../lib/portfolio';
 import { usePageTitle } from '../lib/usePageTitle';
 
-const { holdings, alerts, cashEur } = SAMPLE_PORTFOLIO;
-const SYMBOLS = [...new Set([...holdings, ...alerts].map((item) => item.symbol))];
 const BENCHMARK = INDICES.find((i) => i.symbol === SAMPLE_PORTFOLIO.benchmark)!;
 
-function Summary({ valuation }: { valuation: Valuation }) {
-  const { t } = useT();
-  const f = useFormat();
-  const small = { margin: '4px 0 0', fontSize: 13, fontWeight: 500 };
-  return (
-    <div className="pnl sum">
-      <div>
-        <p className="lbl" style={{ margin: 0 }}>{t('portfolio.sVal')}</p>
-        <p className="num" style={{ margin: '4px 0 0', fontSize: 'clamp(30px, 3vw, 40px)', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
-          {f.num(valuation.totalEur)} <span style={{ fontSize: 20 }}>€</span>
-        </p>
-        <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--ink3)' }}>
-          {t('portfolio.cashIn')} <span className="num">{f.num(cashEur)} €</span>
-        </p>
-      </div>
-      <div>
-        <p className="lbl" style={{ margin: 0 }}>{t('portfolio.sDay')}</p>
-        <p className={`num sum-fig ${direction(valuation.dayEur)}`}>{f.signed(valuation.dayEur)} €</p>
-        <p className={`num ${direction(valuation.dayPct)}`} style={small}>{f.pct(valuation.dayPct)}</p>
-      </div>
-      <div>
-        <p className="lbl" style={{ margin: 0 }}>{t('portfolio.sPl')}</p>
-        <p className={`num sum-fig ${direction(valuation.gainEur)}`}>{f.signed(valuation.gainEur)} €</p>
-        <p className={`num ${direction(valuation.gainPct)}`} style={small}>{f.pct(valuation.gainPct, 1)}</p>
-      </div>
-      <div>
-        <p className="lbl" style={{ margin: 0 }}>{t('portfolio.sInv')}</p>
-        <p className="num sum-fig">{f.num(valuation.costEur)} €</p>
-        <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--ink3)' }}>{t('portfolio.demoTag')}</p>
-      </div>
-    </div>
-  );
-}
-
+// The visitor's own list, or the example portfolio until they start one.
 export function Portfolio() {
   const { t } = useT();
+  const f = useFormat();
   usePageTitle(t('portfolio.title'));
-  const { stocks, loading, error } = useStocks(SYMBOLS);
+  const myList = useMyList();
+  const [adding, setAdding] = useState(false);
+  const { stocks, loading, error } = useStocks();
   const fx = useFx();
 
-  if (loading || fx.loading) return <main className="wrap page"><Loading height={420} /></main>;
-  if (error || !fx.data) return <main className="wrap page"><ErrorNotice height={420} /></main>;
-
-  const valuation = valuePortfolio(holdings, stocks, fx.data, cashEur);
-  const missing = holdings.filter((h) => !valuation.positions.some((p) => p.holding === h)).map((h) => h.symbol);
+  const own = myList.entries.length > 0;
+  const entries = own ? myList.entries : SAMPLE_PORTFOLIO.holdings;
+  const cashEur = own ? 0 : SAMPLE_PORTFOLIO.cashEur;
+  const rates = fx.data;
+  const valuation = rates && !loading && !error ? valuePortfolio(entries, stocks, rates, cashEur) : undefined;
+  const valued = valuation && valuation.positions.length > 0;
+  const missing = entries.filter((e) => !stocks.some((s) => s.symbol === e.symbol)).map((e) => e.symbol);
 
   return (
     <main className="wrap page">
       <section>
-        <p className="lbl" style={{ margin: '0 0 10px' }}>{t('portfolio.acct')}</p>
+        <p className="lbl" style={{ margin: '0 0 10px' }}>{t(own ? 'portfolio.acctOwn' : 'portfolio.acctExample')}</p>
         <h1 className="ser h1">{t('portfolio.title')}</h1>
-        <p className="ser lead" style={{ maxWidth: '44em' }}>{t('portfolio.demo')}</p>
-        <Summary valuation={valuation} />
-        {missing.length > 0 && (
+        {!own && <p className="ser lead" style={{ maxWidth: '44em' }}>{t('portfolio.demo')}</p>}
+        <div className="ml-bar">
+          {!adding && (
+            <button type="button" className="btn pri" onClick={() => setAdding(true)}>{t(own ? 'portfolio.add' : 'portfolio.start')}</button>
+          )}
+          <ListTools entries={myList.entries} onImport={myList.importEntries} onClear={myList.clear} />
+        </div>
+        <p className="ml-saved">
+          {t('portfolio.savedHere')} <Link to="/about#privacy" className="link">{t('portfolio.savedHow')}</Link>
+        </p>
+        {adding && (
+          <div className="pnl" style={{ marginTop: 14 }}>
+            <EntryForm
+              taken={myList.entries.map((e) => e.symbol)}
+              onSave={(entry) => {
+                myList.add(entry);
+                setAdding(false);
+              }}
+              onCancel={() => setAdding(false)}
+            />
+          </div>
+        )}
+        {valued && (
+          <Summary
+            valuation={valuation}
+            valueNote={own
+              ? t('portfolio.counts', { n: valuation.positions.length, m: entries.length - valuation.positions.length })
+              : <>{t('portfolio.cashIn')} <span className="num">{f.num(cashEur)} €</span></>}
+            costNote={!own && t('portfolio.demoTag')}
+          />
+        )}
+        {valuation && missing.length > 0 && (
           <p role="status" style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink3)' }}>{t('portfolio.missing', { list: missing.join(', ') })}</p>
         )}
       </section>
-      <section className="cols">
-        <Performance positions={valuation.positions} fx={fx.data} benchmark={BENCHMARK} />
-        <Allocation slices={allocation(valuation, cashEur)} />
-      </section>
-      <Holdings valuation={valuation} fx={fx.data} />
-      <section className="cols">
-        <Alerts alerts={alerts} stocks={stocks} />
-        <Dividends valuation={valuation} />
-      </section>
+      {(loading || fx.loading) && <Loading height={420} />}
+      {!loading && !fx.loading && !valuation && <ErrorNotice height={420} />}
+      {valuation && rates && (
+        <>
+          {valued && (
+            <section className="cols">
+              <Performance positions={valuation.positions} fx={rates} benchmark={BENCHMARK} />
+              <Allocation slices={allocation(valuation, cashEur)} />
+            </section>
+          )}
+          <Holdings
+            entries={entries}
+            stocks={stocks}
+            valuation={valuation}
+            fx={rates}
+            edit={own ? { save: myList.add, remove: myList.remove } : undefined}
+          />
+          {valued && <Dividends valuation={valuation} />}
+        </>
+      )}
     </main>
   );
 }

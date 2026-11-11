@@ -1,72 +1,140 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import { shortSymbol } from '../../../shared/catalog';
-import type { FxRates } from '../../../shared/types';
+import type { FxRates, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { direction, useFormat } from '../../lib/format';
-import type { Valuation } from '../../lib/portfolio';
-import { Badge, PanelTitle } from '../ui';
+import { SORT_KEYS, storedSort, storeSort, type ListEntry, type SortKey } from '../../lib/myList';
+import { listRows, sortRows, type Row, type Valuation } from '../../lib/portfolio';
+import { ConfirmBar } from '../ConfirmBar';
+import { PanelTitle } from '../ui';
+import { EntryForm } from './EntryForm';
+import { HoldingRow } from './HoldingRow';
 
-export function Holdings({ valuation, fx }: { valuation: Valuation; fx: FxRates }) {
+interface Props {
+  entries: ListEntry[];
+  stocks: StockSummary[];
+  valuation: Valuation;
+  fx: FxRates;
+  // Set for the visitor's own list: rows can then be sorted, edited and removed.
+  edit?: { save(entry: ListEntry): void; remove(symbol: string): void };
+}
+
+export function Holdings({ entries, stocks, valuation, fx, edit }: Props) {
   const { t } = useT();
   const f = useFormat();
+  const [sort, setSort] = useState<SortKey>(edit ? storedSort : 'value');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  // Without a single position there is nothing to value: the table becomes a plain watchlist.
+  const valued = valuation.positions.length > 0;
+  const sortKeys = valued ? SORT_KEYS : SORT_KEYS.filter((k) => k === 'day' || k === 'symbol');
+  const rows = sortRows(listRows(entries, stocks, valuation), sortKeys.includes(sort) ? sort : 'symbol');
   const largest = Math.max(...valuation.positions.map((p) => p.weight));
   const currencies = [...new Set(valuation.positions.map((p) => p.stock.currency))].filter((c) => c !== 'EUR');
   const rates = currencies.map((c) => `1 EUR = ${f.num(fx.perEur[c], 4)} ${c}`).join(' · ');
 
+  function chooseSort(key: SortKey) {
+    setSort(key);
+    storeSort(key);
+  }
+
+  function item(row: Row) {
+    const { symbol } = row.entry;
+    if (edit && editing === symbol) {
+      return (
+        <div key={symbol} className="hd-item hd-open">
+          <EntryForm
+            entry={row.entry}
+            taken={[]}
+            onSave={(entry) => {
+              edit.save(entry);
+              setEditing(null);
+            }}
+            onCancel={() => setEditing(null)}
+          />
+        </div>
+      );
+    }
+    if (edit && removing === symbol) {
+      return (
+        <div key={symbol} className="hd-item hd-open">
+          <ConfirmBar
+            question={t('portfolio.rmAsk', { symbol: shortSymbol(symbol) })}
+            confirmLabel={t('portfolio.rmYes')}
+            onConfirm={() => {
+              edit.remove(symbol);
+              setRemoving(null);
+            }}
+            onCancel={() => setRemoving(null)}
+          />
+        </div>
+      );
+    }
+    return (
+      <HoldingRow
+        key={symbol}
+        row={row}
+        valued={valued}
+        largest={largest}
+        actions={edit && { edit: () => setEditing(symbol), remove: () => (row.position || row.entry.note ? setRemoving(symbol) : edit.remove(symbol)) }}
+      />
+    );
+  }
+
   return (
     <section className="pnl">
       <div className="pnl-head">
-        <PanelTitle>{t('portfolio.hold')}</PanelTitle>
-        <span style={{ fontSize: 12.5, color: 'var(--ink3)' }}>{t('portfolio.fxNote', { date: f.date(fx.date, 'UTC'), rates })}</span>
+        <PanelTitle>{t(valued ? 'portfolio.hold' : 'portfolio.watchTitle')}</PanelTitle>
+        {edit && (
+          <label className="hd-sort">
+            <span>{t('portfolio.sort')}</span>
+            <select className="fld" value={sortKeys.includes(sort) ? sort : 'symbol'} onChange={(e) => chooseSort(e.target.value as SortKey)}>
+              {sortKeys.map((key) => <option key={key} value={key}>{t(`portfolio.sortBy.${key}`)}</option>)}
+            </select>
+          </label>
+        )}
       </div>
+      <p className="pnl-note">
+        {valued ? t('portfolio.fxNote', { date: f.date(fx.date, 'UTC'), rates }) : t('portfolio.watchHint')}
+      </p>
       <div className="scroll-x" style={{ marginTop: 10 }}>
-        <div className="hd">
+        <div className={`hd${valued ? '' : ' wl'}${edit ? ' ed' : ''}`}>
           <div className="lbl tbl-head hd-cols">
             <span>{t('portfolio.cSym')}</span>
             <span>{t('portfolio.cName')}</span>
-            <span className="r c-qty">{t('portfolio.cQty')}</span>
-            <span className="r c-avg">{t('portfolio.cAvg')}</span>
+            {valued && (
+              <>
+                <span className="r c-qty">{t('portfolio.cQty')}</span>
+                <span className="r c-avg">{t('portfolio.cBuy')}</span>
+              </>
+            )}
             <span className="r">{t('portfolio.cPrice')}</span>
-            <span className="r">{t('portfolio.cVal')}</span>
+            {valued && <span className="r">{t('portfolio.cVal')}</span>}
             <span className="r">{t('portfolio.cDay')}</span>
-            <span className="r">{t('portfolio.cPl')}</span>
-            <span className="c-w">{t('portfolio.cW')}</span>
+            {valued && (
+              <>
+                <span className="r">{t('portfolio.cPl')}</span>
+                <span className="c-w">{t('portfolio.cW')}</span>
+              </>
+            )}
           </div>
-          {valuation.positions.map((p) => (
-            <Link key={p.stock.symbol} to={`/stock/${p.stock.symbol}`} className="row tbl-row hd-cols">
-              <span className="num c-sym" style={{ fontWeight: 600 }}>{shortSymbol(p.stock.symbol)}</span>
-              <span className="clip c-name">{p.stock.name}</span>
-              <span className="num r c-qty" style={{ fontSize: 13 }}>{f.num(p.holding.quantity, 0)}</span>
-              <span className="num r c-avg" style={{ fontSize: 13, color: 'var(--ink2)' }}>{f.price(p.holding.avgCost)}</span>
-              <span className="num r c-price" style={{ fontSize: 13 }}>
-                {f.price(p.stock.price)} <span className="cur">{p.stock.currency}</span>
+          {rows.map(item)}
+          {valued && (
+            <div className="tbl-row hd-cols tot" style={{ borderTop: '1px solid var(--ink3)', fontWeight: 600 }}>
+              <span className="c-sym" />
+              <span className="c-name">{t('portfolio.total')}</span>
+              <span className="c-qty" />
+              <span className="c-avg" />
+              <span className="c-price" />
+              <span className="num r c-val">{f.num(valuation.holdingsEur)} €</span>
+              <span className={`num r c-day ${direction(valuation.dayPct)}`} style={{ fontSize: 12.5, paddingRight: 8 }}>{f.pct(valuation.dayPct)}</span>
+              <span className={`num r c-pl ${direction(valuation.gainEur)}`} style={{ fontSize: 13 }}>
+                {f.signed(valuation.gainEur)} € · {f.pct(valuation.gainPct, 1)}
               </span>
-              <span className="num r c-val" style={{ fontWeight: 600 }}>{f.num(p.valueEur)} €</span>
-              <span className="r c-day"><Badge value={p.stock.changePct} /></span>
-              <span className={`num r c-pl ${direction(p.gainEur)}`} style={{ fontSize: 13 }}>
-                {f.signed(p.gainEur)} € · {f.pct(p.gainPct, 1)}
-              </span>
-              <span className="c-w hd-w">
-                <span style={{ flex: '1 1 0%', height: 6, borderRadius: 3, overflow: 'hidden', background: 'var(--sel)' }}>
-                  <span style={{ display: 'block', width: `${(p.weight / largest) * 100}%`, height: '100%', borderRadius: 3, background: 'var(--ink)' }} />
-                </span>
-                <span className="num" style={{ width: 52, fontSize: 12.5, textAlign: 'right', color: 'var(--ink2)' }}>{f.plainPct(p.weight * 100, 1)}</span>
-              </span>
-            </Link>
-          ))}
-          <div className="tbl-row hd-cols tot" style={{ borderTop: '1px solid var(--ink3)', fontWeight: 600 }}>
-            <span className="c-sym" />
-            <span className="c-name">{t('portfolio.total')}</span>
-            <span className="c-qty" />
-            <span className="c-avg" />
-            <span className="c-price" />
-            <span className="num r c-val">{f.num(valuation.holdingsEur)} €</span>
-            <span className={`num r c-day ${direction(valuation.dayPct)}`} style={{ fontSize: 12.5, paddingRight: 8 }}>{f.pct(valuation.dayPct)}</span>
-            <span className={`num r c-pl ${direction(valuation.gainEur)}`} style={{ fontSize: 13 }}>
-              {f.signed(valuation.gainEur)} € · {f.pct(valuation.gainPct, 1)}
-            </span>
-            <span className="c-w" />
-          </div>
+              <span className="c-w" />
+            </div>
+          )}
         </div>
       </div>
     </section>

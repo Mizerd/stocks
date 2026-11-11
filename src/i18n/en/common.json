@@ -11,12 +11,12 @@
   "navLabel": "Main navigation",
   "n1": "Overview",
   "n2": "Stock",
-  "n3": "Portfolio & alerts",
+  "n3": "My list",
   "n4": "Screener & compare",
   "navShort": [
     "Overview",
     "Stock",
-    "Portfolio",
+    "My list",
     "Screener"
   ],
   "delay": "US real-time · Nordic and Baltic delayed · Euronext end of day",
@@ -83,6 +83,27 @@
     ]
   ],
   "ring": "Ring the bell",
-  "selHint": "Click or tap a point to measure the change from it",
-  "selMark": "Press Enter to mark a point and measure the change from it, Escape to clear."
+  "selHint": "Click a point to measure the change from it",
+  "selHintTouch": "Touch the chart for a price. Tap the bubble to pin it, then drag to measure – or use two fingers.",
+  "selMark": "Press Enter to mark a point and measure the change from it, Escape to clear.",
+  "cancel": "Cancel",
+  "fPrivacy": "Privacy",
+  "privTitle": "Privacy",
+  "privLead": "{brand} has no accounts, sets no cookies and runs no analytics, advertising or tracking. Your browser loads nothing from other companies: fonts, scripts and data all come from this site.",
+  "privStoredH": "What is kept in this browser",
+  "privStored": "A few things are saved in this browser’s local storage so that the site remembers them on your next visit:",
+  "privItems": [
+    "the language, theme and colour-blind palette, saved when you choose them;",
+    "the stock you opened last, so that the “Stock” tab returns to it;",
+    "your personal list, saved when you add, edit or import something: the stocks, and any quantity, buy price, buy date and note you enter, plus the sort order you pick."
+  ],
+  "privLocal": "None of this is sent to {brand} or to anyone else, and the site cannot read it from any other device. One thing to know: to draw your list’s performance chart, the page asks this site’s server for the price history of the stocks in it, just as opening those stocks’ pages would. Quantities, prices paid, dates and notes never leave this device.",
+  "privKeep": "The data stays until you delete it. “Delete my list” on the My list page removes the list, and “Export” there saves a copy of it as a file. The button below removes everything {brand} has saved in this browser; so does clearing site data in the browser’s settings.",
+  "privDelete": "Delete my data from this browser",
+  "privDeleteAsk": "Delete your list and saved choices from this browser?",
+  "privDeleteYes": "Delete",
+  "privDeleted": "Deleted. {brand} now has nothing saved in this browser; choices you make from now on are saved again.",
+  "privServerH": "What reaches the server",
+  "privServer": "As with any website, loading a page sends your IP address and browser details to the hosting provider, Cloudflare, which processes them and keeps request logs in order to deliver and protect the site. Market data is collected by this site’s server from the exchanges and the ECB; your browser never contacts them.",
+  "privContact": "Questions about privacy: {email}"
 }

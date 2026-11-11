@@ -1,3 +1,5 @@
+import { STOCKS } from '../../shared/catalog';
+import { EXCHANGES, sessionState } from '../../shared/exchanges';
 import type { FxRates, Sector, StockSummary } from '../../shared/types';
 import { toEur } from './api';
 
@@ -39,3 +41,8 @@ export function turnoverEur(stock: StockSummary, fx: FxRates | undefined): numbe
   if (stock.volume == null) return null;
   return toEur(stock.volume * stock.price, stock.currency, fx);
 }
+
+const TRACKED_EXCHANGES = [...new Set(STOCKS.map((s) => s.exchange))].map((id) => EXCHANGES[id]);
+
+// True while at least one exchange with tracked stocks is in session.
+export const anyMarketOpen = (now: Date) => TRACKED_EXCHANGES.some((ex) => sessionState(ex, now).isOpen);
