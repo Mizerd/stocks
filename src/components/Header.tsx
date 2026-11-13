@@ -64,7 +64,7 @@ const ICONS: ReactNode[] = [
 
 function lastStock(): string {
   try {
-    return localStorage.getItem('lastStock') ?? 'AAPL';
+    return sessionStorage.getItem('lastStock') ?? 'AAPL';
   } catch {
     return 'AAPL';
   }

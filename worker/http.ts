@@ -1,3 +1,4 @@
+import { brand } from '../src/config/brand';
 interface Entry {
   // Served as is until `fresh`, then served stale while one refresh runs, until `expires`.
   fresh: number;
@@ -129,7 +130,8 @@ async function fetchOnce(url: string, accept: string, options: FetchOptions = {}
     body: options.form,
     headers: {
       Accept: accept,
-      'User-Agent': 'stocks-viewer/1.0',
+      // Wikimedia and other public APIs ask automated clients to say where they come from.
+      'User-Agent': `stocks-viewer/1.0 (+${brand.siteUrl})`,
       ...(options.form ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
     },
     signal: AbortSignal.timeout(options.timeoutMs ?? 8000),

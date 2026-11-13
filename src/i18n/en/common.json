@@ -94,7 +94,7 @@
   "privStored": "A few things are saved in this browser’s local storage so that the site remembers them on your next visit:",
   "privItems": [
     "the language, theme and colour-blind palette, saved when you choose them;",
-    "the stock you opened last, so that the “Stock” tab returns to it;",
+    "the stock you opened last, so that the “Stock” tab returns to it — kept only in this tab and forgotten when you close it;",
     "your personal list, saved when you add, edit or import something: the stocks, and any quantity, buy price, buy date and note you enter, plus the sort order you pick."
   ],
   "privLocal": "None of this is sent to {brand} or to anyone else, and the site cannot read it from any other device. One thing to know: to draw your list’s performance chart, the page asks this site’s server for the price history of the stocks in it, just as opening those stocks’ pages would. Quantities, prices paid, dates and notes never leave this device.",

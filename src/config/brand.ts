@@ -14,7 +14,7 @@ export const brand = {
   // Used in <title>: "Page — Name".
   titleSeparator: ' — ',
   // Absolute URL of the deployed site, for social sharing tags. Leave empty if unknown.
-  siteUrl: '',
+  siteUrl: 'https://stocks.smetonis.net',
   // Path of the social sharing image inside /public, or empty for none.
   shareImage: '',
   // Contact address shown in the privacy note on the About page. Leave empty to show none.

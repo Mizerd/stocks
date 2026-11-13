@@ -80,7 +80,7 @@ function StockPage({ inst }: { inst: Listing }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('lastStock', inst.symbol);
+      sessionStorage.setItem('lastStock', inst.symbol);
     } catch {
       // Storage can be blocked; the page works without it.
     }

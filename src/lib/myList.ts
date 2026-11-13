@@ -180,6 +180,7 @@ export function storeSort(key: SortKey) {
 export function deleteBrowserData() {
   try {
     for (const key of ALL_KEYS) localStorage.removeItem(key);
+    sessionStorage.removeItem('lastStock');
   } catch {
     // Nothing could be stored in the first place.
   }
