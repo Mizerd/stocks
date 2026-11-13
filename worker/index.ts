@@ -1,6 +1,7 @@
 import { INDICES, STOCKS, toListing } from '../shared/catalog';
 import { EXCHANGES, MARKET_EXCHANGES, MARKETS, sessionState } from '../shared/exchanges';
 import type { Instrument, Market, ProviderStatus, Range } from '../shared/types';
+import { edgeCache, takeBackgroundWork } from './http';
 import { detail, history, PROVIDERS, summary } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
@@ -10,6 +11,8 @@ import { marketData, resolveSymbol } from './universe';
 const RANGES: Range[] = ['1D', '5D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 // Keeps one request comfortably under the Workers free-plan limit of 50 subrequests.
 const MAX_SYMBOLS = 8;
+// Up to this many, their candles also go through the edge cache, which takes two more subrequests each.
+const MAX_EDGE_SYMBOLS = 4;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -61,7 +64,8 @@ async function universe(market: Market): Promise<Response> {
 
 // The browser takes live prices from /api/quotes; stock summaries add slower figures and may be a few minutes old.
 async function summaries(instruments: Instrument[], maxAge: number) {
-  const results = await Promise.allSettled(instruments.map(summary));
+  const edge = instruments.length <= MAX_EDGE_SYMBOLS;
+  const results = await Promise.allSettled(instruments.map((inst) => summary(inst, edge)));
   const items = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
   const failed = instruments.filter((_, i) => results[i].status === 'rejected').map((i) => i.symbol);
   return json({ items, failed }, 200, failed.length ? 0 : maxAge);
@@ -152,15 +156,14 @@ export default {
   // Complete responses are kept in the edge cache for as long as their Cache-Control allows.
   async fetch(request: Request, _env?: unknown, ctx?: Context): Promise<Response> {
     if (request.method !== 'GET') return json({ error: 'Read-only API' }, 405);
-    const edge = typeof caches === 'undefined' ? undefined : (caches as unknown as { default: Cache }).default;
+    const edge = edgeCache();
     const cached = await edge?.match(request);
     if (cached) return cached;
     const response = await respond(request);
-    if (edge && response.headers.get('Cache-Control')?.startsWith('public')) {
-      const stored = edge.put(request, response.clone());
-      if (ctx) ctx.waitUntil(stored);
-      else await stored;
-    }
+    const work = takeBackgroundWork();
+    if (edge && response.headers.get('Cache-Control')?.startsWith('public')) work.push(edge.put(request, response.clone()));
+    if (ctx) ctx.waitUntil(Promise.all(work));
+    else await Promise.all(work);
     return response;
   },
 };

@@ -1,6 +1,6 @@
 import { toListing } from '../shared/catalog';
 import type { Candle, History, Instrument, ProviderId, Range, StockDetail, StockSummary } from '../shared/types';
-import { memo } from './http';
+import { memo, shared } from './http';
 import { baltic } from './providers/baltic';
 import { euronext } from './providers/euronext';
 import { nasdaq } from './providers/nasdaq';
@@ -18,14 +18,16 @@ const RANGE_DAYS: Record<Exclude<Range, '1D' | 'YTD'>, number> = {
   '5D': 7, '1W': 7, '1M': 31, '3M': 92, '6M': 183, '1Y': 366, '5Y': 5 * 366,
 };
 
-// Parsed candles are kept per isolate, so a warm isolate never downloads or parses a history twice.
-function daily(inst: Instrument, years: number): Promise<Candle[]> {
-  return memo(`daily:${inst.symbol}:${years}`, 900, () => PROVIDERS[inst.provider].daily(inst, years));
+// Parsed candles are kept per isolate. The summary window feeds most routes, so with `edge` it is also
+// kept in the data centre's edge cache, at the cost of two more subrequests.
+function daily(inst: Instrument, years: number, edge = true): Promise<Candle[]> {
+  const keep = edge && years === SUMMARY_YEARS ? shared : memo;
+  return keep(`daily:${inst.symbol}:${years}`, 900, () => PROVIDERS[inst.provider].daily(inst, years));
 }
 
-export function summary(inst: Instrument): Promise<StockSummary> {
+export function summary(inst: Instrument, edge = true): Promise<StockSummary> {
   return memo(`summary:${inst.symbol}`, 60, async () => {
-    const candles = await daily(inst, SUMMARY_YEARS);
+    const candles = await daily(inst, SUMMARY_YEARS, edge);
     const quote = await PROVIDERS[inst.provider].quote(inst, candles);
     return { ...toListing(inst), ...quote, ...yearStats(candles, quote.price) };
   });

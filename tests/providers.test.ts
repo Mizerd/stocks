@@ -1,14 +1,14 @@
-import { strToU8, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { num } from '../worker/http';
 import { STOCKS } from '../shared/catalog';
-import { baltic, parseBalticShareList, parseBalticXlsx } from '../worker/providers/baltic';
+import { baltic, parseBalticSheet, parseBalticShareList } from '../worker/providers/baltic';
 import { parseEcbRates } from '../worker/providers/ecb';
 import { liveQuote, parseEuronextCsv, parseEuronextList } from '../worker/providers/euronext';
-import { bucket, companyName, parseNasdaqRows, parseNasdaqTime, parseUsScreener, parseWatchlist } from '../worker/providers/nasdaq';
+import { bucket, companyName, nasdaq, parseNasdaqRows, parseNasdaqTime, parseUsScreener, parseWatchlist } from '../worker/providers/nasdaq';
 import { parseNewsFeed } from '../worker/providers/news';
 import { parseNordicChart, parseNordicScreener } from '../worker/providers/nordic';
 import { parseLangLink, parseSitelinks, parseSummary, wikidataQuery } from '../worker/providers/wikipedia';
+import { unzipFile } from '../worker/unzip';
 
 describe('num', () => {
   it('reads provider number formats', () => {
@@ -70,6 +70,26 @@ describe('Nasdaq', () => {
       { t: minute, o: 9, h: 9, l: 9, c: 9, v: null },
       { t: 3 * minute, o: 12, h: 12, l: 12, c: 12, v: null },
     ]);
+  });
+
+  it('reads the one-day chart in New York time, one bar a minute, within the session', async () => {
+    const realFetch = globalThis.fetch;
+    // Wall-clock New York time written as if it were UTC, with seconds.
+    const wall = (iso: string, y: number) => ({ x: Date.parse(iso), y });
+    globalThis.fetch = async () => new Response(JSON.stringify({ data: { previousClose: '1,000.00', chart: [
+      wall('2026-07-01T09:29:00Z', 1), wall('2026-07-01T09:30:15Z', 2), wall('2026-07-01T16:00:00Z', 3), wall('2026-07-01T16:01:00Z', 4),
+      wall('2026-11-10T09:31:40Z', 5),
+    ] } }));
+    try {
+      const day = await nasdaq.intraday(STOCKS.find((s) => s.symbol === 'AAPL')!);
+      expect(day!.prevClose).toBe(1000);
+      // July is daylight time (UTC-4), November standard time (UTC-5).
+      expect(day!.candles.map((c) => [new Date(c.t).toISOString(), c.c])).toEqual([
+        ['2026-07-01T13:30:00.000Z', 2], ['2026-07-01T20:00:00.000Z', 3], ['2026-11-10T14:31:00.000Z', 5],
+      ]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 
   it('reads the stock screener and leaves out preferreds, notes and warrants', () => {
@@ -143,9 +163,9 @@ describe('Euronext', () => {
       ['<a href="/en/product/equities/NL0000313286-XAMS">ACOMO</a>', 'NL0000313286', 'ACOMO', 'XAMS', ...cell('23.15', '-', '14:03', '11 Nov 2026')],
       ['<a href="/en/product/equities/NL00150002R5-XAMS">CABKA</a>', 'NL00150002R5', 'DSC2S', 'XAMS', '<div>-</span></div>', '<div>-</div>', '<div>-<span class="tooltiptext"></span></div>'],
     ] }, 'XAMS', new Set(['NL0010273215-XAMS', 'NL00150002R5-XAMS']));
-    expect([...rows.keys()]).toEqual(['NL0010273215-XAMS']);
+    expect(Object.keys(rows)).toEqual(['NL0010273215-XAMS']);
     // 14:11 in Amsterdam in November is 13:11 UTC.
-    expect(rows.get('NL0010273215-XAMS')).toEqual({ price: 1402.2, changePct: 3.03, time: '2026-11-11T13:11:00.000Z' });
+    expect(rows['NL0010273215-XAMS']).toEqual({ price: 1402.2, changePct: 3.03, time: '2026-11-11T13:11:00.000Z' });
   });
 
   it('works out the change from the price and the percentage', () => {
@@ -186,16 +206,16 @@ describe('Nasdaq Baltic', () => {
       <td><span title="Consumer Staples">CON</span></td><td><span title="Food">FOO</span></td><td>VLN</td></tr>`;
     const list = parseBalticShareList(html);
     expect(list.asOf).toBe('10.11.2026 16:22');
-    expect(list.rows.get('LT0000115768')).toEqual({
+    expect(list.rows['LT0000115768']).toEqual({
       isin: 'LT0000115768', ticker: 'IGN1L', name: 'Ignitis', industry: 'Utilities', home: 'VLN',
       last: 21.45, change: -0.05, changePct: -0.23, volume: 16933, prevClose: 21.5,
     });
     // No trade today: the last price stays, the change is unknown.
-    expect(list.rows.get('LT0000111676')).toMatchObject({ name: 'Pieno & žvaigždės', last: 2.1, change: null, volume: 0 });
+    expect(list.rows['LT0000111676']).toMatchObject({ name: 'Pieno & žvaigždės', last: 2.1, change: null, volume: 0 });
   });
 
   it('finds no rows in a refusal page', () => {
-    expect(parseBalticShareList('<html>Request unsuccessful.</html>').rows.size).toBe(0);
+    expect(parseBalticShareList('<html>Request unsuccessful.</html>').rows).toEqual({});
   });
 
   it('falls back to the last daily close when the live list is refused', async () => {
@@ -214,13 +234,13 @@ describe('Nasdaq Baltic', () => {
     }
   });
 
-  it('parses the price history spreadsheet', () => {
+  it('parses the price history sheet', () => {
     const sheet = `<worksheet><sheetData>
       <row r="1"><c r="A1" t="s"><v>0</v></c><c r="F1" t="s"><v>5</v></c></row>
       <row r="2"><c r="A2"><v>46336.0</v></c><c r="C2"><v>21.45</v></c><c r="D2"><v>21.5</v></c><c r="E2"><v>21.4</v></c><c r="F2"><v>21.5</v></c><c r="G2"><v>21.45</v></c><c r="N2"><v>16933.0</v></c></row>
       <row r="3"><c r="A3"><v>46335.0</v></c><c r="C3"><v>21.55</v></c><c r="D3"><v>21.55</v></c><c r="E3"><v>21.45</v></c><c r="F3"><v>21.5</v></c><c r="N3"><v>5836.0</v></c></row>
     </sheetData></worksheet>`;
-    const candles = parseBalticXlsx(zipSync({ 'xl/worksheets/sheet1.xml': strToU8(sheet) }));
+    const candles = parseBalticSheet(sheet);
     expect(candles).toHaveLength(2);
     expect(candles[1]).toEqual({ t: Date.UTC(2026, 10, 10), o: 21.45, h: 21.5, l: 21.4, c: 21.45, v: 16933 });
     // The older row has no Last price, so its Close is used.
@@ -290,5 +310,59 @@ describe('Wikipedia', () => {
     expect(parseLangLink(JSON.stringify(linked))).toBe('Ignitis grupė');
     expect(parseLangLink(JSON.stringify({ query: { pages: { 123: { title: 'ASML' } } } }))).toBeNull();
     expect(parseLangLink(JSON.stringify({ batchcomplete: '' }))).toBeNull();
+  });
+});
+
+// A minimal zip archive: local headers, file data, central directory and end record (CRCs left at zero).
+async function zipOf(files: Record<string, string>, deflate: boolean): Promise<Uint8Array<ArrayBuffer>> {
+  const encoder = new TextEncoder();
+  const parts: Uint8Array<ArrayBuffer>[] = [];
+  const directory: Uint8Array<ArrayBuffer>[] = [];
+  let offset = 0;
+  for (const [name, text] of Object.entries(files)) {
+    const raw = encoder.encode(text);
+    const data = deflate
+      ? new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer())
+      : raw;
+    const fileName = encoder.encode(name);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(8, deflate ? 8 : 0, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, raw.length, true);
+    local.setUint16(26, fileName.length, true);
+    const entry = new DataView(new ArrayBuffer(46));
+    entry.setUint32(0, 0x02014b50, true);
+    entry.setUint16(10, deflate ? 8 : 0, true);
+    entry.setUint32(20, data.length, true);
+    entry.setUint32(24, raw.length, true);
+    entry.setUint16(28, fileName.length, true);
+    entry.setUint32(42, offset, true);
+    parts.push(new Uint8Array(local.buffer), fileName, data);
+    directory.push(new Uint8Array(entry.buffer), fileName);
+    offset += 30 + fileName.length + data.length;
+  }
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(10, directory.length / 2, true);
+  end.setUint32(12, directory.reduce((n, b) => n + b.length, 0), true);
+  end.setUint32(16, offset, true);
+  return new Uint8Array(await new Blob([...parts, ...directory, new Uint8Array(end.buffer)]).arrayBuffer());
+}
+
+describe('unzipFile', () => {
+  const files = { '[Content_Types].xml': '<Types/>', 'xl/worksheets/sheet1.xml': '<worksheet>Ignitis grupė</worksheet>' };
+
+  it('inflates the one file asked for', async () => {
+    expect(await unzipFile(await zipOf(files, true), 'xl/worksheets/sheet1.xml')).toBe('<worksheet>Ignitis grupė</worksheet>');
+  });
+
+  it('reads stored files', async () => {
+    expect(await unzipFile(await zipOf(files, false), '[Content_Types].xml')).toBe('<Types/>');
+  });
+
+  it('finds nothing in a missing file or a page that is not a zip', async () => {
+    expect(await unzipFile(await zipOf(files, true), 'xl/worksheets/sheet2.xml')).toBeNull();
+    expect(await unzipFile(new TextEncoder().encode('<html>Request unsuccessful.</html>'), 'xl/worksheets/sheet1.xml')).toBeNull();
   });
 });

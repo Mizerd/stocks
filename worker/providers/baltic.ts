@@ -1,7 +1,7 @@
-import { unzipSync, strFromU8 } from 'fflate';
 import type { Candle, Instrument, Quote } from '../../shared/types';
 import { EXCHANGES, zonedParts, zonedTime, type Exchange } from '../../shared/exchanges';
-import { fetchBytes, fetchText, daysAgo, isoDay, memo, num, UpstreamError } from '../http';
+import { fetchBytes, fetchText, daysAgo, isoDay, num, shared, UpstreamError } from '../http';
+import { unzipFile } from '../unzip';
 import { bucket } from './nasdaq';
 import { emptyFundamentals, NO_EXTRAS, type DetailExtras, type Intraday, type Provider } from './provider';
 
@@ -27,26 +27,27 @@ const decode = (text: string) =>
 const cellText = (html: string) => decode(html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
 
 // The public share list page (main, secondary and First North lists): one table row per share, keyed by ISIN.
-export function parseBalticShareList(html: string): { asOf: string | null; rows: Map<string, BalticRow> } {
-  const rows = new Map<string, BalticRow>();
+export function parseBalticShareList(html: string): { asOf: string | null; rows: Record<string, BalticRow> } {
+  const rows: Record<string, BalticRow> = {};
   for (const tr of html.match(/<tr>[\s\S]*?<\/tr>/g) ?? []) {
     const isin = tr.match(/instrument\/([A-Z]{2}[A-Z0-9]{10})\/trading/)?.[1];
     if (!isin) continue;
     const cells = tr.match(/<td[^>]*>[\s\S]*?<\/td>/g) ?? [];
-    const text = cells.map(cellText);
+    // Only the cells read below are cleaned up.
+    const text = (i: number) => cells[i] && cellText(cells[i]);
     // Company, Ticker, Last, +/-, %, Bid, Ask, Trades, Volume, Turnover, Previous close, Industry, Supersector, Home, ...
-    rows.set(isin, {
+    rows[isin] = {
       isin,
-      ticker: text[1],
-      name: decode(tr.match(/data-sort-by="([^"]*)"/)?.[1] ?? text[0]),
+      ticker: text(1),
+      name: decode(tr.match(/data-sort-by="([^"]*)"/)?.[1] ?? text(0)),
       industry: decode(cells[11]?.match(/title="([^"]*)"/)?.[1] ?? ''),
-      home: text[13],
-      last: num(text[2]),
-      change: num(text[3]),
-      changePct: num(text[4]),
-      volume: num(text[8]),
-      prevClose: num(text[10]),
-    });
+      home: text(13),
+      last: num(text(2)),
+      change: num(text(3)),
+      changePct: num(text(4)),
+      volume: num(text(8)),
+      prevClose: num(text(10)),
+    };
   }
   const asOf = html.match(/Last update:\s*(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})/)?.[1] ?? null;
   return { asOf, rows };
@@ -66,20 +67,22 @@ export function quoteTime(asOf: string | null, ex: Exchange): string {
   return stamp < close ? stamp : close;
 }
 
-// The exchange's price-history export is an .xlsx file. Columns:
+// The exchange's price-history export is an .xlsx file; this reads its only sheet. Columns:
 // Date, Average, Open, High, Low, Close, Last (the reported price), Adj. factor, Last adjusted, Change %, Bid, Ask, Trades, Volume, ...
-export function parseBalticXlsx(file: Uint8Array): Candle[] {
-  const sheet = unzipSync(file, { filter: (f) => f.name === 'xl/worksheets/sheet1.xml' })['xl/worksheets/sheet1.xml'];
-  if (!sheet) throw new UpstreamError('Unexpected Nasdaq Baltic export format');
+export function parseBalticSheet(xml: string): Candle[] {
   // One pass over the numeric cells of the needed columns; text cells (t="s") have another shape and never match.
-  const rows = new Map<string, Record<string, number>>();
-  for (const m of strFromU8(sheet).matchAll(/<c r="([ACDEFGN])(\d+)"(?: s="\d+")?><v>([^<]*)<\/v>/g)) {
-    let row = rows.get(m[2]);
-    if (!row) rows.set(m[2], (row = {}));
-    row[m[1]] = Number(m[3]);
+  // A row's cells sit together, so a new row number starts a new row.
+  const rows: Record<string, number>[] = [];
+  let rowNumber = '';
+  for (const m of xml.matchAll(/<c r="([ACDEFGN])(\d+)"(?: s="\d+")?><v>([^<]*)<\/v>/g)) {
+    if (m[2] !== rowNumber) {
+      rowNumber = m[2];
+      rows.push({});
+    }
+    rows[rows.length - 1][m[1]] = Number(m[3]);
   }
   const candles: Candle[] = [];
-  for (const { A: serial, C, D, E, F, G, N } of rows.values()) {
+  for (const { A: serial, C, D, E, F, G, N } of rows) {
     const close = G || F;
     if (!serial || !close) continue;
     candles.push({
@@ -94,11 +97,11 @@ export function parseBalticXlsx(file: Uint8Array): Candle[] {
   return candles.sort((a, b) => a.t - b.t);
 }
 
-// Parsed once a minute per isolate; both the bulk quotes and single quotes read it.
+// Parsed once a minute per data centre; both the bulk quotes and single quotes read it.
 export function balticShareList() {
-  return memo('baltic:shares', 60, async () => {
+  return shared('baltic:shares', 60, async () => {
     const list = parseBalticShareList(await fetchText(`${BASE}/shares`, 'text/html'));
-    if (list.rows.size === 0) throw new UpstreamError('Nasdaq Baltic share list is unavailable');
+    if (Object.keys(list.rows).length === 0) throw new UpstreamError('Nasdaq Baltic share list is unavailable');
     return list;
   });
 }
@@ -134,7 +137,7 @@ export const baltic: Provider = {
     }
 
     const list = await balticShareList().catch(() => null);
-    const row = list?.rows.get(inst.providerId);
+    const row = list?.rows[inst.providerId];
     const lastBar = daily[daily.length - 1];
     const prevBar = daily[daily.length - 2];
 
@@ -172,7 +175,9 @@ export const baltic: Provider = {
     if (inst.kind === 'index') return indexSeries(inst, years);
     const from = isoDay(daysAgo(Math.round(years * 365.25)));
     const url = `${BASE}/instrument/${inst.providerId}/trading/chart_price_download?start=${from}&end=${isoDay(new Date())}`;
-    return parseBalticXlsx(await fetchBytes(url));
+    const sheet = await unzipFile(await fetchBytes(url), 'xl/worksheets/sheet1.xml');
+    if (sheet === null) throw new UpstreamError('Unexpected Nasdaq Baltic export format');
+    return parseBalticSheet(sheet);
   },
 
   async intraday(inst): Promise<Intraday | null> {

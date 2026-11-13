@@ -1,7 +1,7 @@
 import { STOCKS } from '../../shared/catalog';
 import type { Candle, Instrument, Quote } from '../../shared/types';
 import { EXCHANGES, zonedTime } from '../../shared/exchanges';
-import { daysAgo, fetchText, isoDay, memo, num, UpstreamError } from '../http';
+import { daysAgo, fetchText, isoDay, num, shared, UpstreamError } from '../http';
 import { emptyFundamentals, NO_EXTRAS, type DetailExtras, type Provider } from './provider';
 
 const BASE = 'https://live.euronext.com/en/ajax/AwlHistoricalPrice/getFullDownloadAjax';
@@ -22,8 +22,8 @@ const COVERED = new Set(STOCKS.filter((s) => s.provider === 'euronext').map((s) 
 // The stock directory's table data for one market: one row per line, keyed by its "ISIN-MIC" product code.
 // Cells: name link, ISIN, symbol, market, "EUR <span>price</span>", "1.46%", "13:46 CET<span>11 Nov 2026</span>".
 // Only the `wanted` lines are read.
-export function parseEuronextList(json: any, mic: string, wanted: ReadonlySet<string>): Map<string, EuronextRow> {
-  const rows = new Map<string, EuronextRow>();
+export function parseEuronextList(json: any, mic: string, wanted: ReadonlySet<string>): Record<string, EuronextRow> {
+  const rows: Record<string, EuronextRow> = {};
   // Most rows share a handful of trade minutes; each is converted once.
   const instants = new Map<string, string>();
   for (const cells of json?.aaData ?? []) {
@@ -36,18 +36,18 @@ export function parseEuronextList(json: any, mic: string, wanted: ReadonlySet<st
     const day = `${when[4]}-${month}-${when[2].padStart(2, '0')}`;
     const stamp = `${day} ${when[1]}`;
     if (!instants.has(stamp)) instants.set(stamp, zonedTime(day, when[1], 'Europe/Paris').toISOString());
-    rows.set(id, { price, changePct: num(String(cells[5]).replace(/<[^>]+>/g, '')) ?? 0, time: instants.get(stamp)! });
+    rows[id] = { price, changePct: num(String(cells[5]).replace(/<[^>]+>/g, '')) ?? 0, time: instants.get(stamp)! };
   }
   return rows;
 }
 
 // One market's whole list (a few hundred rows) in one call. The site is slow to answer, hence the long timeout.
-export function euronextList(mic: string): Promise<Map<string, EuronextRow>> {
-  return memo(`euronext:list:${mic}`, 60, async () => {
+export function euronextList(mic: string): Promise<Record<string, EuronextRow>> {
+  return shared(`euronext:list:${mic}`, 60, async () => {
     const form = 'iDisplayStart=0&iDisplayLength=2000';
     const json = JSON.parse(await fetchText(`${LIST}?mics=${mic}`, 'application/json', { form, timeoutMs: 20000 }));
     const rows = parseEuronextList(json, mic, COVERED);
-    if (rows.size === 0) throw new UpstreamError(`Euronext returned no ${mic} shares`);
+    if (Object.keys(rows).length === 0) throw new UpstreamError(`Euronext returned no ${mic} shares`);
     return rows;
   });
 }
@@ -57,7 +57,7 @@ const listMic = (inst: Instrument) => inst.providerId.split('-')[1];
 async function euronextLive(inst: Instrument): Promise<EuronextRow | undefined> {
   const mic = listMic(inst);
   if (!LIST_MICS.includes(mic)) return undefined;
-  return (await euronextList(mic).catch(() => undefined))?.get(inst.providerId);
+  return (await euronextList(mic).catch(() => undefined))?.[inst.providerId];
 }
 
 // Euronext's "download historical data" CSV: four header lines, then

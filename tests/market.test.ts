@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { findInstrument, STOCKS } from '../shared/catalog';
 import { EXCHANGES, isCurrentQuote, lastSessionTime, sessionState, tradingDayOfYear, zonedTime } from '../shared/exchanges';
 import type { Candle, Listing } from '../shared/types';
+import { shared, takeBackgroundWork } from '../worker/http';
 import worker from '../worker/index';
 import { toWeekly, yearStats } from '../worker/market';
-import { tickerSymbol, toSector } from '../worker/universe';
+import { resolveSymbol, tickerSymbol, toSector } from '../worker/universe';
 
 const DAY = 24 * 3600 * 1000;
 const bar = (t: number, c: number): Candle => ({ t, o: c, h: c + 1, l: c - 1, c, v: 100 });
@@ -169,5 +170,85 @@ describe('API routing', () => {
 
   it('is read-only', async () => {
     expect((await get('/api/fx', 'POST')).status).toBe(405);
+  });
+});
+
+describe('edge cache of parsed data', () => {
+  // The Workers Cache API, kept in memory.
+  function installCache() {
+    const stored = new Map<string, Response>();
+    const calls: string[] = [];
+    const edge = {
+      async match(url: string) {
+        calls.push(`match ${url}`);
+        return stored.get(url)?.clone();
+      },
+      async put(url: string, response: Response) {
+        calls.push(`put ${url}`);
+        stored.set(url, response);
+      },
+    };
+    vi.stubGlobal('caches', { default: edge });
+    return { stored, calls };
+  }
+
+  afterEach(() => {
+    takeBackgroundWork();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('stores what a cold isolate parsed, with its expiry', async () => {
+    const { stored, calls } = installCache();
+    expect(await shared('test:miss', 60, async () => ({ rows: [1, 2] }))).toEqual({ rows: [1, 2] });
+    await Promise.all(takeBackgroundWork());
+    const url = 'https://cache.internal/test%3Amiss';
+    expect(calls).toEqual([`match ${url}`, `put ${url}`]);
+    const copy = stored.get(url)!;
+    expect(await copy.clone().json()).toEqual({ rows: [1, 2] });
+    expect(copy.headers.get('Cache-Control')).toBe('max-age=60');
+    expect(Date.parse(copy.headers.get('Expires')!)).toBeGreaterThan(Date.now() + 58_000);
+  });
+
+  it('reads an edge copy instead of loading, and keeps it only as long as that copy is good for', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-13T12:00:00Z'));
+    const { stored, calls } = installCache();
+    const expires = new Date('2026-11-13T12:00:10Z').toUTCString();
+    stored.set('https://cache.internal/test%3Ahit', new Response('{"a":1}', { headers: { Expires: expires } }));
+    let loads = 0;
+    const load = async () => ({ a: ++loads + 1 });
+    expect(await shared('test:hit', 60, load)).toEqual({ a: 1 });
+    expect(await shared('test:hit', 60, load)).toEqual({ a: 1 });
+    expect(calls).toHaveLength(1);
+    vi.setSystemTime(new Date('2026-11-13T12:00:11Z'));
+    stored.clear();
+    expect(await shared('test:hit', 60, load)).toEqual({ a: 2 });
+    expect(loads).toBe(1);
+  });
+
+  it('works without a cache, as in tests and local scripts', async () => {
+    expect(await shared('test:none', 60, async () => [3])).toEqual([3]);
+    expect(takeBackgroundWork()).toEqual([]);
+  });
+});
+
+describe('symbol lookup', () => {
+  it('finds a US share from the screener lists without fetching live quotes', async () => {
+    const realFetch = globalThis.fetch;
+    const called: string[] = [];
+    globalThis.fetch = async (url: string | URL | Request) => {
+      called.push(String(url));
+      const row = (symbol: string, name: string) =>
+        ({ symbol, name, lastsale: '$100.00', netchange: '1', pctchange: '1%', volume: '1', marketCap: '1', sector: 'Consumer Staples', industry: '' });
+      const rows = String(url).includes('exchange=nyse') ? [row('WMT', 'Walmart Inc. Common Stock')] : [row('COST', 'Costco Wholesale Corporation Common Stock')];
+      return new Response(JSON.stringify({ data: { rows } }));
+    };
+    try {
+      expect(await resolveSymbol('wmt')).toMatchObject({ symbol: 'WMT', name: 'Walmart Inc.', exchange: 'XNYS', sector: 'S', provider: 'nasdaq' });
+      expect(called.some((url) => url.includes('watchlist'))).toBe(false);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });

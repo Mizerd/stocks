@@ -1,6 +1,6 @@
 import type { Candle, Instrument, Quote } from '../../shared/types';
 import { EXCHANGES, zonedTime } from '../../shared/exchanges';
-import { cachedJson, daysAgo, fetchText, isoDay, num, UpstreamError } from '../http';
+import { cachedJson, daysAgo, fetchText, isoDay, num, shared, UpstreamError } from '../http';
 import { bucket } from './nasdaq';
 import { NO_EXTRAS, type DetailExtras, type Intraday, type Provider } from './provider';
 
@@ -118,9 +118,12 @@ export function parseNordicScreener(json: any): NordicRow[] {
   }));
 }
 
-export async function nordicScreener(market: NordicMarket): Promise<NordicRow[]> {
-  const url = `${API}/screener/shares?category=MAIN_MARKET&tableonly=true&market=${market}`;
-  const rows = parseNordicScreener(JSON.parse(await fetchText(url)));
-  if (rows.length === 0) throw new UpstreamError(`Nasdaq Nordic screener returned no ${market} shares`);
-  return rows;
+// Parsed once a minute per data centre: the quotes, the universe and symbol lookups read it.
+export function nordicScreener(market: NordicMarket): Promise<NordicRow[]> {
+  return shared(`nordic:screener:${market}`, 60, async () => {
+    const url = `${API}/screener/shares?category=MAIN_MARKET&tableonly=true&market=${market}`;
+    const rows = parseNordicScreener(JSON.parse(await fetchText(url)));
+    if (rows.length === 0) throw new UpstreamError(`Nasdaq Nordic screener returned no ${market} shares`);
+    return rows;
+  });
 }

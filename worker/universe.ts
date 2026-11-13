@@ -20,6 +20,8 @@ interface Source {
   // Symbol endings this source covers; '' is a bare US ticker.
   suffixes: string[];
   load(): Promise<Listed[]>;
+  // The instruments alone, where they come cheaper than with prices.
+  instruments?(): Promise<Instrument[]>;
 }
 
 // The sources' own sector names (Nasdaq US, Nasdaq Nordic and Nasdaq Baltic use the same words).
@@ -46,9 +48,11 @@ export const tickerSymbol = (ticker: string, suffix: string) => ticker.trim().re
 const curated = new Map(STOCKS.map((inst) => [`${inst.provider}:${inst.providerId}`, inst]));
 
 // A hand-checked catalogue entry wins over what the bulk list says about the same share.
+const known = (inst: Instrument) => curated.get(`${inst.provider}:${inst.providerId}`) ?? inst;
+
 function listed(inst: Instrument, quote: Omit<BulkQuote, 'symbol'> | null): Listed {
-  const known = curated.get(`${inst.provider}:${inst.providerId}`) ?? inst;
-  return { inst: known, quote: quote && { symbol: known.symbol, ...quote } };
+  const entry = known(inst);
+  return { inst: entry, quote: quote && { symbol: entry.symbol, ...quote } };
 }
 
 // Bulk lists without a timestamp: the price is as of now while the session runs, else as of its close.
@@ -74,28 +78,46 @@ function screenerClose(listed: ScreenerRow | undefined, live: WatchlistRow | und
 // Live quotes for this many US shares, the catalogue's and then the largest: 20 per call.
 const US_LIVE = 200;
 
+interface UsRow {
+  exchange: ExchangeId;
+  row: ScreenerRow;
+  id: string;
+}
+
+async function usRows(): Promise<UsRow[]> {
+  const lists = await Promise.all((['XNAS', 'XNYS'] as const).map(async (exchange) => ({ exchange, rows: await usScreener(exchange) })));
+  return lists.flatMap(({ exchange, rows }) => rows.map((row) => ({ exchange, row, id: row.ticker.replace('/', '.') })));
+}
+
+const usInstrument = ({ exchange, row, id }: UsRow): Instrument => ({
+  symbol: tickerSymbol(row.ticker, ''), name: row.name, kind: 'stock', exchange, currency: 'USD', region: 'US',
+  sector: toSector(row.sector, row.industry, row.ticker), provider: 'nasdaq', providerId: id,
+});
+
 const usSource: Source = {
   id: 'US',
   market: 'us',
   suffixes: [''],
+  // Symbol lookups need the screener lists only, not the live quotes.
+  async instruments() {
+    return (await usRows()).map((r) => known(usInstrument(r)));
+  },
   async load() {
-    const lists = await Promise.all((['XNAS', 'XNYS'] as const).map(async (exchange) => ({ exchange, rows: await usScreener(exchange) })));
-    const rows = lists.flatMap(({ exchange, rows }) => rows.map((row) => ({ exchange, row, id: row.ticker.replace('/', '.') })));
+    const rows = await usRows();
     const catalogue = new Set(STOCKS.filter((s) => s.provider === 'nasdaq').map((s) => s.providerId));
-    const wanted = [...rows]
-      .sort((a, b) => Number(catalogue.has(b.id)) - Number(catalogue.has(a.id)) || (b.row.marketCap ?? 0) - (a.row.marketCap ?? 0))
+    const wanted = rows
+      .map(({ id, row }) => ({ id, listed: Number(catalogue.has(id)), cap: row.marketCap ?? 0 }))
+      .sort((a, b) => b.listed - a.listed || b.cap - a.cap)
       .slice(0, US_LIVE)
       .map((r) => r.id);
     const live = new Map((await usWatchlist(wanted).catch(() => [])).map((w) => [w.ticker, w]));
     const reference = rows.find((r) => live.get(r.id)?.change);
     const closeTime = screenerClose(reference?.row, reference && live.get(reference.id));
-    return rows.map(({ exchange, row, id }) => {
-      const quote = live.get(id);
+    return rows.map((r) => {
+      const { row } = r;
+      const quote = live.get(r.id);
       return listed(
-        {
-          symbol: tickerSymbol(row.ticker, ''), name: row.name, kind: 'stock', exchange, currency: 'USD', region: 'US',
-          sector: toSector(row.sector, row.industry, row.ticker), provider: 'nasdaq', providerId: id,
-        },
+        usInstrument(r),
         quote
           ? { price: quote.price, change: quote.change, changePct: quote.changePct, volume: quote.volume, marketCap: row.marketCap, time: quote.time, freshness: 'realtime' }
           : { price: row.price, change: row.change, changePct: row.changePct, volume: row.volume, marketCap: row.marketCap, time: closeTime, freshness: 'eod' },
@@ -146,13 +168,14 @@ const balticSource: Source = {
   suffixes: ['.VS', '.RG', '.TL'],
   async load() {
     const list = await balticShareList();
-    return [...list.rows.values()].flatMap((r) => {
+    const times = new Map(Object.values(BALTIC).map(({ exchange }) => [exchange, quoteTime(list.asOf, EXCHANGES[exchange])]));
+    return Object.values(list.rows).flatMap((r) => {
       const home = BALTIC[r.home];
       if (!home) return [];
       // A share without a trade today still shows its last price, with no change.
       const quote = r.last === null ? null : {
         price: r.last, change: r.change ?? 0, changePct: r.changePct ?? 0, volume: r.volume, marketCap: null,
-        time: quoteTime(list.asOf, EXCHANGES[home.exchange]), freshness: 'delayed' as const,
+        time: times.get(home.exchange)!, freshness: 'delayed' as const,
       };
       return [listed(
         {
@@ -179,7 +202,7 @@ const euronextSource: Source = {
       euronextStocks.map(async (inst): Promise<Listed> => {
         const mic = inst.providerId.split('-')[1];
         if (lists.has(mic)) {
-          const row = lists.get(mic)?.get(inst.providerId);
+          const row = lists.get(mic)?.[inst.providerId];
           return listed(inst, row ? { ...liveQuote(row), volume: null, marketCap: null, time: row.time, freshness: 'delayed' } : null);
         }
         // Lines outside the live lists (SAP's EuroTLX line) are quoted from their end-of-day file.
@@ -235,9 +258,9 @@ export async function resolveSymbol(input: string): Promise<Instrument | undefin
   const symbol = input.trim().toUpperCase();
   if (!isSymbolShaped(symbol)) return undefined;
   for (const source of SOURCES.filter((s) => s.suffixes.includes(suffixOf(symbol)))) {
-    const items = await loadSource(source).catch(() => []);
-    const match = items.find((item) => item.inst.symbol === symbol);
-    if (match) return match.inst;
+    const instruments = source.instruments?.() ?? loadSource(source).then((items) => items.map((item) => item.inst));
+    const match = (await instruments.catch(() => [])).find((inst) => inst.symbol === symbol);
+    if (match) return match;
   }
   return undefined;
 }

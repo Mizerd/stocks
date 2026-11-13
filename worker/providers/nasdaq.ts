@@ -1,6 +1,6 @@
 import type { Candle, ExchangeId, Instrument, QuarterFigure, Quote } from '../../shared/types';
 import { zonedTime } from '../../shared/exchanges';
-import { cachedJson, daysAgo, fetchText, isoDay, num, UpstreamError } from '../http';
+import { cachedJson, daysAgo, fetchText, isoDay, num, shared, UpstreamError } from '../http';
 import type { DetailExtras, Intraday, Provider } from './provider';
 
 const API = 'https://api.nasdaq.com/api';
@@ -113,12 +113,20 @@ export const nasdaq: Provider = {
     const data = JSON.parse(await fetchText(`${API}/quote/${inst.providerId}/chart?assetclass=${assetClass(inst)}`)).data;
     if (!data) return null;
     // The feed stamps points with New York wall-clock time written as if it were UTC.
+    // Clocks change at night, so one offset per day holds for the whole session.
     const points: { t: number; price: number }[] = [];
+    const offsets = new Map<string, number>();
     for (const p of data.chart ?? []) {
       const wall = new Date(p.x).toISOString();
       const hhmm = wall.slice(11, 16);
       if (hhmm < '09:30' || hhmm > '16:00') continue;
-      points.push({ t: zonedTime(wall.slice(0, 10), hhmm, 'America/New_York').getTime(), price: p.y });
+      const day = wall.slice(0, 10);
+      let offset = offsets.get(day);
+      if (offset === undefined) {
+        offset = zonedTime(day, '12:00', 'America/New_York').getTime() - Date.parse(`${day}T12:00:00Z`);
+        offsets.set(day, offset);
+      }
+      points.push({ t: Math.floor(p.x / 60000) * 60000 + offset, price: p.y });
     }
     return { candles: bucket(points, 1), prevClose: num(data.previousClose) };
   },
@@ -203,13 +211,16 @@ export function parseUsScreener(json: any): ScreenerRow[] {
   return rows;
 }
 
-export async function usScreener(exchange: ExchangeId): Promise<ScreenerRow[]> {
-  const market = exchange === 'XNAS' ? 'nasdaq' : 'nyse';
-  // Large and mega caps only: several hundred rows instead of seven thousand.
-  const url = `${API}/screener/stocks?tableonly=true&download=true&limit=5000&marketcap=mega|large&exchange=${market}`;
-  const rows = parseUsScreener(JSON.parse(await fetchText(url)));
-  if (rows.length === 0) throw new UpstreamError(`Nasdaq screener returned no ${market} shares`);
-  return rows;
+// Parsed once a minute per data centre: the quotes, the universe and symbol lookups read it.
+export function usScreener(exchange: ExchangeId): Promise<ScreenerRow[]> {
+  return shared(`us:screener:${exchange}`, 60, async () => {
+    const market = exchange === 'XNAS' ? 'nasdaq' : 'nyse';
+    // Large and mega caps only: several hundred rows instead of seven thousand.
+    const url = `${API}/screener/stocks?tableonly=true&download=true&limit=5000&marketcap=mega|large&exchange=${market}`;
+    const rows = parseUsScreener(JSON.parse(await fetchText(url)));
+    if (rows.length === 0) throw new UpstreamError(`Nasdaq screener returned no ${market} shares`);
+    return rows;
+  });
 }
 
 export interface WatchlistRow {
