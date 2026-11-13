@@ -7,7 +7,7 @@ import { useT } from '../../i18n';
 import { isUnavailable, useHistory } from '../../lib/api';
 import { withLatestQuote } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
-import { ErrorNotice, Loading, Notice, Seg } from '../ui';
+import { ErrorNotice, Loading, Notice, Seg, SessionNote } from '../ui';
 import { ChartPlot } from './ChartPlot';
 import type { ChartType, Indicator } from './ChartPlot';
 
@@ -60,11 +60,18 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
   const typeLabels = list('stock.types');
   const indicatorLabels = list('stock.indL');
   const rangeIndex = RANGES.indexOf(range);
+  const session = history?.session?.kind;
+  const period = session === 'previous' ? t('stock.perPrev') : session === 'premarket' ? t('stock.perPre') : list('stock.per')[rangeIndex];
 
   function plotArea() {
     if (history) {
       const label = t('stock.chart', { name: shortSymbol(inst.symbol), range: rangeLabels[rangeIndex], pct: f.pct(change) });
-      return <ChartPlot key={`${inst.symbol} ${range} ${type}`} history={history} exchange={inst.exchange} type={type} shown={shown} label={label} />;
+      return (
+        <>
+          <SessionNote history={history} exchange={inst.exchange} />
+          <ChartPlot key={`${inst.symbol} ${range} ${type}`} history={history} exchange={inst.exchange} type={type} shown={shown} label={label} />
+        </>
+      );
     }
     if (loading) return <Loading height={PLOT_AREA_HEIGHT} />;
     if (error) return <ErrorNotice height={PLOT_AREA_HEIGHT} />;
@@ -90,7 +97,7 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
         {change !== null && (
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span className={`num ${direction(change)}`} style={{ fontSize: 13.5, fontWeight: 600 }}>{f.pct(change)}</span>
-            <span style={{ fontSize: 12, color: 'var(--ink3)' }}>{list('stock.per')[rangeIndex]}</span>
+            <span style={{ fontSize: 12, color: 'var(--ink3)' }}>{period}</span>
           </span>
         )}
         <div role="group" aria-label={t('stock.ind')} className="tb-chips">

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import type { Freshness } from '../../shared/types';
+import { EXCHANGES, zonedTime } from '../../shared/exchanges';
+import type { ExchangeId, Freshness, History } from '../../shared/types';
 import { useT } from '../i18n';
 import { sparkPath } from '../lib/chart';
 import { direction, useFormat } from '../lib/format';
@@ -65,6 +66,19 @@ export function FreshnessNote({ freshness, time }: { freshness: Freshness; time:
       {t(`common.${freshness}`)} · <span className="num">{f.stamp(time)}</span>
     </span>
   );
+}
+
+// Says which session a 1D chart shows when it is not today's.
+export function SessionNote({ history, exchange }: { history: History; exchange: ExchangeId }) {
+  const { t } = useT();
+  const f = useFormat();
+  const { session } = history;
+  if (!session || session.kind === 'today') return null;
+  const ex = EXCHANGES[exchange];
+  const text = session.kind === 'previous'
+    ? t('stock.sessionPrev', { date: f.weekdayDate(session.day) })
+    : t('stock.sessionPre', { time: f.time(zonedTime(session.day, ex.open, ex.timezone)) });
+  return <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 500, color: 'var(--brass)' }}>{text}</p>;
 }
 
 export function Loading({ height = 120 }: { height?: number }) {

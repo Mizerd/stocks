@@ -1,8 +1,11 @@
 import type { Candle, Instrument, Quote, StockDetail } from '../../shared/types';
 
 export interface Intraday {
+  // The regular session.
   candles: Candle[];
   prevClose: number | null;
+  // US trades before the regular session opens.
+  premarket?: Candle[];
 }
 
 export type DetailExtras = Omit<StockDetail, 'summary'>;
@@ -14,6 +17,8 @@ export interface Provider {
   daily(inst: Instrument, years: number): Promise<Candle[]>;
   // null when the source publishes no intraday prices.
   intraday(inst: Instrument): Promise<Intraday | null>;
+  // For sources that keep the intraday prices of past days.
+  pastIntraday?(inst: Instrument, day: string): Promise<Intraday | null>;
   details?(inst: Instrument): Promise<DetailExtras>;
 }
 

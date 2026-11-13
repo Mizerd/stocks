@@ -92,6 +92,23 @@ describe('Nasdaq', () => {
     }
   });
 
+  it('keeps pre-market trades apart and skips the placeholder of a share without trades', async () => {
+    const realFetch = globalThis.fetch;
+    const wall = (iso: string, y: number) => ({ x: Date.parse(iso), y });
+    globalThis.fetch = async () => new Response(JSON.stringify({ data: { previousClose: '$355.36', chart: [
+      wall('2026-11-13T03:59:00Z', 1), wall('2026-11-13T04:00:00Z', 356.1), wall('2026-11-13T07:16:00Z', 356.35), wall('2026-11-13T07:17:48Z', 0),
+    ] } }));
+    try {
+      const day = await nasdaq.intraday(STOCKS.find((s) => s.symbol === 'AAPL')!);
+      expect(day!.candles).toEqual([]);
+      expect(day!.premarket!.map((c) => [new Date(c.t).toISOString(), c.c])).toEqual([
+        ['2026-11-13T09:00:00.000Z', 356.1], ['2026-11-13T12:16:00.000Z', 356.35],
+      ]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
   it('reads the stock screener and leaves out preferreds, notes and warrants', () => {
     const rows = parseUsScreener({ data: { rows: [
       { symbol: 'AAPL', name: 'Apple Inc. Common Stock', lastsale: '$348.51', netchange: '-2.18', pctchange: '-0.622%', volume: '29756060', marketCap: '5064610748820.00', sector: 'Technology', industry: 'Computer Manufacturing' },

@@ -72,6 +72,9 @@ export const EXCHANGES: Record<ExchangeId, Exchange> = {
   XTAL: { id: 'XTAL', name: 'Nasdaq Tallinn', short: 'Nasdaq Tallinn', timezone: 'Europe/Tallinn', open: '10:00', close: '16:00', holidays: TALLINN_HOLIDAYS },
 };
 
+// US shares trade from 04:00 New York time, before the regular session opens.
+export const US_PREMARKET_OPEN = '04:00';
+
 export const MARKET_EXCHANGES: Record<Market, ExchangeId[]> = {
   us: ['XNAS', 'XNYS'],
   nordic: ['XCSE', 'XHEL', 'XSTO'],

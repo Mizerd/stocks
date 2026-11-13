@@ -45,9 +45,17 @@ function tangents(points: XY[]): number[] {
 // Below this many points a curve swings between them and invents shape, so the line stays straight.
 export const SMOOTH_MIN = 24;
 
+// Thinly traded stocks have long gaps between trades; there the price really stays flat,
+// and a curve would turn each step into a bump.
+export function evenlySpaced(points: XY[]): boolean {
+  const gaps = points.slice(1).map((p, i) => p[0] - points[i][0]);
+  const smallest = Math.min(...gaps);
+  return gaps.filter((gap) => gap <= smallest * 1.5).length >= gaps.length * 0.8;
+}
+
 export function smoothPath(points: XY[], start: 'M' | 'L' = 'M'): string {
   if (points.length === 0) return '';
-  if (points.length < SMOOTH_MIN) return points.map((p, i) => `${i ? 'L' : start}${xy(p)}`).join('');
+  if (points.length < SMOOTH_MIN || !evenlySpaced(points)) return points.map((p, i) => `${i ? 'L' : start}${xy(p)}`).join('');
   const slope = tangents(points);
   let path = `${start}${xy(points[0])}`;
   for (let i = 1; i < points.length; i++) {

@@ -4,7 +4,7 @@ import { EXCHANGES, isCurrentQuote, lastSessionTime, sessionState, tradingDayOfY
 import type { Candle, Listing } from '../shared/types';
 import { shared, takeBackgroundWork } from '../worker/http';
 import worker from '../worker/index';
-import { toWeekly, yearStats } from '../worker/market';
+import { currentSession, history, previousSession, previousTradingDay, toWeekly, yearStats } from '../worker/market';
 import { resolveSymbol, tickerSymbol, toSector } from '../worker/universe';
 
 const DAY = 24 * 3600 * 1000;
@@ -250,5 +250,121 @@ describe('symbol lookup', () => {
     } finally {
       globalThis.fetch = realFetch;
     }
+  });
+});
+
+describe('which session the 1D chart shows', () => {
+  const nasdaq = EXCHANGES.XNAS;
+  const MINUTE = 60_000;
+  // Bars from a New York wall-clock time, one a minute.
+  const minutes = (day: string, hhmm: string, closes: number[]) =>
+    closes.map((c, i) => bar(zonedTime(day, hhmm, 'America/New_York').getTime() + i * MINUTE, c));
+  // Friday 13 November 2026, 07:17 in New York: pre-market.
+  const preMarket = new Date('2026-11-13T12:17:00Z');
+  const thursday = { candles: minutes('2026-11-12', '09:30', [354, 355]), prevClose: 353 };
+
+  it('finds the trading day before today across weekends and holidays', () => {
+    expect(previousTradingDay(nasdaq, preMarket)).toBe('2026-11-12');
+    expect(previousTradingDay(nasdaq, new Date('2026-11-14T15:00:00Z'))).toBe('2026-11-13');
+    expect(previousTradingDay(nasdaq, new Date('2026-11-16T13:00:00Z'))).toBe('2026-11-13');
+    // Thanksgiving, and the Friday after it.
+    expect(previousTradingDay(nasdaq, new Date('2026-11-26T15:00:00Z'))).toBe('2026-11-25');
+    expect(previousTradingDay(nasdaq, new Date('2026-11-27T15:00:00Z'))).toBe('2026-11-25');
+    // Late in the evening in New York is already the next day in UTC.
+    expect(previousTradingDay(nasdaq, new Date('2026-11-14T03:00:00Z'))).toBe('2026-11-12');
+    expect(previousTradingDay(EXCHANGES.XLIT, new Date('2026-11-13T07:00:00Z'))).toBe('2026-11-12');
+  });
+
+  it('shows today once it has traded, ahead of pre-market trades', () => {
+    const fresh = { candles: minutes('2026-11-13', '09:30', [356, 357]), prevClose: 355, premarket: minutes('2026-11-13', '04:00', [356]) };
+    expect(currentSession(fresh, nasdaq, new Date('2026-11-13T14:32:00Z'))).toEqual({
+      candles: fresh.candles, prevClose: 355, session: { kind: 'today', day: '2026-11-13' },
+    });
+  });
+
+  it('shows US pre-market trades before the open, against the previous close', () => {
+    const premarket = minutes('2026-11-13', '04:00', [356.1, 355.9]);
+    expect(currentSession({ candles: [], prevClose: 355.36, premarket }, nasdaq, preMarket)).toEqual({
+      candles: premarket, prevClose: 355.36, session: { kind: 'premarket', day: '2026-11-13' },
+    });
+    expect(currentSession({ candles: [], prevClose: 355.36, premarket: minutes('2026-11-12', '04:00', [1]) }, nasdaq, preMarket)).toBeNull();
+  });
+
+  it('labels a previous session the source still serves before the open', () => {
+    expect(currentSession(thursday, nasdaq, preMarket)?.session).toEqual({ kind: 'previous', day: '2026-11-12' });
+    // Bars older than the previous trading day are not passed off as it.
+    expect(currentSession(thursday, nasdaq, new Date('2026-11-17T12:00:00Z'))).toBeNull();
+  });
+
+  it('falls back to a kept session only if it is the trading day before today', () => {
+    expect(currentSession({ candles: [], prevClose: 355, premarket: [] }, nasdaq, preMarket)).toBeNull();
+    expect(previousSession(thursday, nasdaq, preMarket)).toEqual({
+      candles: thursday.candles, prevClose: 353, session: { kind: 'previous', day: '2026-11-12' },
+    });
+    expect(previousSession(thursday, nasdaq, new Date('2026-11-14T12:00:00Z'))).toBeNull();
+    expect(previousSession(null, nasdaq, preMarket)).toBeNull();
+    expect(previousSession({ candles: [], prevClose: 1 }, nasdaq, preMarket)).toBeNull();
+  });
+});
+
+describe('1D history outside the session', () => {
+  const stored = new Map<string, Response>();
+  const realFetch = globalThis.fetch;
+
+  afterEach(() => {
+    stored.clear();
+    takeBackgroundWork();
+    globalThis.fetch = realFetch;
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  function installCache() {
+    vi.stubGlobal('caches', { default: {
+      async match(url: string) { return stored.get(url)?.clone(); },
+      async put(url: string, response: Response) { stored.set(url, response); },
+    } });
+  }
+
+  it('serves a Nordic share\'s last session from the edge cache before the next open', async () => {
+    installCache();
+    const novo = STOCKS.find((s) => s.symbol === 'NOVO-B.CO')!;
+    const thursday = Date.parse('2026-11-12T08:00:00Z') / 1000;
+    let points: unknown[] | null = [{ x: thursday, y: 274.8 }, { x: thursday + 60, y: 275.1 }];
+    globalThis.fetch = async () => new Response(JSON.stringify({ data: { chartData: { previousClose: 'DKK 270.00' }, CP: points } }));
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-12T15:00:00Z'));
+    expect((await history(novo, '1D'))?.session).toEqual({ kind: 'today', day: '2026-11-12' });
+    await Promise.all(takeBackgroundWork());
+    expect([...stored.keys()]).toEqual(['https://cache.internal/session%3ANOVO-B.CO']);
+
+    // Friday before the open: the source has nothing for today yet.
+    points = null;
+    vi.setSystemTime(new Date('2026-11-13T07:30:00Z'));
+    const day = await history(novo, '1D');
+    expect(day).toMatchObject({ interval: 'intraday', prevClose: 270, session: { kind: 'previous', day: '2026-11-12' } });
+    expect(day!.candles.map((c) => c.c)).toEqual([274.8, 275.1]);
+
+    // Without a kept copy the chart stays unavailable.
+    stored.clear();
+    vi.setSystemTime(new Date('2026-11-13T07:32:00Z'));
+    expect(await history(novo, '1D')).toBeNull();
+  });
+
+  it('fetches the previous day of a Baltic share from the exchange instead', async () => {
+    installCache();
+    const ignitis = STOCKS.find((s) => s.symbol === 'IGN1L.VS')!;
+    const called: string[] = [];
+    globalThis.fetch = async (url: string | URL | Request) => {
+      called.push(String(url));
+      const trades = String(url).includes('start=2026-11-12') ? [[Date.parse('2026-11-12T08:00:00Z'), 22.1, 5]] : [];
+      return new Response(JSON.stringify({ data: { chart_type: 'intraday', prev_last_price: 22.05, data: trades } }));
+    };
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-13T07:00:00Z'));
+    expect(await history(ignitis, '1D')).toMatchObject({ prevClose: 22.05, session: { kind: 'previous', day: '2026-11-12' } });
+    expect(called.map((url) => url.match(/start=([\d-]+)/)![1])).toEqual(['2026-11-13', '2026-11-12']);
+    expect(takeBackgroundWork()).toEqual([]);
   });
 });

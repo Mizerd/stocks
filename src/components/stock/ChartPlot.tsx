@@ -1,6 +1,6 @@
 import { memo, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
-import { EXCHANGES } from '../../../shared/exchanges';
+import { EXCHANGES, US_PREMARKET_OPEN, zonedTime } from '../../../shared/exchanges';
 import type { Candle, ExchangeId, History } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { aggregateCandles, barInterval, curvePath, runs, scaleOf, smoothPath, SMOOTH_MIN, timeTicks, toneOf, yOf } from '../../lib/chart';
@@ -40,10 +40,16 @@ interface Props {
   label: string;
 }
 
-function sessionMinutes(exchange: ExchangeId): number {
+// The time an intraday chart spans: a session from its first bar, or the US pre-market up to the open.
+function timeWindow(history: History, exchange: ExchangeId): { start: number; minutes: number } {
+  const ex = EXCHANGES[exchange];
+  const { session } = history;
+  if (session?.kind === 'premarket') {
+    const start = zonedTime(session.day, US_PREMARKET_OPEN, ex.timezone).getTime();
+    return { start, minutes: (zonedTime(session.day, ex.open, ex.timezone).getTime() - start) / MINUTE };
+  }
   const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
-  const { open, close } = EXCHANGES[exchange];
-  return minutes(close) - minutes(open);
+  return { start: history.candles[0].t, minutes: minutes(ex.close) - minutes(ex.open) };
 }
 
 function useWidth(ref: RefObject<HTMLElement | null>): number {
@@ -64,7 +70,7 @@ function useWidth(ref: RefObject<HTMLElement | null>): number {
 function barSpan(history: History, exchange: ExchangeId, plotWidth: number): number {
   if (history.interval !== 'intraday') return 0;
   const step = barInterval(history.candles.map((bar) => bar.t));
-  const slots = (sessionMinutes(exchange) * MINUTE) / step;
+  const slots = (timeWindow(history, exchange).minutes * MINUTE) / step;
   return step < CANDLE_MS && (plotWidth * CANDLE_SHARE) / slots < MIN_CANDLE_PX ? CANDLE_MS : 0;
 }
 
@@ -123,14 +129,15 @@ function buildChart(history: History, exchange: ExchangeId, type: ChartType, sho
   // Intraday bars sit at their time of day, so the line grows across the session and quiet
   // minutes leave a gap. Daily and weekly bars are simply spread evenly.
   const step = intraday ? barInterval(bars.map((bar) => bar.t)) : 1;
-  const slotOf = (i: number) => (intraday ? Math.round((bars[i].t - bars[0].t) / step) : i);
-  const slots = intraday ? Math.max(Math.round((sessionMinutes(exchange) * MINUTE) / step), slotOf(last) + 1) : bars.length;
+  const { start, minutes } = timeWindow(history, exchange);
+  const slotOf = (i: number) => (intraday ? Math.round((bars[i].t - start) / step) : i);
+  const slots = intraday ? Math.max(Math.round((minutes * MINUTE) / step), slotOf(last) + 1) : bars.length;
   const slotWidth = W / slots;
   const xs = bars.map((_, i) => (slotOf(i) + 0.5) * slotWidth);
   const x = (i: number) => xs[i];
   const barWidth = Math.min(27, Math.max(1.4, slotWidth * CANDLE_SHARE));
   const shownBars = spanMs ? aggregateCandles(bars, spanMs) : bars;
-  const shownX = (i: number) => (spanMs ? ((shownBars[i].t + spanMs / 2 - bars[0].t) / step) * slotWidth : x(i));
+  const shownX = (i: number) => (spanMs ? ((shownBars[i].t + spanMs / 2 - start) / step) * slotWidth : x(i));
   const shownWidth = spanMs ? (spanMs / step) * slotWidth * CANDLE_SHARE : barWidth;
 
   // The line only draws closes, so fitting the axis to highs and lows would leave it half empty.
@@ -145,7 +152,7 @@ function buildChart(history: History, exchange: ExchangeId, type: ChartType, sho
   const lower = runs(bands.map((band) => band && band.lower), x, y);
 
   return {
-    intraday, bars, barSlots: spanMs ? (slots * step) / spanMs : slots, sma20, sma50, bands, rsi14, xs, ticks, scale, slots, slotWidth, step,
+    intraday, bars, barSlots: spanMs ? (slots * step) / spanMs : slots, sma20, sma50, bands, rsi14, xs, ticks, scale, slots, slotWidth, step, start,
     paths: {
       grid: ticks.map((v) => `M0 ${y(v).toFixed(1)}H${W}`).join(''),
       line,
@@ -166,7 +173,7 @@ type Chart = ReturnType<typeof buildChart>;
 type Paths = Chart['paths'];
 
 function axisLabels(chart: Chart, range: History['range'], narrow: boolean, f: Format) {
-  const { intraday, bars, ticks, slots, step } = chart;
+  const { intraday, bars, ticks, slots, step, start } = chart;
   const date = (time: number) => {
     if (intraday) return f.time(time);
     if (range === '5Y') return f.month(time, true);
@@ -176,7 +183,7 @@ function axisLabels(chart: Chart, range: History['range'], narrow: boolean, f: F
   const at = (share: number, time: number) => ({ share, text: date(time) });
   const count = Math.min(narrow ? 3 : 6, slots);
   const x = intraday
-    ? timeTicks(bars[0].t, bars[0].t + (slots - 1) * step, narrow ? 4 : 7).map((time) => at(((time - bars[0].t) / step + 0.5) / slots, time))
+    ? timeTicks(start, start + (slots - 1) * step, narrow ? 4 : 7).map((time) => at(((time - start) / step + 0.5) / slots, time))
     : Array.from({ length: count }, (_, k) => {
         const slot = Math.floor(((k + 0.5) * slots) / count);
         return at((slot + 0.5) / slots, bars[slot].t);
@@ -311,7 +318,7 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
           ))}
           {type === 'line' && (
             <span
-              className={intraday ? 'live' : undefined}
+              className={intraday && history.session?.kind !== 'previous' ? 'live' : undefined}
               aria-hidden="true"
               style={{
                 position: 'absolute', left: `${(xs[last] / W) * 100}%`, top: percentY(bars[last].c), width: 10, height: 10,

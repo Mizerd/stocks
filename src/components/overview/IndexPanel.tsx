@@ -10,7 +10,7 @@ import { niceTicks } from '../../lib/indicators';
 import { useChartSelection } from '../../lib/useChartSelection';
 import { ChartSelection, SelectionReadout } from '../ChartSelection';
 import type { Mark } from '../ChartSelection';
-import { FreshnessNote, Loading, Notice, Seg, Sparkline } from '../ui';
+import { FreshnessNote, Loading, Notice, Seg, SessionNote, Sparkline } from '../ui';
 
 const RANGES: Range[] = ['1D', '1W', '1M', '3M', '1Y', '5Y'];
 const W = 1000;
@@ -100,6 +100,7 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
   return (
     <>
       <div style={{ marginTop: 12 }}>
+        <SessionNote history={history} exchange={index.exchange} />
         <SelectionReadout {...marks} />
       </div>
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
@@ -107,7 +108,7 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
           <IndexSvg points={points} baseY={baseY} tone={toneOf(change)} label={`${index.name} ${t('overview.chart')}, ${range}: ${f.pct(change)}`} />
           {intraday && (
             <span
-              className="live"
+              className={history.session?.kind === 'previous' ? undefined : 'live'}
               style={{
                 position: 'absolute', left: `${last[0] / 10}%`, top: `${(last[1] / H) * 100}%`, width: 10, height: 10,
                 margin: '-5px 0 0 -5px', borderRadius: '50%', background: toneOf(change), boxShadow: '0 0 0 3px var(--paper)',

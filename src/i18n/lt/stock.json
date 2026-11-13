@@ -22,6 +22,10 @@
   "noIntradayEod": "Ši birža dienos eigos kainų neskelbia. Pasirinkite ilgesnį laikotarpį.",
   "noIntradayYet": "Šiandien dar neprekiauta. Dienos grafikas atsiras prasidėjus prekybai.",
   "noHistory": "Šaltinis neturi šio laikotarpio kainų istorijos.",
+  "sessionPrev": "Ankstesnė prekybos sesija · {date}",
+  "sessionPre": "Prekyba prieš sesiją · sesija prasideda {time}",
+  "perPre": "prieš sesiją",
+  "perPrev": "ankstesnėje sesijoje",
   "stats": "Pagrindiniai rodikliai",
   "sk": {
     "open": "Atidarymo kaina",

@@ -1,5 +1,5 @@
 import type { Candle, ExchangeId, Instrument, QuarterFigure, Quote } from '../../shared/types';
-import { zonedTime } from '../../shared/exchanges';
+import { US_PREMARKET_OPEN, zonedTime } from '../../shared/exchanges';
 import { cachedJson, daysAgo, fetchText, isoDay, num, shared, UpstreamError } from '../http';
 import type { DetailExtras, Intraday, Provider } from './provider';
 
@@ -114,12 +114,16 @@ export const nasdaq: Provider = {
     if (!data) return null;
     // The feed stamps points with New York wall-clock time written as if it were UTC.
     // Clocks change at night, so one offset per day holds for the whole session.
-    const points: { t: number; price: number }[] = [];
+    const session: { t: number; price: number }[] = [];
+    const premarket: { t: number; price: number }[] = [];
     const offsets = new Map<string, number>();
     for (const p of data.chart ?? []) {
+      // A share without trades yet today gets one point of price 0, stamped now.
+      if (!(p.y > 0)) continue;
       const wall = new Date(p.x).toISOString();
       const hhmm = wall.slice(11, 16);
-      if (hhmm < '09:30' || hhmm > '16:00') continue;
+      const points = hhmm < US_PREMARKET_OPEN || hhmm > '16:00' ? null : hhmm < '09:30' ? premarket : session;
+      if (!points) continue;
       const day = wall.slice(0, 10);
       let offset = offsets.get(day);
       if (offset === undefined) {
@@ -128,7 +132,7 @@ export const nasdaq: Provider = {
       }
       points.push({ t: Math.floor(p.x / 60000) * 60000 + offset, price: p.y });
     }
-    return { candles: bucket(points, 1), prevClose: num(data.previousClose) };
+    return { candles: bucket(session, 1), prevClose: num(data.previousClose), premarket: bucket(premarket, 1) };
   },
 
   async details(inst): Promise<DetailExtras> {

@@ -115,6 +115,15 @@ async function indexSeries(inst: Instrument, years: number): Promise<Candle[]> {
   return chart.data.map(([t, value]: [number, number]) => ({ t: dayStart(t), o: value, h: value, l: value, c: value, v: null }));
 }
 
+// Every trade of one day, past or present.
+async function dayChart(inst: Instrument, day: string): Promise<Intraday | null> {
+  const url = `${BASE}/instrument/${inst.providerId}/trading/chart_price_json?start=${day}&end=${day}`;
+  const data = JSON.parse(await fetchText(url)).data;
+  if (data?.chart_type !== 'intraday') return null;
+  const points = (data.data ?? []).map(([t, price, volume]: number[]) => ({ t, price, volume }));
+  return { candles: bucket(points, 1), prevClose: data.prev_last_price ?? null };
+}
+
 const dayStart = (t: number) => Math.floor(t / 86400000) * 86400000;
 
 export const baltic: Provider = {
@@ -180,14 +189,12 @@ export const baltic: Provider = {
     return parseBalticSheet(sheet);
   },
 
-  async intraday(inst): Promise<Intraday | null> {
-    if (inst.kind === 'index') return null;
-    const today = zonedParts(new Date(), 'Europe/Vilnius').day;
-    const url = `${BASE}/instrument/${inst.providerId}/trading/chart_price_json?start=${today}&end=${today}`;
-    const data = JSON.parse(await fetchText(url)).data;
-    if (data?.chart_type !== 'intraday') return null;
-    const points = (data.data ?? []).map(([t, price, volume]: number[]) => ({ t, price, volume }));
-    return { candles: bucket(points, 1), prevClose: data.prev_last_price ?? null };
+  async intraday(inst) {
+    return inst.kind === 'index' ? null : dayChart(inst, zonedParts(new Date(), 'Europe/Vilnius').day);
+  },
+
+  async pastIntraday(inst, day) {
+    return inst.kind === 'index' ? null : dayChart(inst, day);
   },
 
   async details(inst): Promise<DetailExtras> {

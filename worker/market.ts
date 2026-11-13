@@ -1,11 +1,12 @@
 import { toListing } from '../shared/catalog';
-import type { Candle, History, Instrument, ProviderId, Range, StockDetail, StockSummary } from '../shared/types';
-import { memo, shared } from './http';
+import { EXCHANGES, latestSession, zonedParts, zonedTime, type Exchange } from '../shared/exchanges';
+import type { Candle, History, Instrument, IntradaySession, ProviderId, Range, StockDetail, StockSummary } from '../shared/types';
+import { edgeKeep, edgeRead, memo, shared } from './http';
 import { baltic } from './providers/baltic';
 import { euronext } from './providers/euronext';
 import { nasdaq } from './providers/nasdaq';
 import { nordic } from './providers/nordic';
-import { NO_EXTRAS, type Provider } from './providers/provider';
+import { NO_EXTRAS, type Intraday, type Provider } from './providers/provider';
 
 export const PROVIDERS: Record<ProviderId, Provider> = { nasdaq, nordic, euronext, baltic };
 
@@ -48,9 +49,8 @@ export function yearStats(daily: Candle[], price: number) {
 
 export async function history(inst: Instrument, range: Range): Promise<History | null> {
   if (range === '1D') {
-    const intraday = await memo(`intraday:${inst.symbol}`, 60, () => PROVIDERS[inst.provider].intraday(inst));
-    if (!intraday || intraday.candles.length === 0) return null;
-    return { symbol: inst.symbol, range, interval: 'intraday', warmup: 0, ...intraday };
+    const day = await memo(`intraday:${inst.symbol}`, 60, () => oneDay(inst, new Date()));
+    return day && { symbol: inst.symbol, range, interval: 'intraday', warmup: 0, ...day };
   }
 
   const weekly = range === '5Y';
@@ -68,6 +68,63 @@ export async function history(inst: Instrument, range: Range): Promise<History |
     candles: bars.slice(start),
     prevClose: firstVisible > 0 ? bars[firstVisible - 1].c : null,
   };
+}
+
+export interface SessionBars {
+  candles: Candle[];
+  prevClose: number | null;
+  session: IntradaySession;
+}
+
+// Long enough to carry Friday's session over a weekend.
+const KEEP_SESSION_SECONDS = 4 * 24 * 3600;
+
+async function oneDay(inst: Instrument, now: Date): Promise<SessionBars | null> {
+  const provider = PROVIDERS[inst.provider];
+  const ex = EXCHANGES[inst.exchange];
+  const fresh = await provider.intraday(inst);
+  if (!fresh) return null;
+  const current = currentSession(fresh, ex, now);
+  // Sources that serve today only: keep today's bars for the morning after, in this data centre.
+  const key = `session:${inst.symbol}`;
+  if (current?.session.kind === 'today' && !provider.pastIntraday) edgeKeep(key, current, KEEP_SESSION_SECONDS);
+  if (current) return current;
+  const earlier = provider.pastIntraday
+    ? await provider.pastIntraday(inst, previousTradingDay(ex, now))
+    : await edgeRead<SessionBars>(key);
+  return previousSession(earlier, ex, now);
+}
+
+const dayOf = (bars: Candle[], ex: Exchange) => zonedParts(new Date(bars[0].t), ex.timezone).day;
+
+// The last trading day before today's date at the exchange.
+export function previousTradingDay(ex: Exchange, now: Date): string {
+  const midnight = zonedTime(zonedParts(now, ex.timezone).day, '00:00', ex.timezone);
+  return zonedParts(latestSession(ex, new Date(midnight.getTime() - 1)).opens, ex.timezone).day;
+}
+
+// What the source has for the 1D chart: today's session once it has traded, US pre-market trades
+// before that, or the previous session where the source still serves it (Nasdaq indices before the open).
+export function currentSession(fresh: Intraday, ex: Exchange, now: Date): SessionBars | null {
+  const { candles, prevClose, premarket = [] } = fresh;
+  const today = zonedParts(now, ex.timezone).day;
+  if (candles.length > 0) {
+    const day = dayOf(candles, ex);
+    if (day === today) return { candles, prevClose, session: { kind: 'today', day } };
+    return previousSession(fresh, ex, now);
+  }
+  if (premarket.length > 0 && dayOf(premarket, ex) === today) {
+    return { candles: premarket, prevClose, session: { kind: 'premarket', day: today } };
+  }
+  return null;
+}
+
+// Bars of an earlier session, shown only if they are the trading day before today.
+export function previousSession(earlier: Intraday | null, ex: Exchange, now: Date): SessionBars | null {
+  if (!earlier || earlier.candles.length === 0) return null;
+  const day = dayOf(earlier.candles, ex);
+  if (day !== previousTradingDay(ex, now)) return null;
+  return { candles: earlier.candles, prevClose: earlier.prevClose, session: { kind: 'previous', day } };
 }
 
 // Weeks start on Monday; 1970-01-05 was one.

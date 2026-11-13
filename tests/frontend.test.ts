@@ -483,6 +483,11 @@ describe('smooth chart lines', () => {
     expect(new Set(ys)).toEqual(new Set([10]));
   });
 
+  it('draws sparse trades as straight lines', () => {
+    const sparse: XY[] = Array.from({ length: SMOOTH_MIN }, (_, i) => [i < 12 ? i : i * 40, i % 3]);
+    expect(smoothPath(sparse)).not.toContain('C');
+  });
+
   it('draws short series as straight lines, since a curve through few points invents shape', () => {
     expect(smoothPath([[0, 0], [10, 5], [20, 0]])).toBe('M0.0 0.0L10.0 5.0L20.0 0.0');
   });

@@ -84,6 +84,15 @@ export interface History {
   warmup: number;
   candles: Candle[];
   prevClose: number | null;
+  // 1D only: which session the bars belong to.
+  session?: IntradaySession;
+}
+
+// Before today's first trade the 1D chart shows US pre-market trades or else the previous session.
+export interface IntradaySession {
+  kind: 'today' | 'premarket' | 'previous';
+  // The session's date at its exchange, e.g. "2026-11-12".
+  day: string;
 }
 
 export interface QuarterFigure {

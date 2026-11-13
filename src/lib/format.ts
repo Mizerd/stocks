@@ -89,6 +89,12 @@ export function createFormat(lang: Lang) {
       .format(new Date(value));
   }
 
+  // A calendar day such as "2026-11-12": "Thu, Nov 12" / "lapkričio 12 d., ketvirtadienis".
+  function weekdayDate(day: string): string {
+    const options = lang === 'lt' ? { weekday: 'long', month: 'long' } as const : { weekday: 'short', month: 'short' } as const;
+    return new Intl.DateTimeFormat(locale, { ...options, day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
+  }
+
   function longDate(value: Date): string {
     const text = new Intl.DateTimeFormat(lang === 'lt' ? 'lt-LT' : 'en-GB', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -103,7 +109,7 @@ export function createFormat(lang: Lang) {
     return sameDay ? time(d) : `${dateShort(d)} ${time(d)}`;
   }
 
-  return { num, signed, price, pct, plainPct, big, date, dateShort, month, time, longDate, stamp };
+  return { num, signed, price, pct, plainPct, big, date, dateShort, month, time, weekdayDate, longDate, stamp };
 }
 
 export type Format = ReturnType<typeof createFormat>;

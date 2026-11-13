@@ -26,14 +26,30 @@ export function takeBackgroundWork(): Promise<unknown>[] {
   return background.splice(0);
 }
 
+const cacheUrl = (key: string) => `https://cache.internal/${encodeURIComponent(key)}`;
+
+// Keeps plain JSON data in this data centre's edge cache under a synthetic URL. Each cache call counts as a subrequest.
+export function edgeKeep(key: string, value: unknown, ttlSeconds: number): void {
+  const edge = edgeCache();
+  if (!edge) return;
+  const headers = { 'Cache-Control': `max-age=${ttlSeconds}`, Expires: new Date(Date.now() + ttlSeconds * 1000).toUTCString() };
+  background.push(edge.put(cacheUrl(key), new Response(JSON.stringify(value), { headers })).catch(() => undefined));
+}
+
+function edgeMatch(key: string): Promise<Response | undefined> {
+  return edgeCache()?.match(cacheUrl(key)).catch(() => undefined) ?? Promise.resolve(undefined);
+}
+
+export async function edgeRead<T>(key: string): Promise<T | null> {
+  const hit = await edgeMatch(key);
+  return hit ? (hit.json() as Promise<T>).catch(() => null) : null;
+}
+
 // Like memo, and also kept in this data centre's edge cache as JSON, so a fresh isolate reads the parsed
-// result instead of fetching and parsing the source again. Each cache call counts as a subrequest.
-// `load` must return plain JSON data.
+// result instead of fetching and parsing the source again. `load` must return plain JSON data.
 export function shared<T>(key: string, ttlSeconds: number, load: () => Promise<T>): Promise<T> {
   return memo(key, ttlSeconds, async () => {
-    const edge = edgeCache();
-    const url = `https://cache.internal/${encodeURIComponent(key)}`;
-    const hit = await edge?.match(url).catch(() => undefined);
+    const hit = await edgeMatch(key);
     if (hit) {
       // Kept in memory only for as long as the edge copy had left.
       const entry = memory.get(key);
@@ -41,10 +57,7 @@ export function shared<T>(key: string, ttlSeconds: number, load: () => Promise<T
       return hit.json() as Promise<T>;
     }
     const value = await load();
-    if (edge) {
-      const headers = { 'Cache-Control': `max-age=${ttlSeconds}`, Expires: new Date(Date.now() + ttlSeconds * 1000).toUTCString() };
-      background.push(edge.put(url, new Response(JSON.stringify(value), { headers })).catch(() => undefined));
-    }
+    edgeKeep(key, value, ttlSeconds);
     return value;
   });
 }

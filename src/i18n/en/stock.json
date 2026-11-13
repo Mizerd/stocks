@@ -22,6 +22,10 @@
   "noIntradayEod": "This exchange publishes no intraday prices. Pick a longer range to see the chart.",
   "noIntradayYet": "No trades yet today. The intraday chart appears once the market opens.",
   "noHistory": "The source has no price history for this range.",
+  "sessionPrev": "Previous session · {date}",
+  "sessionPre": "Pre-market trades · the session opens at {time}",
+  "perPre": "pre-market",
+  "perPrev": "previous session",
   "stats": "Key figures",
   "sk": {
     "open": "Open",
