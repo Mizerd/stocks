@@ -1,8 +1,9 @@
 import { useId, useState, type FormEvent } from 'react';
 import { findInstrument, shortSymbol } from '../../../shared/catalog';
-import type { Instrument } from '../../../shared/types';
+import type { Listing } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { isDate, NOTE_MAX, parseDecimal, type ListEntry } from '../../lib/myList';
+import { useListings } from '../../lib/universe';
 import { StockPicker } from './StockPicker';
 
 interface Props {
@@ -22,7 +23,10 @@ const today = () => new Date().toLocaleDateString('en-CA');
 export function EntryForm({ entry, taken, onSave, onCancel }: Props) {
   const { t } = useT();
   const id = useId();
-  const [inst, setInst] = useState<Instrument | undefined>(entry && findInstrument(entry.symbol));
+  const listings = useListings();
+  const [picked, setPicked] = useState<Listing | undefined>();
+  // An edited entry's stock may only be known once the universe has loaded.
+  const inst = picked ?? (entry && findInstrument(entry.symbol, listings ?? []));
   const [quantity, setQuantity] = useState(entry?.quantity?.toString() ?? '');
   const [buyPrice, setBuyPrice] = useState(entry?.buyPrice?.toString() ?? '');
   const [buyDate, setBuyDate] = useState(entry?.buyDate ?? '');
@@ -69,13 +73,13 @@ export function EntryForm({ entry, taken, onSave, onCancel }: Props) {
             <p className="ef-picked">
               <span className="num" style={{ fontWeight: 600 }}>{shortSymbol(inst.symbol)}</span>
               <span className="clip">{inst.name}</span>
-              {!entry && <button type="button" className="link ef-change" onClick={() => setInst(undefined)}>{t('portfolio.change')}</button>}
+              {!entry && <button type="button" className="link ef-change" onClick={() => setPicked(undefined)}>{t('portfolio.change')}</button>}
             </p>
           </>
         ) : (
           <>
             <label className="lbl" htmlFor={`${id}-stock`}>{t('portfolio.fStock')}</label>
-            <StockPicker id={`${id}-stock`} exclude={taken} invalid={!!errors.stock} describedBy={describedBy('stock')} onPick={setInst} />
+            <StockPicker id={`${id}-stock`} exclude={taken} invalid={!!errors.stock} describedBy={describedBy('stock')} onPick={setPicked} />
           </>
         )}
         {error('stock')}

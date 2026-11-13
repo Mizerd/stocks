@@ -1,15 +1,16 @@
 import { Link } from 'react-router-dom';
 import { shortSymbol } from '../../../shared/catalog';
+import type { StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { useStocks } from '../../lib/api';
+import { useSummaries, withHistory } from '../../lib/api';
 import { useFormat } from '../../lib/format';
-import { Badge, ErrorNotice, Loading, PanelTitle, Sparkline } from '../ui';
+import { Badge, PanelTitle, Sparkline } from '../ui';
 
-
-export function Peers({ symbols, compareTo }: { symbols: string[]; compareTo: string }) {
+export function Peers({ stocks: quoted, compareTo }: { stocks: StockSummary[]; compareTo: string }) {
   const { t } = useT();
   const f = useFormat();
-  const { stocks, loading, error } = useStocks(symbols);
+  const histories = useSummaries(quoted.map((s) => s.symbol));
+  const stocks = quoted.map((s) => withHistory(s, histories.get(s.symbol)));
 
   return (
     <section className="pnl">
@@ -17,7 +18,6 @@ export function Peers({ symbols, compareTo }: { symbols: string[]; compareTo: st
         <PanelTitle>{t('stock.peers')}</PanelTitle>
         <Link to={compareTo} className="link">{t('stock.peersCmp')}</Link>
       </div>
-      {stocks.length === 0 && (loading ? <Loading /> : error && <ErrorNotice />)}
       {stocks.length > 0 && (
         <div className="scroll-x" style={{ marginTop: 10 }}>
           <div className="qt wide">

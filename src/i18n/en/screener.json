@@ -1,5 +1,8 @@
 {
   "title": "Screener",
+  "more": "Show {n} more",
+  "shown": "Showing {n} of {total}",
+  "histNote": "P/E, dividend yield and 1-year return need each stock's own figures. They are loaded for the stocks on screen ({n} so far); the rest are left out of these filters until they load.",
   "lead": "Narrow the {n} tracked stocks by what matters to you, then tick up to four and compare them on one chart.",
   "presets": "Ready-made screens",
   "pre": [
@@ -26,7 +29,8 @@
     "H": "Health care",
     "U": "Utilities",
     "I": "Industrials",
-    "M": "Materials"
+    "M": "Materials",
+    "R": "Real estate"
   },
   "reg": {
     "US": "USA",
@@ -42,7 +46,7 @@
   "noLimit": "no limit",
   "results": "Results",
   "find": "Filter by symbol or name",
-  "found": "Found {n} of {total} · ticked for comparison {picked}/{max}",
+  "found": "Found {n} of {total} tracked stocks · ticked for comparison {picked}/{max}",
   "heads": [
     "Symbol",
     "Name",

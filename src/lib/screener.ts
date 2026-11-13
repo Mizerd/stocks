@@ -1,6 +1,7 @@
-import { findInstrument } from '../../shared/catalog';
+import { findInstrument, isSymbolShaped } from '../../shared/catalog';
 import type { FxRates, History, Region, Sector, StockSummary } from '../../shared/types';
 import { toEur } from './api';
+import { dayMove } from './market';
 import { returnsPct } from './indicators';
 import { alignCloses } from './series';
 
@@ -52,7 +53,7 @@ export function capEur(stock: StockSummary, fx: FxRates | undefined): number | n
 }
 
 // A limit that is set leaves out stocks whose figure is unknown.
-export function filterStocks(stocks: StockSummary[], filters: Filters, fx: FxRates | undefined): StockSummary[] {
+export function filterStocks(stocks: StockSummary[], filters: Filters, fx: FxRates | undefined, now = new Date()): StockSummary[] {
   const query = filters.query.trim().toLowerCase();
   return stocks.filter((stock) => {
     if (query && !stock.symbol.toLowerCase().includes(query) && !stock.name.toLowerCase().includes(query)) return false;
@@ -64,8 +65,9 @@ export function filterStocks(stocks: StockSummary[], filters: Filters, fx: FxRat
     }
     if (filters.peMax < PE_NO_LIMIT && (stock.pe === null || stock.pe > filters.peMax)) return false;
     if (filters.dyMin > 0 && (stock.dividendYield === null || stock.dividendYield < filters.dyMin)) return false;
-    if (filters.direction === 'up' && !(stock.changePct > 0)) return false;
-    if (filters.direction === 'down' && !(stock.changePct < 0)) return false;
+    const move = filters.direction === 'all' ? null : dayMove(stock, now);
+    if (filters.direction === 'up' && !(move !== null && move > 0)) return false;
+    if (filters.direction === 'down' && !(move !== null && move < 0)) return false;
     return true;
   });
 }
@@ -76,15 +78,16 @@ interface SortOptions {
   fx: FxRates | undefined;
   sectorName(sector: Sector): string;
   locale: string;
+  now?: Date;
 }
 
-function sortValue(stock: StockSummary, { sort, fx, sectorName }: SortOptions): string | number | null {
+function sortValue(stock: StockSummary, { sort, fx, sectorName, now = new Date() }: SortOptions): string | number | null {
   switch (sort) {
     case 'symbol': return stock.symbol;
     case 'name': return stock.name;
     case 'sector': return stock.sector ? sectorName(stock.sector) : null;
     case 'price': return stock.price;
-    case 'day': return stock.changePct;
+    case 'day': return dayMove(stock, now);
     case 'cap': return capEur(stock, fx);
     case 'pe': return stock.pe;
     case 'dy': return stock.dividendYield;
@@ -118,15 +121,22 @@ function numberParam(params: URLSearchParams, name: string, min: number, max: nu
   return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }
 
+// A catalogue stock under its current symbol; any other well-formed symbol is looked up in the universe later.
+function pickSymbol(value: string): string | null {
+  const inst = findInstrument(value);
+  if (inst) return inst.kind === 'stock' ? inst.symbol : null;
+  const upper = value.trim().toUpperCase();
+  return isSymbolShaped(upper) ? upper : null;
+}
+
 // ?pick=AAPL&pick=MSFT and ?pick=AAPL,MSFT both work; ?pick=none means the user cleared the defaults.
 function picksParam(params: URLSearchParams): string[] {
   if (!params.has('pick')) return DEFAULT_PICKS;
   const symbols = params
     .getAll('pick')
     .flatMap((value) => value.split(','))
-    .map((value) => findInstrument(value))
-    .filter((inst) => inst?.kind === 'stock')
-    .map((inst) => inst!.symbol);
+    .filter((value) => value !== 'none')
+    .flatMap((value) => pickSymbol(value) ?? []);
   return [...new Set(symbols)].slice(0, MAX_PICKS);
 }
 

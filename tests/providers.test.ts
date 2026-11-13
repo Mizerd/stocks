@@ -4,11 +4,11 @@ import { num } from '../worker/http';
 import { STOCKS } from '../shared/catalog';
 import { baltic, parseBalticShareList, parseBalticXlsx } from '../worker/providers/baltic';
 import { parseEcbRates } from '../worker/providers/ecb';
-import { parseEuronextCsv } from '../worker/providers/euronext';
-import { bucket, parseNasdaqRows, parseNasdaqTime } from '../worker/providers/nasdaq';
+import { liveQuote, parseEuronextCsv, parseEuronextList } from '../worker/providers/euronext';
+import { bucket, companyName, parseNasdaqRows, parseNasdaqTime, parseUsScreener, parseWatchlist } from '../worker/providers/nasdaq';
 import { parseNewsFeed } from '../worker/providers/news';
-import { parseNordicChart } from '../worker/providers/nordic';
-import { parseLangLink, parseSummary } from '../worker/providers/wikipedia';
+import { parseNordicChart, parseNordicScreener } from '../worker/providers/nordic';
+import { parseLangLink, parseSitelinks, parseSummary, wikidataQuery } from '../worker/providers/wikipedia';
 
 describe('num', () => {
   it('reads provider number formats', () => {
@@ -59,6 +59,53 @@ describe('Nasdaq', () => {
       { t: 5 * minute, o: 13, h: 13, l: 13, c: 13, v: null },
     ]);
   });
+
+  it('keeps one bar a minute for the one-day chart', () => {
+    const minute = 60000;
+    const bars = bucket([
+      { t: 0, price: 10, volume: 5 }, { t: 20000, price: 11, volume: 1 }, { t: minute, price: 9 }, { t: 3 * minute, price: 12 },
+    ], 1);
+    expect(bars).toEqual([
+      { t: 0, o: 10, h: 11, l: 10, c: 11, v: 6 },
+      { t: minute, o: 9, h: 9, l: 9, c: 9, v: null },
+      { t: 3 * minute, o: 12, h: 12, l: 12, c: 12, v: null },
+    ]);
+  });
+
+  it('reads the stock screener and leaves out preferreds, notes and warrants', () => {
+    const rows = parseUsScreener({ data: { rows: [
+      { symbol: 'AAPL', name: 'Apple Inc. Common Stock', lastsale: '$348.51', netchange: '-2.18', pctchange: '-0.622%', volume: '29756060', marketCap: '5064610748820.00', sector: 'Technology', industry: 'Computer Manufacturing' },
+      { symbol: 'BRK/B', name: 'Berkshire Hathaway Inc.', lastsale: '$480.10', netchange: '1.2', pctchange: '0.25%', volume: '3000000', marketCap: '', sector: '', industry: '' },
+      { symbol: 'GOOGM', name: 'Alphabet Inc. Depositary Shares representing a 1/20th Interest in a Share of Series A Mandatory Convertible Preferred Stock', lastsale: '$52.00', netchange: '0', pctchange: '0%', volume: '1', marketCap: '1', sector: 'Technology', industry: '' },
+      { symbol: 'DUKB', name: 'Duke Energy Corporation 5.625% Junior Subordinated Debentures due 2078', lastsale: '$25.00', netchange: '0', pctchange: '0%', volume: '1', marketCap: '1', sector: 'Utilities', industry: '' },
+      { symbol: 'OXY.WS', name: 'Occidental Petroleum Corporation Warrants ', lastsale: '$30.00', netchange: '0', pctchange: '0%', volume: '1', marketCap: '1', sector: 'Energy', industry: '' },
+      { symbol: 'NEWCO', name: 'Newco Inc. Common Stock', lastsale: 'NA', netchange: '', pctchange: '', volume: '', marketCap: '', sector: '', industry: '' },
+    ] } });
+    expect(rows.map((r) => r.ticker)).toEqual(['AAPL', 'BRK/B']);
+    expect(rows[0]).toEqual({
+      ticker: 'AAPL', name: 'Apple Inc.', sector: 'Technology', industry: 'Computer Manufacturing',
+      price: 348.51, change: -2.18, changePct: -0.622, volume: 29756060, marketCap: 5064610748820,
+    });
+    expect(rows[1].marketCap).toBeNull();
+  });
+
+  it('reads live watchlist quotes', () => {
+    const rows = parseWatchlist({ data: [
+      { symbol: 'AAPL', lastSalePrice: '$352.10', netChange: '+3.59', percentageChange: '+1.03%', volume: '2,954,240', lastTradeTimestampDateTime: '2026-11-11T09:39:33.351753-05:00' },
+      { symbol: 'NOPE', lastSalePrice: 'N/A', netChange: '', percentageChange: '', volume: '', lastTradeTimestampDateTime: null },
+    ] });
+    expect(rows).toEqual([
+      { ticker: 'AAPL', price: 352.1, change: 3.59, changePct: 1.03, volume: 2954240, time: '2026-11-11T14:39:33.351Z' },
+    ]);
+  });
+
+  it('drops the share class from company names', () => {
+    expect(companyName('Alphabet Inc. Class C Capital Stock')).toBe('Alphabet Inc.');
+    expect(companyName('Sea Limited American Depositary Shares each representing one Class A Ordinary Share')).toBe('Sea Limited');
+    expect(companyName('Iron Mountain Incorporated (Delaware)Common Stock REIT')).toBe('Iron Mountain Incorporated');
+    expect(companyName('Brookfield Corporation Class A Limited Voting Shares')).toBe('Brookfield Corporation');
+    expect(companyName('Commonwealth Bank')).toBe('Commonwealth Bank');
+  });
 });
 
 describe('Nasdaq Nordic', () => {
@@ -70,7 +117,41 @@ describe('Nasdaq Nordic', () => {
   });
 });
 
+describe('Nasdaq Nordic screener', () => {
+  it('reads every share of a market with its last price', () => {
+    const [row, idle] = parseNordicScreener({ data: { instrumentListing: { rows: [
+      { fullName: 'Volvo B', symbol: 'VOLV B', orderbookId: 'SSE366', isin: 'SE0000115446', currency: 'SEK', lastSalePrice: '323.60', netChange: '+2.40', percentageChange: '+0.74%', volume: '918,123', sector: 'Industrials' },
+      { fullName: 'Dovre Group', symbol: 'DOV1V', orderbookId: 'TX1', isin: 'FI0009008098', currency: 'EUR', lastSalePrice: '', netChange: '', percentageChange: '', volume: '', sector: 'Energy' },
+    ] } } });
+    expect(row).toEqual({
+      orderbookId: 'SSE366', ticker: 'VOLV B', name: 'Volvo B', isin: 'SE0000115446', currency: 'SEK', sector: 'Industrials',
+      price: 323.6, change: 2.4, changePct: 0.74, volume: 918123,
+    });
+    expect(idle.price).toBeNull();
+  });
+});
+
 describe('Euronext', () => {
+  it('reads the live stock list for the wanted lines only', () => {
+    const cell = (price: string, pct: string, time: string, day: string) => [
+      `<div class="text-right pd_currency_es">EUR <span class="pd_last_price_es">${price}</span></div>`,
+      `<div class="text-right pd_percent"><span class=text-brand-kelly-green>${pct}</span></div>`,
+      `<div class="text-right pointer tooltipDesign">${time} CET<span class="tooltiptext">${day}</span></div>`,
+    ];
+    const rows = parseEuronextList({ aaData: [
+      ['<a href="/en/product/equities/NL0010273215-XAMS">ASML HOLDING</a>', 'NL0010273215', 'ASML', 'XAMS', ...cell('1,402.20', '3.03%', '14:11', '11 Nov 2026')],
+      ['<a href="/en/product/equities/NL0000313286-XAMS">ACOMO</a>', 'NL0000313286', 'ACOMO', 'XAMS', ...cell('23.15', '-', '14:03', '11 Nov 2026')],
+      ['<a href="/en/product/equities/NL00150002R5-XAMS">CABKA</a>', 'NL00150002R5', 'DSC2S', 'XAMS', '<div>-</span></div>', '<div>-</div>', '<div>-<span class="tooltiptext"></span></div>'],
+    ] }, 'XAMS', new Set(['NL0010273215-XAMS', 'NL00150002R5-XAMS']));
+    expect([...rows.keys()]).toEqual(['NL0010273215-XAMS']);
+    // 14:11 in Amsterdam in November is 13:11 UTC.
+    expect(rows.get('NL0010273215-XAMS')).toEqual({ price: 1402.2, changePct: 3.03, time: '2026-11-11T13:11:00.000Z' });
+  });
+
+  it('works out the change from the price and the percentage', () => {
+    expect(liveQuote({ price: 110, changePct: 10, time: '' })).toEqual({ price: 110, change: 10, changePct: 10 });
+  });
+
   const csv = [
     '﻿"Historical Data"', '"From 2026-11-05 to 2026-11-10"', 'NL0010273215',
     'Date;Open;High;Low;Last;Close;"Number of Shares";"Number of Trades";Turnover;vwap',
@@ -96,10 +177,21 @@ describe('Nasdaq Baltic', () => {
       <tr> <td data-sort-by="Ignitis"><a href="/statistics/en/instrument/LT0000115768/trading">Ignitis grupė</a></td>
       <td><a href="/statistics/en/instrument/LT0000115768/trading">IGN1L</a></td>
       <td>21.45</td><td><span class="price-goes down">-0.05</span></td><td><span>-0.23</span></td>
-      <td>21.45<br></td><td>21.45</td><td>344</td><td>16,933</td><td>363,159</td><td>21.5</td></tr>`;
+      <td>21.45<br></td><td>21.45</td><td>344</td><td>16,933</td><td>363,159</td><td>21.5</td>
+      <td class="d-none text12"><span title="Utilities " data-toggle="tooltip">UTI</span></td>
+      <td class="d-none text12"><span title="Utilities" data-toggle="tooltip">UTI</span></td><td class="d-none">VLN</td></tr>
+      <tr><td data-sort-by="Pieno &amp; žvaigždės"><a href="/statistics/en/instrument/LT0000111676/trading">Pieno žvaigždės</a></td>
+      <td><a href="/statistics/en/instrument/LT0000111676/trading">PZV1L</a></td>
+      <td>2.1</td><td></td><td></td><td>2</td><td>2.2</td><td>0</td><td>0</td><td>0</td><td>2.1</td>
+      <td><span title="Consumer Staples">CON</span></td><td><span title="Food">FOO</span></td><td>VLN</td></tr>`;
     const list = parseBalticShareList(html);
     expect(list.asOf).toBe('10.11.2026 16:22');
-    expect(list.rows.get('LT0000115768')).toEqual({ last: 21.45, change: -0.05, changePct: -0.23, volume: 16933, prevClose: 21.5 });
+    expect(list.rows.get('LT0000115768')).toEqual({
+      isin: 'LT0000115768', ticker: 'IGN1L', name: 'Ignitis', industry: 'Utilities', home: 'VLN',
+      last: 21.45, change: -0.05, changePct: -0.23, volume: 16933, prevClose: 21.5,
+    });
+    // No trade today: the last price stays, the change is unknown.
+    expect(list.rows.get('LT0000111676')).toMatchObject({ name: 'Pieno & žvaigždės', last: 2.1, change: null, volume: 0 });
   });
 
   it('finds no rows in a refusal page', () => {
@@ -149,6 +241,23 @@ describe('ECB and news', () => {
     expect(parseNewsFeed(xml)).toEqual([
       { title: 'Annual report', link: 'https://view.news.eu.nasdaq.com/view?id=1&lang=en', time: '2026-11-10T14:34:26.000Z', issuer: 'Ignitis' },
     ]);
+  });
+});
+
+describe('Wikidata', () => {
+  const inst = (over: object) => ({ ...STOCKS[0], wiki: undefined, ...over });
+
+  it('finds a company by ISIN, or by name and exchange in the US', () => {
+    expect(wikidataQuery(inst({ provider: 'baltic', providerId: 'LT0000115768' }))).toBe('haswbstatement:P946=LT0000115768');
+    expect(wikidataQuery(inst({ provider: 'euronext', providerId: 'FR0000121014-XPAR' }))).toBe('haswbstatement:P946=FR0000121014');
+    expect(wikidataQuery(inst({ provider: 'nordic', providerId: 'SSE366', isin: 'SE0000115446' }))).toBe('haswbstatement:P946=SE0000115446');
+    expect(wikidataQuery(inst({ name: 'Agilent Technologies Inc.', exchange: 'XNYS' }))).toBe('Agilent Technologies Inc. haswbstatement:P414=Q13677');
+  });
+
+  it('reads the English and Lithuanian article titles', () => {
+    const body = { entities: { Q52618: { sitelinks: { enwiki: { title: 'Ericsson' }, ltwiki: { title: 'Ericsson' } } } } };
+    expect(parseSitelinks(body)).toEqual({ en: 'Ericsson', lt: 'Ericsson' });
+    expect(parseSitelinks({ entities: { Q1: { sitelinks: {} } } })).toEqual({ en: null, lt: null });
   });
 });
 

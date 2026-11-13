@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
-import { STOCKS, findInstrument, shortSymbol } from '../../shared/catalog';
+import { shortSymbol } from '../../shared/catalog';
 import { EXCHANGES } from '../../shared/exchanges';
-import type { Instrument, StockSummary } from '../../shared/types';
+import type { FxRates, Listing, StockSummary } from '../../shared/types';
 import { AddToList } from '../components/AddToList';
 import { AboutCompany } from '../components/stock/AboutCompany';
 import { AnalystView } from '../components/stock/AnalystView';
@@ -14,16 +14,21 @@ import { QuoteLive } from '../components/stock/QuoteLive';
 import { Returns } from '../components/stock/Returns';
 import { ErrorNotice, FreshnessNote, Loading, Notice } from '../components/ui';
 import { useT } from '../i18n';
-import { useDetail } from '../lib/api';
+import { useDetail, useFx } from '../lib/api';
 import { direction, useFormat } from '../lib/format';
+import { turnoverEur } from '../lib/market';
+import { capEur } from '../lib/screener';
+import { useInstrument, useMarket } from '../lib/universe';
 import { usePageTitle } from '../lib/usePageTitle';
 
-// Other catalogue stocks of the same sector, the same region first.
-function peerSymbols(inst: Instrument): string[] {
-  const sameSector = STOCKS.filter((s) => s.sector === inst.sector && s.symbol !== inst.symbol);
-  const near = sameSector.filter((s) => s.region === inst.region);
-  const far = sameSector.filter((s) => s.region !== inst.region);
-  return [...near, ...far].slice(0, 5).map((s) => s.symbol);
+// The largest other stocks of the same sector and region: by market value where it is published,
+// else by value traded today.
+function peerStocks(inst: Listing, stocks: StockSummary[], fx: FxRates | undefined): StockSummary[] {
+  const size = (s: StockSummary) => capEur(s, fx) ?? turnoverEur(s, fx) ?? 0;
+  return stocks
+    .filter((s) => s.sector === inst.sector && s.region === inst.region && s.symbol !== inst.symbol)
+    .sort((a, b) => size(b) - size(a))
+    .slice(0, 5);
 }
 
 function UnknownStock({ symbol }: { symbol: string }) {
@@ -54,11 +59,13 @@ function HeroPrice({ summary }: { summary: StockSummary }) {
   );
 }
 
-function StockPage({ inst }: { inst: Instrument }) {
+function StockPage({ inst }: { inst: Listing }) {
   const { t } = useT();
   const { data: detail, error, loading } = useDetail(inst.symbol);
   const isStock = inst.kind === 'stock';
-  const peers = isStock ? peerSymbols(inst) : [];
+  const market = useMarket();
+  const fx = useFx().data;
+  const peers = isStock && inst.sector ? peerStocks(inst, market.stocks, fx) : [];
   const compareTo = `/screener?pick=${encodeURIComponent(inst.symbol)}`;
   usePageTitle(`${inst.name} (${shortSymbol(inst.symbol)})`);
 
@@ -112,7 +119,7 @@ function StockPage({ inst }: { inst: Instrument }) {
         </section>
       )}
 
-      {peers.length > 0 && <Peers symbols={peers} compareTo={compareTo} />}
+      {peers.length > 0 && <Peers stocks={peers} compareTo={compareTo} />}
     </main>
   );
 }
@@ -120,8 +127,9 @@ function StockPage({ inst }: { inst: Instrument }) {
 export function Stock() {
   const { symbol = '' } = useParams();
   const { search } = useLocation();
-  const inst = findInstrument(symbol);
+  const { listing: inst, loading } = useInstrument(symbol);
 
+  if (loading) return <main className="wrap page"><Loading height={420} /></main>;
   if (!inst) return <UnknownStock symbol={symbol} />;
   if (inst.symbol !== symbol) return <Navigate replace to={`/stock/${inst.symbol}${search}`} />;
   return <StockPage key={inst.symbol} inst={inst} />;

@@ -19,7 +19,7 @@
     "My list",
     "Screener"
   ],
-  "delay": "US real-time · Nordic and Baltic delayed · Euronext end of day",
+  "delay": "Quotes delayed up to 15 min · US stock pages real-time",
   "rgLabel": "Range",
   "foot1": "Market data from Nasdaq, Nasdaq Nordic, Nasdaq Baltic, Euronext and the ECB; delays are shown next to each price. Not investment advice.",
   "fData": "Data sources",
@@ -59,20 +59,20 @@
     [
       "USA (Nasdaq, NYSE)",
       "Nasdaq public quote service",
-      "Real-time last sale; fundamentals daily"
+      "Lists: delayed; stock pages: real-time last sale; fundamentals daily"
     ],
     [
-      "Copenhagen, Helsinki",
+      "Copenhagen, Helsinki, Stockholm",
       "Nasdaq Nordic",
       "Delayed 15 min"
     ],
     [
       "Amsterdam, Paris, Milan",
-      "Euronext historical price files",
-      "End of day"
+      "Euronext stock lists and historical price files",
+      "Delayed; charts end of day"
     ],
     [
-      "Vilnius, Tallinn",
+      "Vilnius, Riga, Tallinn",
       "Nasdaq Baltic",
       "Delayed 15 min"
     ],

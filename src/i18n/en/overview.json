@@ -30,7 +30,7 @@
     "Fair",
     "Very dry"
   ],
-  "baroNote": "The reading blends how many of the {n} tracked stocks are rising with the size of their average move. It is a simple in-house gauge, not a market-wide index.",
+  "baroNote": "The reading blends how many of the {n} tracked stocks are rising with the size of their average move, every stock counted equally. It is a simple in-house gauge, not a market-wide index.",
   "movers": "Daily movers",
   "mv": [
     "Gainers",
@@ -46,7 +46,7 @@
   "cChg": "Change",
   "cVol": "Volume",
   "sectors": "Sectors today",
-  "sectorsNote": "Average move of the tracked stocks in each sector; tile size follows how many there are",
+  "sectorsNote": "Average move of the tracked stocks in each sector, every stock counted equally; tile size follows how many there are",
   "sec": {
     "T": "Technology",
     "F": "Financials",
@@ -56,7 +56,8 @@
     "I": "Industrials",
     "E": "Energy",
     "U": "Utilities",
-    "M": "Materials"
+    "M": "Materials",
+    "R": "Real estate"
   },
   "news": "Baltic company news",
   "allNews": "All announcements",

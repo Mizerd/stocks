@@ -7,7 +7,9 @@ import { PanelTitle } from '../components/ui';
 import { brand } from '../config/brand';
 import { useT } from '../i18n';
 import { useApi } from '../lib/api';
+import { useFormat } from '../lib/format';
 import { deleteBrowserData } from '../lib/myList';
+import { useListings } from '../lib/universe';
 import { usePageTitle } from '../lib/usePageTitle';
 
 // Which provider check belongs to each row of the sources table.
@@ -54,6 +56,8 @@ function Privacy() {
 
 export function About() {
   const { t, table } = useT();
+  const f = useFormat();
+  const universe = useListings();
   usePageTitle(t('common.aboutTitle'));
   const status = useApi<{ providers: ProviderStatus[] }>('/api/status');
   const { hash } = useLocation();
@@ -73,7 +77,7 @@ export function About() {
       <h1 className="ser h1" style={{ marginBottom: 8 }}>{t('common.aboutTitle')}</h1>
       <section className="pnl">
         <p style={{ margin: '0 0 14px', maxWidth: '68ch', color: 'var(--ink2)', lineHeight: 1.6 }}>
-          {t('common.srcNote', { n: STOCKS.length, m: INDICES.length })}
+          {t('common.srcNote', { n: f.num(universe?.length || STOCKS.length, 0), m: INDICES.length })}
         </p>
         <div className="src">
           <div className="lbl tbl-head src-cols">

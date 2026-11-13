@@ -44,7 +44,9 @@
     "U": "Komunalinės paslaugos",
     "I": "Pramonė",
     "M": "Žaliavos",
-    "X": "Grynieji pinigai"
+    "R": "Nekilnojamasis turtas",
+    "X": "Grynieji pinigai",
+    "O": "Kita"
   },
   "divEmpty": "Duomenų šaltiniai šių pozicijų dividendų neskelbia.",
   "divKnown": "žinoma {n} iš {m} pozicijų",

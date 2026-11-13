@@ -1,9 +1,11 @@
-import { findInstrument, INDICES, STOCKS } from '../shared/catalog';
-import type { Instrument, ProviderStatus, Range } from '../shared/types';
+import { INDICES, STOCKS, toListing } from '../shared/catalog';
+import { EXCHANGES, MARKET_EXCHANGES, MARKETS, sessionState } from '../shared/exchanges';
+import type { Instrument, Market, ProviderStatus, Range } from '../shared/types';
 import { detail, history, PROVIDERS, summary } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
 import { about } from './providers/wikipedia';
+import { marketData, resolveSymbol } from './universe';
 
 const RANGES: Range[] = ['1D', '5D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 // Keeps one request comfortably under the Workers free-plan limit of 50 subrequests.
@@ -26,17 +28,43 @@ function json(body: unknown, status = 200, maxAge = 0): Response {
   });
 }
 
-function instrumentParam(url: URL): Instrument {
-  const inst = findInstrument(url.searchParams.get('symbol') ?? '');
+async function instrumentParam(url: URL): Promise<Instrument> {
+  const inst = await resolveSymbol(url.searchParams.get('symbol') ?? '');
   if (!inst) throw new HttpError(404, 'Unknown symbol');
   return inst;
 }
 
-async function summaries(instruments: Instrument[]) {
+function marketParam(url: URL): Market {
+  const market = url.searchParams.get('market') as Market;
+  if (!MARKETS.includes(market)) throw new HttpError(400, 'Unknown market');
+  return market;
+}
+
+// Prices move only while one of the market's exchanges is in session (or just closed).
+function quotesMaxAge(market: Market): number {
+  const now = new Date();
+  const soon = new Date(now.getTime() - 15 * 60000);
+  const trading = MARKET_EXCHANGES[market].some((id) => sessionState(EXCHANGES[id], now).isOpen || sessionState(EXCHANGES[id], soon).isOpen);
+  return trading ? 60 : 600;
+}
+
+async function quotes(market: Market): Promise<Response> {
+  const { items, failed } = await marketData(market);
+  const body = { items: items.flatMap((item) => (item.quote ? [item.quote] : [])), failed };
+  return json(body, 200, failed.length ? 30 : quotesMaxAge(market));
+}
+
+async function universe(market: Market): Promise<Response> {
+  const { items, failed } = await marketData(market);
+  return json({ items: items.map((item) => toListing(item.inst)), failed }, 200, failed.length ? 60 : 86400);
+}
+
+// The browser takes live prices from /api/quotes; stock summaries add slower figures and may be a few minutes old.
+async function summaries(instruments: Instrument[], maxAge: number) {
   const results = await Promise.allSettled(instruments.map(summary));
   const items = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
   const failed = instruments.filter((_, i) => results[i].status === 'rejected').map((i) => i.symbol);
-  return json({ items, failed }, 200, failed.length ? 0 : 60);
+  return json({ items, failed }, 200, failed.length ? 0 : maxAge);
 }
 
 async function status(): Promise<Response> {
@@ -69,28 +97,32 @@ async function route(url: URL): Promise<Response> {
       if (requested.length === 0 || requested.length > MAX_SYMBOLS) {
         throw new HttpError(400, `Pass 1 to ${MAX_SYMBOLS} symbols`);
       }
-      const instruments = requested.map((s) => findInstrument(s));
+      const instruments = await Promise.all(requested.map(resolveSymbol));
       if (instruments.some((i) => !i)) throw new HttpError(404, 'Unknown symbol');
-      return summaries(instruments as Instrument[]);
+      return summaries(instruments as Instrument[], 300);
     }
     case '/api/indices':
-      return summaries(INDICES);
+      return summaries(INDICES, 60);
+    case '/api/universe':
+      return universe(marketParam(url));
+    case '/api/quotes':
+      return quotes(marketParam(url));
     case '/api/history': {
       const range = url.searchParams.get('range') as Range;
       if (!RANGES.includes(range)) throw new HttpError(400, 'Unknown range');
-      const data = await history(instrumentParam(url), range);
+      const data = await history(await instrumentParam(url), range);
       if (!data) return json({ unavailable: true }, 200, 300);
       return json(data, 200, range === '1D' ? 120 : 900);
     }
     case '/api/detail':
-      return json(await detail(instrumentParam(url)), 200, 60);
+      return json(await detail(await instrumentParam(url)), 200, 60);
     case '/api/fx':
       return json(await fxRates(), 200, 3600);
     case '/api/news':
       return json(await balticNews(url.searchParams.get('lang') === 'lt' ? 'lt' : 'en'), 200, 300);
     case '/api/about': {
       const lang = url.searchParams.get('lang') === 'lt' ? 'lt' : 'en';
-      const data = await about(instrumentParam(url), lang);
+      const data = await about(await instrumentParam(url), lang);
       if (!data) return json({ unavailable: true }, 200, 86400);
       // An English fallback for a Lithuanian reader is kept for an hour only, in case the Lithuanian fetch merely failed.
       return json(data, 200, data.lang === lang ? 86400 : 3600);

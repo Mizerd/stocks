@@ -19,7 +19,7 @@
     "Mano sąrašas",
     "Atranka"
   ],
-  "delay": "JAV tikruoju laiku · Šiaurės ir Baltijos šalys vėluoja · „Euronext“ dienos pabaigos",
+  "delay": "Kotiruotės vėluoja iki 15 min. · JAV akcijų puslapiuose – tikruoju laiku",
   "rgLabel": "Laikotarpis",
   "foot1": "Rinkos duomenys: „Nasdaq“, „Nasdaq Nordic“, „Nasdaq Baltic“, „Euronext“ ir ECB; vėlavimas nurodytas prie kiekvienos kainos. Tai nėra investavimo rekomendacija.",
   "fData": "Duomenų šaltiniai",
@@ -59,20 +59,20 @@
     [
       "JAV („Nasdaq“, NYSE)",
       "Vieša „Nasdaq“ kotiruočių paslauga",
-      "Paskutinis sandoris tikruoju laiku; finansiniai rodikliai kasdien"
+      "Sąrašuose vėluoja; akcijų puslapiuose paskutinis sandoris tikruoju laiku; finansiniai rodikliai kasdien"
     ],
     [
-      "Kopenhaga, Helsinkis",
+      "Kopenhaga, Helsinkis, Stokholmas",
       "„Nasdaq Nordic“",
       "Vėluoja 15 min."
     ],
     [
       "Amsterdamas, Paryžius, Milanas",
-      "„Euronext“ istorinių kainų rinkmenos",
-      "Dienos pabaigos"
+      "„Euronext“ akcijų sąrašai ir istorinių kainų rinkmenos",
+      "Vėluoja; grafikai dienos pabaigos"
     ],
     [
-      "Vilnius, Talinas",
+      "Vilnius, Ryga, Talinas",
       "„Nasdaq Baltic“",
       "Vėluoja 15 min."
     ],

@@ -1,14 +1,16 @@
 import type { Candle, Instrument, Quote } from '../../shared/types';
 import { EXCHANGES, zonedTime } from '../../shared/exchanges';
-import { cachedText, daysAgo, isoDay, num, UpstreamError } from '../http';
+import { cachedJson, daysAgo, fetchText, isoDay, num, UpstreamError } from '../http';
 import { bucket } from './nasdaq';
 import { NO_EXTRAS, type DetailExtras, type Intraday, type Provider } from './provider';
 
-const API = 'https://api.nasdaq.com/api/nordic/instruments';
+const API = 'https://api.nasdaq.com/api/nordic';
 
+// ttl 0: not kept, for results the caller keeps in parsed form itself.
 async function get(inst: Instrument, path: string, ttl: number): Promise<any> {
   const sep = path.includes('?') ? '&' : '?';
-  const json = JSON.parse(await cachedText(`${API}/${inst.providerId}/${path}${sep}assetClass=SHARES&lang=en`, ttl));
+  const url = `${API}/instruments/${inst.providerId}/${path}${sep}assetClass=SHARES&lang=en`;
+  const json = ttl > 0 ? await cachedJson(url, ttl) : JSON.parse(await fetchText(url));
   if (!json.data) throw new UpstreamError(`Nasdaq Nordic has no data for ${inst.symbol}`);
   return json.data;
 }
@@ -69,14 +71,14 @@ export const nordic: Provider = {
 
   async daily(inst, years) {
     const from = isoDay(daysAgo(Math.round(years * 365.25)));
-    const data = await get(inst, `chart?fromDate=${from}&toDate=${isoDay(new Date())}`, 3600);
+    const data = await get(inst, `chart?fromDate=${from}&toDate=${isoDay(new Date())}`, 0);
     return parseNordicChart(data.CP ?? []);
   },
 
   async intraday(inst): Promise<Intraday> {
-    const data = await get(inst, 'chart', 120);
+    const data = await get(inst, 'chart', 0);
     const points = (data.CP ?? []).map((p: any) => ({ t: p.x * 1000, price: p.y }));
-    return { candles: bucket(points, 5), prevClose: num(data.chartData?.previousClose) };
+    return { candles: bucket(points, 1), prevClose: num(data.chartData?.previousClose) };
   },
 
   async details(inst): Promise<DetailExtras> {
@@ -84,3 +86,41 @@ export const nordic: Provider = {
     return { ...NO_EXTRAS, isin: summary.summaryData?.isin?.value ?? null };
   },
 };
+
+export type NordicMarket = 'HEL' | 'CPH' | 'STO';
+
+export interface NordicRow {
+  orderbookId: string;
+  ticker: string;
+  name: string;
+  isin: string;
+  currency: string;
+  sector: string;
+  price: number | null;
+  change: number | null;
+  changePct: number | null;
+  volume: number | null;
+}
+
+// The share screener: every main-market share of one exchange with its last price, in one call.
+export function parseNordicScreener(json: any): NordicRow[] {
+  return (json?.data?.instrumentListing?.rows ?? []).map((r: any) => ({
+    orderbookId: r.orderbookId,
+    ticker: r.symbol,
+    name: r.fullName,
+    isin: r.isin,
+    currency: r.currency,
+    sector: r.sector,
+    price: num(r.lastSalePrice),
+    change: num(r.netChange),
+    changePct: num(r.percentageChange),
+    volume: num(r.volume),
+  }));
+}
+
+export async function nordicScreener(market: NordicMarket): Promise<NordicRow[]> {
+  const url = `${API}/screener/shares?category=MAIN_MARKET&tableonly=true&market=${market}`;
+  const rows = parseNordicScreener(JSON.parse(await fetchText(url)));
+  if (rows.length === 0) throw new UpstreamError(`Nasdaq Nordic screener returned no ${market} shares`);
+  return rows;
+}

@@ -1,5 +1,4 @@
-import { STOCKS } from '../../shared/catalog';
-import { EXCHANGES, sessionState } from '../../shared/exchanges';
+import { EXCHANGES, isCurrentQuote, sessionState } from '../../shared/exchanges';
 import type { FxRates, Sector, StockSummary } from '../../shared/types';
 import { toEur } from './api';
 
@@ -42,7 +41,14 @@ export function turnoverEur(stock: StockSummary, fx: FxRates | undefined): numbe
   return toEur(stock.volume * stock.price, stock.currency, fx);
 }
 
-const TRACKED_EXCHANGES = [...new Set(STOCKS.map((s) => s.exchange))].map((id) => EXCHANGES[id]);
+// True while at least one covered exchange is in session.
+export const anyMarketOpen = (now: Date) => Object.values(EXCHANGES).some((ex) => sessionState(ex, now).isOpen);
 
-// True while at least one exchange with tracked stocks is in session.
-export const anyMarketOpen = (now: Date) => TRACKED_EXCHANGES.some((ex) => sessionState(ex, now).isOpen);
+// Stocks quoted in their exchange's latest session. Others carry an earlier session's close
+// (the US list outside its live top), which must not be mixed into today's moves.
+export const currentStocks = (stocks: StockSummary[], now: Date) =>
+  stocks.filter((s) => isCurrentQuote(EXCHANGES[s.exchange], s.time, now));
+
+// Today's move, or null when the quote is from an earlier session.
+export const dayMove = (stock: StockSummary, now: Date) =>
+  isCurrentQuote(EXCHANGES[stock.exchange], stock.time, now) ? stock.changePct : null;

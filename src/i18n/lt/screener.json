@@ -1,5 +1,8 @@
 {
   "title": "Atranka",
+  "more": "Rodyti dar {n}",
+  "shown": "Rodoma {n} iš {total}",
+  "histNote": "P/E, dividendų pajamingumui ir 1 metų grąžai reikia kiekvienos akcijos atskirų duomenų. Jie įkeliami ekrane rodomoms akcijoms (kol kas {n}); kitos į šiuos filtrus neįtraukiamos, kol neįkeltos.",
   "lead": "Susiaurinkite {n} stebimų akcijų sąrašą pagal tai, kas jums svarbu, tada pažymėkite iki keturių ir palyginkite jas viename grafike.",
   "presets": "Paruoštos atrankos",
   "pre": [
@@ -26,7 +29,8 @@
     "H": "Sveikata",
     "U": "Komunalinės paslaugos",
     "I": "Pramonė",
-    "M": "Žaliavos"
+    "M": "Žaliavos",
+    "R": "Nekilnojamasis turtas"
   },
   "reg": {
     "US": "JAV",
@@ -42,7 +46,7 @@
   "noLimit": "be ribos",
   "results": "Rezultatai",
   "find": "Ieškoti pagal simbolį ar pavadinimą",
-  "found": "Rasta {n} iš {total} · palyginimui pažymėta {picked}/{max}",
+  "found": "Rasta {n} iš {total} stebimų akcijų · palyginimui pažymėta {picked}/{max}",
   "heads": [
     "Simbolis",
     "Pavadinimas",

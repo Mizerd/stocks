@@ -266,13 +266,17 @@
   .plot-ix{height:220px}
   .plot-main{height:300px}
   .plot-rc{height:220px}
-  .x-dates span:nth-child(even){display:none} /* six dates do not fit under a phone-wide chart */
 }
 @media (min-width:1600px){
   .plot-ix{height:360px}
   .plot-main{height:520px}
   .plot-rc{height:340px}
 }
+
+/* Volume bars too dense for an outline: rising ones lighter, as the hollow ones are */
+.vbar{stroke:none}
+.vbar.up{fill:var(--up);opacity:.5}
+.vbar.dn{fill:var(--down)}
 
 /* Hovered and anchored (pinned) point of a chart, and the change between them */
 .sel-line{position:absolute;top:0;bottom:0;border-left:1px dashed var(--mark)}
@@ -295,6 +299,7 @@
   .hm{grid-auto-rows:84px}
   .hm .tile{grid-column:span 6!important;grid-row:span 1!important}
   .hm .tile:first-child{grid-column:span 12!important}
+  .hm .tile:last-child:nth-child(even){grid-column:span 12!important}
 }
 @media (min-width:1600px){.hm{grid-auto-rows:140px}}
 

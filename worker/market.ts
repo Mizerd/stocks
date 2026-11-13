@@ -1,4 +1,6 @@
+import { toListing } from '../shared/catalog';
 import type { Candle, History, Instrument, ProviderId, Range, StockDetail, StockSummary } from '../shared/types';
+import { memo } from './http';
 import { baltic } from './providers/baltic';
 import { euronext } from './providers/euronext';
 import { nasdaq } from './providers/nasdaq';
@@ -16,11 +18,17 @@ const RANGE_DAYS: Record<Exclude<Range, '1D' | 'YTD'>, number> = {
   '5D': 7, '1W': 7, '1M': 31, '3M': 92, '6M': 183, '1Y': 366, '5Y': 5 * 366,
 };
 
-export async function summary(inst: Instrument): Promise<StockSummary> {
-  const provider = PROVIDERS[inst.provider];
-  const daily = await provider.daily(inst, SUMMARY_YEARS);
-  const quote = await provider.quote(inst, daily);
-  return { ...inst, ...quote, ...yearStats(daily, quote.price) };
+// Parsed candles are kept per isolate, so a warm isolate never downloads or parses a history twice.
+function daily(inst: Instrument, years: number): Promise<Candle[]> {
+  return memo(`daily:${inst.symbol}:${years}`, 900, () => PROVIDERS[inst.provider].daily(inst, years));
+}
+
+export function summary(inst: Instrument): Promise<StockSummary> {
+  return memo(`summary:${inst.symbol}`, 60, async () => {
+    const candles = await daily(inst, SUMMARY_YEARS);
+    const quote = await PROVIDERS[inst.provider].quote(inst, candles);
+    return { ...toListing(inst), ...quote, ...yearStats(candles, quote.price) };
+  });
 }
 
 export function yearStats(daily: Candle[], price: number) {
@@ -37,17 +45,16 @@ export function yearStats(daily: Candle[], price: number) {
 }
 
 export async function history(inst: Instrument, range: Range): Promise<History | null> {
-  const provider = PROVIDERS[inst.provider];
   if (range === '1D') {
-    const intraday = await provider.intraday(inst);
+    const intraday = await memo(`intraday:${inst.symbol}`, 60, () => PROVIDERS[inst.provider].intraday(inst));
     if (!intraday || intraday.candles.length === 0) return null;
     return { symbol: inst.symbol, range, interval: 'intraday', warmup: 0, ...intraday };
   }
 
   const weekly = range === '5Y';
-  const daily = await provider.daily(inst, weekly ? 6.1 : SUMMARY_YEARS);
+  const candles = await daily(inst, weekly ? 6.1 : SUMMARY_YEARS);
   const from = range === 'YTD' ? Date.UTC(new Date().getUTCFullYear(), 0, 1) : Date.now() - RANGE_DAYS[range] * DAY;
-  const bars = weekly ? toWeekly(daily) : daily;
+  const bars = weekly ? toWeekly(candles) : candles;
   const firstVisible = bars.findIndex((c) => c.t >= from);
   if (firstVisible < 0) return null;
   const start = Math.max(0, firstVisible - WARMUP_BARS);

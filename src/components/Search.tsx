@@ -1,17 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { INDICES, shortSymbol, STOCKS } from '../../shared/catalog';
 import { EXCHANGES } from '../../shared/exchanges';
-import type { Instrument } from '../../shared/types';
+import type { Listing } from '../../shared/types';
 import { useT } from '../i18n';
+import { useListings } from '../lib/universe';
 
-const ALL = [...STOCKS, ...INDICES];
+// Until the universe has loaded, the catalogue is searched.
+export function useSearchable(): Listing[] {
+  const universe = useListings();
+  return useMemo(() => (universe && universe.length > 0 ? [...INDICES, ...universe] : [...STOCKS, ...INDICES]), [universe]);
+}
 
-export function searchInstruments(query: string): Instrument[] {
+// Symbol or name starting with the query first, then containing it.
+export function searchInstruments(query: string, all: readonly Listing[]): Listing[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const starts = ALL.filter((i) => i.symbol.toLowerCase().startsWith(q) || i.name.toLowerCase().startsWith(q));
-  const contains = ALL.filter((i) => !starts.includes(i) && `${i.symbol} ${i.name}`.toLowerCase().includes(q));
+  const starts: Listing[] = [];
+  const contains: Listing[] = [];
+  for (const i of all) {
+    const symbol = i.symbol.toLowerCase();
+    const name = i.name.toLowerCase();
+    if (symbol.startsWith(q) || name.startsWith(q)) starts.push(i);
+    else if (symbol.includes(q) || name.includes(q)) contains.push(i);
+  }
   return [...starts, ...contains].slice(0, 8);
 }
 
@@ -22,7 +34,7 @@ export function Search() {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const results = searchInstruments(query);
+  const results = searchInstruments(query, useSearchable());
 
   // "/" jumps to the search field from anywhere on the page.
   useEffect(() => {
@@ -37,7 +49,7 @@ export function Search() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  function go(inst: Instrument) {
+  function go(inst: Listing) {
     setQuery('');
     setOpen(false);
     input.current?.blur();

@@ -4,6 +4,7 @@ import type { StockSummary } from '../../../shared/types';
 import { Badge } from '../ui';
 import { useT } from '../../i18n';
 import { direction, useFormat } from '../../lib/format';
+import { dayMove } from '../../lib/market';
 import { MAX_PICKS, SORT_KEYS, type SortKey } from '../../lib/screener';
 
 const TEXT_COLUMNS = 3;
@@ -22,6 +23,7 @@ export function ResultsTable({ stocks, sort, desc, picks, onSort, onTogglePick }
   const { t, list } = useT();
   const f = useFormat();
   const heads = list('screener.heads');
+  const now = new Date();
 
   return (
     <div className="scroll-x" style={{ marginTop: 10 }}>
@@ -64,7 +66,7 @@ export function ResultsTable({ stocks, sort, desc, picks, onSort, onTogglePick }
               <span className="num r c-price">
                 {f.price(stock.price)} <span className="cur">{stock.currency}</span>
               </span>
-              <span className="r c-chg"><Badge value={stock.changePct} /></span>
+              <span className="r c-chg"><Badge value={dayMove(stock, now)} /></span>
               {/* Small labels name the figures on phones, where the header row is a row of sort buttons. */}
               <span className="num c-cap" style={figure}>
                 <span className="rt-k">{heads[5]}</span>

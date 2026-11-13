@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { Candle, FxRates, History, StockSummary } from '../shared/types';
-import { nearestIndex, pointDiff } from '../src/lib/chart';
+import type { Candle, FxRates, History, Listing, StockSummary } from '../shared/types';
+import { aggregateCandles, barInterval, curvePath, nearestIndex, pointDiff, smoothPath, timeTicks } from '../src/lib/chart';
+import type { XY } from '../src/lib/chart';
 import { createFormat } from '../src/lib/format';
 import { bollinger, niceTicks, rsi, sma } from '../src/lib/indicators';
-import { anyMarketOpen, barometer, sectorMoves } from '../src/lib/market';
+import { withHistory } from '../src/lib/api';
+import { anyMarketOpen, barometer, currentStocks, dayMove, sectorMoves } from '../src/lib/market';
 import { cleanEntry, isDate, parseDecimal, parseList, serializeList, upsert } from '../src/lib/myList';
 import { allocation, listRows, portfolioReturns, sortRows, valuePortfolio } from '../src/lib/portfolio';
 import { quarterRows } from '../src/lib/quarters';
@@ -18,7 +20,7 @@ const fx: FxRates = { date: '2026-11-09', perEur: { EUR: 1, USD: 1.25 } };
 function stock(overrides: Partial<StockSummary>): StockSummary {
   return {
     symbol: 'X', name: 'X', kind: 'stock', exchange: 'XNAS', currency: 'USD', region: 'US', sector: 'T',
-    provider: 'nasdaq', providerId: 'X', price: 100, change: 0, changePct: 0, prevClose: 100, open: null, high: null,
+    provider: 'nasdaq', price: 100, change: 0, changePct: 0, prevClose: 100, open: null, high: null,
     low: null, volume: null, time: '2026-11-10T15:00:00Z', freshness: 'realtime', marketCap: null, pe: null, eps: null,
     dividend: null, dividendYield: null, avgVolume: null, high52: null, low52: null, return1Y: null, spark: [],
     ...overrides,
@@ -101,6 +103,22 @@ describe('overview maths', () => {
       stock({ sector: 'D', changePct: 1 }), stock({ sector: 'S', changePct: 3 }), stock({ sector: 'T', changePct: -1 }),
     ]);
     expect(moves).toEqual([{ sector: 'D', count: 2, changePct: 2 }, { sector: 'T', count: 1, changePct: -1 }]);
+  });
+
+  it('keeps an earlier session\'s closes out of today\'s moves', () => {
+    const now = new Date('2026-11-11T15:00:00Z');
+    const live = stock({ symbol: 'A', time: '2026-11-11T14:59:00Z', changePct: 1 });
+    const old = stock({ symbol: 'B', time: '2026-11-10T21:00:00Z', changePct: 5 });
+    expect(currentStocks([live, old], now).map((s) => s.symbol)).toEqual(['A']);
+    expect(dayMove(old, now)).toBeNull();
+    expect(dayMove(live, now)).toBe(1);
+  });
+
+  it('adds history figures to a bulk quote and keeps the newer price', () => {
+    const bulk = stock({ price: 100, time: '2026-11-10T21:00:00Z', freshness: 'eod', marketCap: 5e9 });
+    const full = stock({ price: 102, time: '2026-11-11T15:00:00Z', freshness: 'realtime', pe: 20, return1Y: 12, spark: [1, 2] });
+    expect(withHistory(bulk, full)).toMatchObject({ price: 102, freshness: 'realtime', pe: 20, return1Y: 12, spark: [1, 2], marketCap: 5e9 });
+    expect(withHistory({ ...bulk, time: '2026-11-11T15:01:00Z' }, full)).toMatchObject({ price: 100, pe: 20 });
   });
 });
 
@@ -187,7 +205,9 @@ describe('screener', () => {
   it('filters by sector, region and direction', () => {
     expect(symbols(filterStocks(list, { ...NO_FILTERS, sectors: ['T', 'F'] }, fx))).toEqual(['BIG', 'MID']);
     expect(symbols(filterStocks(list, { ...NO_FILTERS, regions: ['BAL'] }, fx))).toEqual(['BALT']);
-    expect(symbols(filterStocks(list, { ...NO_FILTERS, direction: 'down' }, fx))).toEqual(['MID']);
+    expect(symbols(filterStocks(list, { ...NO_FILTERS, direction: 'down' }, fx, new Date('2026-11-10T16:00:00Z')))).toEqual(['MID']);
+    // A close from an earlier session is no move today.
+    expect(symbols(filterStocks(list, { ...NO_FILTERS, direction: 'down' }, fx, new Date('2026-11-11T16:00:00Z')))).toEqual([]);
     expect(symbols(filterStocks(list, { ...NO_FILTERS, query: 'bal' }, fx))).toEqual(['BALT']);
   });
 
@@ -238,20 +258,30 @@ describe('my list', () => {
     expect(isDate('28.02.2026')).toBe(false);
   });
 
-  it('keeps catalogue stocks and drops bad fields', () => {
+  const universe: Listing[] = [
+    { symbol: 'ERIC-B.ST', name: 'Ericsson B', kind: 'stock', exchange: 'XSTO', currency: 'SEK', region: 'EU', sector: 'T', provider: 'nordic' },
+  ];
+
+  it('keeps covered stocks and drops bad fields', () => {
     expect(cleanEntry({ symbol: 'aapl', quantity: 2, buyPrice: 150.5, buyDate: '2025-03-01', note: '  first buy ' }))
       .toEqual({ symbol: 'AAPL', quantity: 2, buyPrice: 150.5, buyDate: '2025-03-01', note: 'first buy' });
     expect(cleanEntry({ symbol: 'AAPL', quantity: -1, buyPrice: 'x', buyDate: 'soon', note: 7 })).toEqual({ symbol: 'AAPL' });
-    expect(cleanEntry({ symbol: 'NOPE' })).toBeNull();
+    expect(cleanEntry({ symbol: 'eric-b.st' }, universe)).toEqual({ symbol: 'ERIC-B.ST' });
+    expect(cleanEntry({ symbol: 'NOPE' }, universe)).toBeNull();
     expect(cleanEntry({ symbol: 'NDX' })).toBeNull();
     expect(cleanEntry('AAPL')).toBeNull();
+  });
+
+  it('keeps well-formed symbols while the universe is not loaded, so nothing saved is lost', () => {
+    expect(cleanEntry({ symbol: 'eric-b.st' })).toEqual({ symbol: 'ERIC-B.ST' });
+    expect(cleanEntry({ symbol: 'not a symbol!' })).toBeNull();
   });
 
   it('survives corrupt, foreign and duplicated data', () => {
     expect(parseList(null)).toEqual({ entries: [], skipped: 0 });
     expect(parseList('{not json')).toEqual({ entries: [], skipped: 0 });
     expect(parseList('{"version":2,"entries":[{"symbol":"AAPL"}]}')).toEqual({ entries: [], skipped: 0 });
-    expect(parseList('{"version":1,"entries":[{"symbol":"AAPL"},{"symbol":"AAPL","quantity":3},{"symbol":"NOPE"},null]}'))
+    expect(parseList('{"version":1,"entries":[{"symbol":"AAPL"},{"symbol":"AAPL","quantity":3},{"symbol":"NOPE"},null]}', universe))
       .toEqual({ entries: [{ symbol: 'AAPL' }], skipped: 3 });
   });
 
@@ -405,5 +435,82 @@ describe('market hours', () => {
     expect(anyMarketOpen(new Date('2026-11-10T20:30:00Z'))).toBe(true);
     expect(anyMarketOpen(new Date('2026-11-10T23:00:00Z'))).toBe(false);
     expect(anyMarketOpen(new Date('2026-11-14T12:00:00Z'))).toBe(false);
+  });
+});
+
+// Every point a path draws through: the start and the end of each segment, as [x, y].
+function pathEnds(path: string): XY[] {
+  return [...path.matchAll(/[MLC]([^MLCZ]+)/g)].map((m) => {
+    const numbers = m[1].trim().split(/[\s,]+/).map(Number);
+    return [numbers[numbers.length - 2], numbers[numbers.length - 1]];
+  });
+}
+
+// y of a cubic segment at parameter t, given its start, two controls and end.
+const cubic = (a: number, b: number, c: number, d: number, t: number) =>
+  (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d;
+
+describe('smooth chart lines', () => {
+  const points: XY[] = [[0, 50], [10, 20], [20, 25], [30, 80], [40, 80], [50, 10]];
+
+  it('passes through every point', () => {
+    expect(pathEnds(smoothPath(points))).toEqual(points);
+  });
+
+  it('never rises above or dips below the two points it joins', () => {
+    const segments = [...smoothPath(points).matchAll(/C([^C]+)/g)].map((m) => m[1].trim().split(/\s+/).map(Number));
+    segments.forEach(([, c1, , c2, , end], i) => {
+      const start = points[i][1];
+      for (let t = 0; t <= 1; t += 0.05) {
+        const y = cubic(start, c1, c2, end, t);
+        expect(y).toBeGreaterThanOrEqual(Math.min(start, end) - 1e-9);
+        expect(y).toBeLessThanOrEqual(Math.max(start, end) + 1e-9);
+      }
+    });
+  });
+
+  it('draws one and two points without curves', () => {
+    expect(smoothPath([])).toBe('');
+    expect(smoothPath([[5, 5]])).toBe('M5.0 5.0');
+    expect(smoothPath([[0, 0], [10, 5]])).toBe('M0.0 0.0L10.0 5.0');
+    expect(smoothPath([[0, 0], [10, 5]], 'L')).toBe('L0.0 0.0L10.0 5.0');
+  });
+
+  it('keeps a flat run flat', () => {
+    const path = smoothPath([[0, 10], [10, 10], [20, 10]]);
+    expect(path).toBe('M0.0 10.0C3.3 10.0 6.7 10.0 10.0 10.0C13.3 10.0 16.7 10.0 20.0 10.0');
+  });
+
+  it('breaks the line where values are missing', () => {
+    const path = curvePath([1, 2, null, 4, 5, 6], (i) => i * 10, (v) => v);
+    expect(path.match(/M/g)).toHaveLength(2);
+    expect(pathEnds(path)).toEqual([[0, 1], [10, 2], [30, 4], [40, 5], [50, 6]]);
+    expect(curvePath([null, null], (i) => i, (v) => v)).toBe('');
+  });
+});
+
+describe('intraday bars', () => {
+  const minute = 60_000;
+  const open = Date.UTC(2026, 10, 10, 14, 30);
+  const bar = (i: number, c: number, v: number | null = 10) => ({ t: open + i * minute, o: c - 1, h: c + 2, l: c - 3, c, v });
+
+  it('finds the bar length from the smallest gap', () => {
+    expect(barInterval([open, open + 2 * minute, open + 3 * minute])).toBe(minute);
+    expect(barInterval([open])).toBe(5 * minute);
+  });
+
+  it('merges 1-minute bars into 5-minute candles', () => {
+    const bars = [bar(0, 10), bar(1, 14), bar(2, 8), bar(4, 11), bar(5, 12, null)];
+    expect(aggregateCandles(bars, 5 * minute)).toEqual([
+      { t: open, o: 9, h: 16, l: 5, c: 11, v: 40 },
+      { t: open + 5 * minute, o: 11, h: 14, l: 9, c: 12, v: null },
+    ]);
+    expect(bars[0]).toEqual(bar(0, 10));
+  });
+
+  it('labels round times only', () => {
+    const close = open + 390 * minute;
+    expect(timeTicks(open, close, 7).map((t) => new Date(t).getUTCHours())).toEqual([15, 16, 17, 18, 19, 20, 21]);
+    expect(timeTicks(open, close, 4).map((t) => new Date(t).getUTCHours())).toEqual([16, 18, 20]);
   });
 });

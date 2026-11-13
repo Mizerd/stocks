@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { shortSymbol } from '../../../shared/catalog';
 import { EXCHANGES } from '../../../shared/exchanges';
-import type { Instrument } from '../../../shared/types';
+import type { Listing } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { searchInstruments } from '../Search';
+import { searchInstruments, useSearchable } from '../Search';
 
 interface Props {
   id: string;
@@ -11,16 +11,16 @@ interface Props {
   exclude: string[];
   invalid: boolean;
   describedBy?: string;
-  onPick(inst: Instrument): void;
+  onPick(inst: Listing): void;
 }
 
-// Search field over the catalogue's stocks. The suggestions stay open until one is chosen,
+// Search field over the covered stocks. The suggestions stay open until one is chosen,
 // so a tap on a suggestion cannot be lost to the field losing focus.
 export function StockPicker({ id, exclude, invalid, describedBy, onPick }: Props) {
   const { t } = useT();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  const results = searchInstruments(query).filter((i) => i.kind === 'stock' && !exclude.includes(i.symbol));
+  const results = searchInstruments(query, useSearchable()).filter((i) => i.kind === 'stock' && !exclude.includes(i.symbol));
   const open = query.trim() !== '';
 
   function onKeyDown(e: React.KeyboardEvent) {

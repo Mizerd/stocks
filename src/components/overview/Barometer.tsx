@@ -1,4 +1,5 @@
 import { useT } from '../../i18n';
+import { useFormat } from '../../lib/format';
 import { Notice, PanelTitle } from '../ui';
 
 // A point on the dial: value 0 is far left, 100 far right.
@@ -9,6 +10,7 @@ function onDial(value: number, radius: number): [number, number] {
 
 export function Barometer({ value, count }: { value: number | null; count: number }) {
   const { t, list } = useT();
+  const f = useFormat();
   const zones = list('overview.baroL');
 
   if (value === null) {
@@ -50,7 +52,7 @@ export function Barometer({ value, count }: { value: number | null; count: numbe
           <span className="ser" style={{ fontSize: 20, fontStyle: 'italic' }}>{zones[zone]}</span>
         </p>
       </div>
-      <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink2)', textWrap: 'pretty' }}>{t('overview.baroNote', { n: count })}</p>
+      <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink2)', textWrap: 'pretty' }}>{t('overview.baroNote', { n: f.num(count, 0) })}</p>
     </section>
   );
 }

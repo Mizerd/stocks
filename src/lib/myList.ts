@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { findInstrument } from '../../shared/catalog';
+import { findInstrument, isSymbolShaped } from '../../shared/catalog';
+import type { Listing } from '../../shared/types';
 
 // The visitor's personal list. It lives only in this browser's localStorage and is written
 // only when the visitor adds, edits, imports or removes something.
@@ -43,14 +44,24 @@ export function isDate(value: unknown): value is string {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
-// One stored or imported item as a valid entry, or null if it is not a catalogue stock.
+// The stock's current symbol, checked against the universe when it is given. Without it (the saved
+// list is read before the universe loads) any well-formed symbol is kept, so nothing saved is lost.
+function entrySymbol(symbol: unknown, universe: readonly Listing[] | null): string | null {
+  if (typeof symbol !== 'string') return null;
+  const inst = findInstrument(symbol, universe ?? []);
+  if (inst) return inst.kind === 'stock' ? inst.symbol : null;
+  const upper = symbol.trim().toUpperCase();
+  return universe === null && isSymbolShaped(upper) ? upper : null;
+}
+
+// One stored or imported item as a valid entry, or null if it is not a covered stock.
 // Bad numbers, dates and notes are dropped; the stock itself is kept.
-export function cleanEntry(raw: unknown): ListEntry | null {
+export function cleanEntry(raw: unknown, universe: readonly Listing[] | null = null): ListEntry | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const item = raw as Record<string, unknown>;
-  const inst = typeof item.symbol === 'string' ? findInstrument(item.symbol) : undefined;
-  if (!inst || inst.kind !== 'stock') return null;
-  const entry: ListEntry = { symbol: inst.symbol };
+  const symbol = entrySymbol(item.symbol, universe);
+  if (!symbol) return null;
+  const entry: ListEntry = { symbol };
   const quantity = positive(item.quantity);
   const buyPrice = positive(item.buyPrice);
   if (quantity) entry.quantity = quantity;
@@ -67,7 +78,7 @@ export interface ParsedList {
 
 // Parses a stored or exported list. Corrupt text, other versions and unknown stocks are ignored;
 // a stock listed twice keeps its first entry.
-export function parseList(text: string | null): ParsedList {
+export function parseList(text: string | null, universe: readonly Listing[] | null = null): ParsedList {
   let data: unknown;
   try {
     data = JSON.parse(text ?? '');
@@ -78,7 +89,7 @@ export function parseList(text: string | null): ParsedList {
   if (file?.version !== VERSION || !Array.isArray(file.entries)) return { entries: [], skipped: 0 };
   const entries: ListEntry[] = [];
   for (const raw of file.entries) {
-    const entry = cleanEntry(raw);
+    const entry = cleanEntry(raw, universe);
     if (entry && !entries.some((e) => e.symbol === entry.symbol)) entries.push(entry);
   }
   return { entries, skipped: file.entries.length - entries.length };

@@ -10,10 +10,11 @@ import { Performance } from '../components/portfolio/Performance';
 import { Summary } from '../components/portfolio/Summary';
 import { ErrorNotice, Loading } from '../components/ui';
 import { useT } from '../i18n';
-import { useFx, useStocks } from '../lib/api';
+import { useFx, useSummaries, withHistory } from '../lib/api';
 import { useMyList } from '../lib/myList';
 import { allocation, valuePortfolio } from '../lib/portfolio';
 import { usePageTitle } from '../lib/usePageTitle';
+import { useMarket } from '../lib/universe';
 
 const BENCHMARK = INDICES.find((i) => i.symbol === 'NDX')!;
 
@@ -22,10 +23,17 @@ export function Portfolio() {
   usePageTitle(t('portfolio.title'));
   const myList = useMyList();
   const [adding, setAdding] = useState(false);
-  const { stocks, loading, error } = useStocks();
+  const market = useMarket();
   const fx = useFx();
 
   const entries = myList.entries;
+  // Dividends need each listed stock's own figures; prices come from the bulk quotes.
+  const histories = useSummaries(entries.map((e) => e.symbol));
+  const stocks = market.stocks
+    .filter((s) => entries.some((e) => e.symbol === s.symbol))
+    .map((s) => withHistory(s, histories.get(s.symbol)));
+  const loading = market.loading && market.stocks.length === 0;
+  const error = market.error;
   const empty = entries.length === 0;
   const rates = fx.data;
   const valuation = rates && !loading && !error && !empty ? valuePortfolio(entries, stocks, rates, 0) : undefined;

@@ -6,6 +6,7 @@ const WIDTH = 1000;
 const HEIGHT = 300;
 const AXIS_WIDTH = 56;
 const AXIS_GAP = 10;
+const DENSE_POINTS = 300;
 
 // The four lines differ by pattern as well as colour, so they can be told apart without colour.
 const LINE_STYLES = [
@@ -79,7 +80,7 @@ export function ReturnChart({ times, series, ariaLabel, formatX, xLabels = 6 }: 
                 key={s.label}
                 className="sl"
                 d={seriesPath(s.values, scale, WIDTH, HEIGHT)}
-                style={{ strokeWidth: 2, ...LINE_STYLES[i % LINE_STYLES.length] }}
+                style={{ strokeWidth: times.length > DENSE_POINTS ? 1.5 : 2, ...LINE_STYLES[i % LINE_STYLES.length] }}
               />
             ))}
           </svg>

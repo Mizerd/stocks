@@ -1,13 +1,20 @@
 import { unzipSync, strFromU8 } from 'fflate';
 import type { Candle, Instrument, Quote } from '../../shared/types';
 import { EXCHANGES, zonedParts, zonedTime, type Exchange } from '../../shared/exchanges';
-import { cachedText, fetchBytes, daysAgo, isoDay, num, UpstreamError } from '../http';
+import { fetchBytes, fetchText, daysAgo, isoDay, memo, num, UpstreamError } from '../http';
 import { bucket } from './nasdaq';
 import { emptyFundamentals, NO_EXTRAS, type DetailExtras, type Intraday, type Provider } from './provider';
 
 const BASE = 'https://nasdaqbaltic.com/statistics/en';
 
 export interface BalticRow {
+  isin: string;
+  ticker: string;
+  name: string;
+  // Industry name, e.g. "Utilities".
+  industry: string;
+  // VLN, RIG or TLN.
+  home: string;
   last: number | null;
   change: number | null;
   changePct: number | null;
@@ -15,22 +22,30 @@ export interface BalticRow {
   prevClose: number | null;
 }
 
-const cellText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const decode = (text: string) =>
+  text.replaceAll('&quot;', '"').replaceAll('&#039;', "'").replaceAll('&amp;', '&').trim();
+const cellText = (html: string) => decode(html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
 
-// The public share list page: one table row per share, keyed here by ISIN.
+// The public share list page (main, secondary and First North lists): one table row per share, keyed by ISIN.
 export function parseBalticShareList(html: string): { asOf: string | null; rows: Map<string, BalticRow> } {
   const rows = new Map<string, BalticRow>();
   for (const tr of html.match(/<tr>[\s\S]*?<\/tr>/g) ?? []) {
     const isin = tr.match(/instrument\/([A-Z]{2}[A-Z0-9]{10})\/trading/)?.[1];
     if (!isin) continue;
-    const cells = (tr.match(/<td[^>]*>[\s\S]*?<\/td>/g) ?? []).map(cellText);
-    // Company, Ticker, Last, +/-, %, Bid, Ask, Trades, Volume, Turnover, Previous close, ...
+    const cells = tr.match(/<td[^>]*>[\s\S]*?<\/td>/g) ?? [];
+    const text = cells.map(cellText);
+    // Company, Ticker, Last, +/-, %, Bid, Ask, Trades, Volume, Turnover, Previous close, Industry, Supersector, Home, ...
     rows.set(isin, {
-      last: num(cells[2]),
-      change: num(cells[3]),
-      changePct: num(cells[4]),
-      volume: num(cells[8]),
-      prevClose: num(cells[10]),
+      isin,
+      ticker: text[1],
+      name: decode(tr.match(/data-sort-by="([^"]*)"/)?.[1] ?? text[0]),
+      industry: decode(cells[11]?.match(/title="([^"]*)"/)?.[1] ?? ''),
+      home: text[13],
+      last: num(text[2]),
+      change: num(text[3]),
+      changePct: num(text[4]),
+      volume: num(text[8]),
+      prevClose: num(text[10]),
     });
   }
   const asOf = html.match(/Last update:\s*(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})/)?.[1] ?? null;
@@ -45,7 +60,7 @@ function parseAsOf(text: string | null): string | null {
 }
 
 // The list page keeps refreshing its "last update" stamp after the close, so cap it at the bell.
-function quoteTime(asOf: string | null, ex: Exchange): string {
+export function quoteTime(asOf: string | null, ex: Exchange): string {
   const stamp = parseAsOf(asOf) ?? new Date().toISOString();
   const close = zonedTime(zonedParts(new Date(stamp), ex.timezone).day, ex.close, ex.timezone).toISOString();
   return stamp < close ? stamp : close;
@@ -54,40 +69,44 @@ function quoteTime(asOf: string | null, ex: Exchange): string {
 // The exchange's price-history export is an .xlsx file. Columns:
 // Date, Average, Open, High, Low, Close, Last (the reported price), Adj. factor, Last adjusted, Change %, Bid, Ask, Trades, Volume, ...
 export function parseBalticXlsx(file: Uint8Array): Candle[] {
-  const sheet = unzipSync(file)['xl/worksheets/sheet1.xml'];
+  const sheet = unzipSync(file, { filter: (f) => f.name === 'xl/worksheets/sheet1.xml' })['xl/worksheets/sheet1.xml'];
   if (!sheet) throw new UpstreamError('Unexpected Nasdaq Baltic export format');
+  // One pass over the numeric cells of the needed columns; text cells (t="s") have another shape and never match.
+  const rows = new Map<string, Record<string, number>>();
+  for (const m of strFromU8(sheet).matchAll(/<c r="([ACDEFGN])(\d+)"(?: s="\d+")?><v>([^<]*)<\/v>/g)) {
+    let row = rows.get(m[2]);
+    if (!row) rows.set(m[2], (row = {}));
+    row[m[1]] = Number(m[3]);
+  }
   const candles: Candle[] = [];
-  for (const row of strFromU8(sheet).match(/<row[\s\S]*?<\/row>/g) ?? []) {
-    const cells = new Map<string, number>();
-    for (const m of row.matchAll(/<c r="([A-Z]+)\d+"([^>]*)>(?:<v>([^<]*)<\/v>)?/g)) {
-      // t="s" cells are text (shared strings); only numbers matter here.
-      if (!m[2].includes('t="s"') && m[3] !== undefined) cells.set(m[1], Number(m[3]));
-    }
-    const serial = cells.get('A');
-    const close = cells.get('G') || cells.get('F');
+  for (const { A: serial, C, D, E, F, G, N } of rows.values()) {
+    const close = G || F;
     if (!serial || !close) continue;
     candles.push({
       t: Math.round((serial - 25569) * 86400000),
-      o: cells.get('C') || close,
-      h: cells.get('D') || close,
-      l: cells.get('E') || close,
+      o: C || close,
+      h: D || close,
+      l: E || close,
       c: close,
-      v: cells.get('N') ?? null,
+      v: N ?? null,
     });
   }
   return candles.sort((a, b) => a.t - b.t);
 }
 
-async function shareList() {
-  const list = parseBalticShareList(await cachedText(`${BASE}/shares`, 120, 'text/html'));
-  if (list.rows.size === 0) throw new UpstreamError('Nasdaq Baltic share list is unavailable');
-  return list;
+// Parsed once a minute per isolate; both the bulk quotes and single quotes read it.
+export function balticShareList() {
+  return memo('baltic:shares', 60, async () => {
+    const list = parseBalticShareList(await fetchText(`${BASE}/shares`, 'text/html'));
+    if (list.rows.size === 0) throw new UpstreamError('Nasdaq Baltic share list is unavailable');
+    return list;
+  });
 }
 
 async function indexSeries(inst: Instrument, years: number): Promise<Candle[]> {
   const from = isoDay(daysAgo(Math.round(years * 365.25)));
   const url = `${BASE}/charts/charts_data_json?filter=1&indexes%5B%5D=${inst.providerId}&start=${from}&end=${isoDay(new Date())}`;
-  const json = JSON.parse(await cachedText(url, 900));
+  const json = JSON.parse(await fetchText(url));
   const chart = json.data?.charts?.find((c: any) => c.id === inst.providerId);
   if (!chart) throw new UpstreamError(`Nasdaq Baltic has no data for ${inst.symbol}`);
   return chart.data.map(([t, value]: [number, number]) => ({ t: dayStart(t), o: value, h: value, l: value, c: value, v: null }));
@@ -114,7 +133,7 @@ export const baltic: Provider = {
       };
     }
 
-    const list = await shareList().catch(() => null);
+    const list = await balticShareList().catch(() => null);
     const row = list?.rows.get(inst.providerId);
     const lastBar = daily[daily.length - 1];
     const prevBar = daily[daily.length - 2];
@@ -160,10 +179,10 @@ export const baltic: Provider = {
     if (inst.kind === 'index') return null;
     const today = zonedParts(new Date(), 'Europe/Vilnius').day;
     const url = `${BASE}/instrument/${inst.providerId}/trading/chart_price_json?start=${today}&end=${today}`;
-    const data = JSON.parse(await cachedText(url, 120)).data;
+    const data = JSON.parse(await fetchText(url)).data;
     if (data?.chart_type !== 'intraday') return null;
     const points = (data.data ?? []).map(([t, price, volume]: number[]) => ({ t, price, volume }));
-    return { candles: bucket(points, 5), prevClose: data.prev_last_price ?? null };
+    return { candles: bucket(points, 1), prevClose: data.prev_last_price ?? null };
   },
 
   async details(inst): Promise<DetailExtras> {

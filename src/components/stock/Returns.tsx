@@ -1,5 +1,5 @@
 import { findInstrument, shortSymbol } from '../../../shared/catalog';
-import type { History, Instrument } from '../../../shared/types';
+import type { History, Listing } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { useHistories } from '../../lib/api';
 import { direction, useFormat } from '../../lib/format';
@@ -22,7 +22,7 @@ function ReturnBar({ own, index, top }: { own: number | null; index: number | nu
 }
 
 // Price return over standard periods, next to the region's index.
-export function Returns({ inst, price }: { inst: Instrument; price: number }) {
+export function Returns({ inst, price }: { inst: Listing; price: number }) {
   const { t, list } = useT();
   const f = useFormat();
   const benchmark = findInstrument(BENCHMARK[inst.region])!;

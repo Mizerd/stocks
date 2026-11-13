@@ -27,7 +27,7 @@ export function HoldingRow({ row: { entry, stock, position }, valued, largest, a
       <Link to={`/stock/${entry.symbol}`} className="row tbl-row hd-cols">
         <span className="num c-sym" style={{ fontWeight: 600 }}>{symbol}</span>
         <span className="c-name" style={{ minWidth: 0 }}>
-          <span className="clip" style={{ display: 'block' }}>{findInstrument(entry.symbol)?.name}</span>
+          <span className="clip" style={{ display: 'block' }}>{stock?.name ?? findInstrument(entry.symbol)?.name}</span>
           {details && <span className="clip hd-note">{details}</span>}
         </span>
         {valued && (

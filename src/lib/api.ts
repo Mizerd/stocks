@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { STOCKS } from '../../shared/catalog';
+import { EXCHANGES, sessionState } from '../../shared/exchanges';
 import type { CompanyAbout, FxRates, History, NewsItem, Range, StockDetail, StockSummary } from '../../shared/types';
 
 interface Entry {
@@ -29,7 +29,11 @@ export interface ApiState<T> {
   loading: boolean;
 }
 
+const CLOSED_MS = 15 * 60_000;
+const anyExchangeOpen = () => Object.values(EXCHANGES).some((ex) => sessionState(ex, new Date()).isOpen);
+
 // Loads `load()` whenever `key` changes and again every `refreshMs`. A null key loads nothing.
+// Refreshes pause in a hidden tab (and catch up when it is shown) and slow to a quarter-hour while every exchange is closed.
 function useLoader<T>(key: string | null, load: () => Promise<T>, refreshMs = 0): ApiState<T> {
   const [state, setState] = useState<ApiState<T> & { key: string | null }>({
     key, data: undefined, error: undefined, loading: key !== null,
@@ -38,16 +42,25 @@ function useLoader<T>(key: string | null, load: () => Promise<T>, refreshMs = 0)
   useEffect(() => {
     if (key === null) return;
     let alive = true;
-    const run = () =>
+    let lastRun = 0;
+    const run = () => {
+      lastRun = Date.now();
       load().then(
         (data) => alive && setState({ key, data, error: undefined, loading: false }),
         (error: Error) => alive && setState((old) => ({ key, data: old.key === key ? old.data : undefined, error, loading: false })),
       );
+    };
+    const due = () => {
+      const wait = Math.max(refreshMs, anyExchangeOpen() ? 0 : CLOSED_MS);
+      if (document.visibilityState === 'visible' && Date.now() - lastRun >= wait - 1000) run();
+    };
     run();
-    const timer = refreshMs ? setInterval(run, refreshMs) : undefined;
+    const timer = refreshMs ? setInterval(due, refreshMs) : undefined;
+    if (refreshMs) document.addEventListener('visibilitychange', due);
     return () => {
       alive = false;
       clearInterval(timer);
+      document.removeEventListener('visibilitychange', due);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, refreshMs]);
@@ -66,28 +79,61 @@ interface SummaryList {
   failed: string[];
 }
 
-// The API takes at most 8 symbols per call, so the catalogue is fetched in chunks.
-async function loadStocks(symbols: string[]): Promise<SummaryList> {
-  const chunks: string[][] = [];
-  for (let i = 0; i < symbols.length; i += 8) chunks.push(symbols.slice(i, i + 8));
-  const parts = await Promise.all(
-    chunks.map((chunk) =>
-      fetchJson<SummaryList>(`/api/stocks?symbols=${encodeURIComponent(chunk.join(','))}`).catch(
-        (): SummaryList => ({ items: [], failed: chunk }),
-      ),
-    ),
-  );
-  const result = { items: parts.flatMap((p) => p.items), failed: parts.flatMap((p) => p.failed) };
-  if (result.items.length === 0) throw new Error('No quotes could be loaded');
-  return result;
+const HISTORY_MS = 15 * 60_000;
+const BATCH = 6;
+
+// Figures that need a stock's own history or fundamentals, which the bulk quote lists do not carry.
+// Whichever of the two quotes is newer is shown.
+export function withHistory(stock: StockSummary, full: StockSummary | undefined): StockSummary {
+  if (!full) return stock;
+  const { pe, eps, dividend, dividendYield, avgVolume, high52, low52, return1Y, spark } = full;
+  const merged = { ...stock, pe, eps, dividend, dividendYield, avgVolume, high52, low52, return1Y, spark, marketCap: stock.marketCap ?? full.marketCap };
+  if (full.time <= stock.time) return merged;
+  const { price, change, changePct, prevClose, open, high, low, volume, time, freshness } = full;
+  return { ...merged, price, change, changePct, prevClose, open, high, low, volume, time, freshness };
 }
 
-const ALL_SYMBOLS = STOCKS.map((s) => s.symbol);
+const summaries = new Map<string, { at: number; summary: StockSummary | undefined }>();
 
-// Every stock in the catalogue (or just `symbols`), refreshed once a minute.
-export function useStocks(symbols: string[] = ALL_SYMBOLS) {
-  const state = useLoader(symbols.join(','), () => loadStocks(symbols), FRESH_MS);
-  return { stocks: state.data?.items ?? [], failed: state.data?.failed ?? [], loading: state.loading, error: state.error };
+// Full summaries of the stocks on screen, one request each so the edge cache serves every visitor the
+// same answers. Live prices come from the bulk quotes; these only add the slower figures, so each is
+// refreshed once a quarter-hour. Kept across pages, so scrolling back or paging on reuses them.
+export function useSummaries(symbols: string[]): ReadonlyMap<string, StockSummary> {
+  const [, setVersion] = useState(0);
+  const key = symbols.join(',');
+  useEffect(() => {
+    let alive = true;
+    const load = (symbol: string) =>
+      fetchJson<SummaryList>(`/api/stocks?symbols=${encodeURIComponent(symbol)}`).then(
+        (r) => summaries.set(symbol, { at: Date.now(), summary: r.items[0] }),
+        () => summaries.delete(symbol),
+      );
+    const run = async () => {
+      if (document.visibilityState === 'hidden') return;
+      const due = symbols.filter((s) => Date.now() - (summaries.get(s)?.at ?? 0) > HISTORY_MS);
+      // A few at a time, so a page of new rows does not fire dozens of requests at once; rows fill in as they arrive.
+      for (let i = 0; i < due.length && alive; i += BATCH) {
+        const batch = due.slice(i, i + BATCH).filter((s) => Date.now() - (summaries.get(s)?.at ?? 0) > HISTORY_MS);
+        // Marked before the answer arrives, so another component or re-render does not ask twice.
+        for (const s of batch) summaries.set(s, { at: Date.now(), summary: summaries.get(s)?.summary });
+        await Promise.all(batch.map(load));
+        if (alive) setVersion((v) => v + 1);
+      }
+    };
+    run();
+    const timer = setInterval(run, FRESH_MS);
+    document.addEventListener('visibilitychange', run);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', run);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return new Map(symbols.flatMap((s) => {
+    const summary = summaries.get(s)?.summary;
+    return summary ? [[s, summary] as const] : [];
+  }));
 }
 
 export function useIndices() {

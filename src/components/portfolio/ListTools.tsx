@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { useT } from '../../i18n';
 import { parseList, serializeList, type ListEntry } from '../../lib/myList';
+import { loadListings } from '../../lib/universe';
 import { ConfirmBar } from '../ConfirmBar';
 
 interface Props {
@@ -29,7 +30,8 @@ export function ListTools({ entries, onImport, onClear }: Props) {
     const picked = e.target.files?.[0];
     e.target.value = '';
     if (!picked) return;
-    const parsed = parseList(await picked.text());
+    const universe = await loadListings().catch(() => null);
+    const parsed = parseList(await picked.text(), universe);
     if (parsed.entries.length === 0 && parsed.skipped === 0) {
       setMessage(t('portfolio.importBad'));
       return;

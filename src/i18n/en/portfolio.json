@@ -44,7 +44,9 @@
     "U": "Utilities",
     "I": "Industrials",
     "M": "Materials",
-    "X": "Cash"
+    "R": "Real estate",
+    "X": "Cash",
+    "O": "Other"
   },
   "divEmpty": "The data sources publish no dividend for these holdings.",
   "divKnown": "known for {n} of {m} holdings",

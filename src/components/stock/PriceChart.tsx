@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { shortSymbol } from '../../../shared/catalog';
-import type { History, Instrument, Range } from '../../../shared/types';
+import type { History, Listing, Range } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { isUnavailable, useHistory } from '../../lib/api';
 import { direction, useFormat } from '../../lib/format';
@@ -32,7 +32,7 @@ function rangeReturn(history: History): number | null {
   return (visible[visible.length - 1].c / base - 1) * 100;
 }
 
-export function PriceChart({ inst }: { inst: Instrument }) {
+export function PriceChart({ inst }: { inst: Listing }) {
   const { t, list } = useT();
   const f = useFormat();
   const [params, setParams] = useSearchParams();

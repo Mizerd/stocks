@@ -5,8 +5,8 @@ import type { SectorMove } from '../../lib/market';
 import { useSettings } from '../../settings';
 import { PanelTitle } from '../ui';
 
-// Column and row spans of the tiles, largest sector first: 5x2, then 4/3, 4/3, then four of 3.
-const SPANS = [[5, 2], [4, 1], [3, 1], [4, 1], [3, 1], [3, 1], [3, 1], [3, 1], [3, 1]];
+// Column and row spans of the tiles, largest sector first: 5x2 beside 4/3 and 4/3, then three of 4 and two of 6.
+const SPANS = [[5, 2], [4, 1], [3, 1], [4, 1], [3, 1], [4, 1], [4, 1], [4, 1], [6, 1], [6, 1]];
 
 function tileColours(changePct: number, dark: boolean) {
   const tone = changePct >= 0 ? 'var(--up)' : 'var(--down)';

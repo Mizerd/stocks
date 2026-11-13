@@ -1,12 +1,14 @@
-import type { Candle, Instrument, QuarterFigure, Quote } from '../../shared/types';
+import type { Candle, ExchangeId, Instrument, QuarterFigure, Quote } from '../../shared/types';
 import { zonedTime } from '../../shared/exchanges';
-import { cachedText, daysAgo, isoDay, num, UpstreamError } from '../http';
+import { cachedJson, daysAgo, fetchText, isoDay, num, UpstreamError } from '../http';
 import type { DetailExtras, Intraday, Provider } from './provider';
 
 const API = 'https://api.nasdaq.com/api';
 
+// ttl 0: not kept, for results the caller keeps in parsed form itself.
 async function get(path: string, ttl: number): Promise<any> {
-  const json = JSON.parse(await cachedText(`${API}${path}`, ttl));
+  const url = `${API}${path}`;
+  const json = ttl > 0 ? await cachedJson(url, ttl) : JSON.parse(await fetchText(url));
   if (!json.data) throw new UpstreamError(`Nasdaq has no data for ${path}`);
   return json.data;
 }
@@ -101,13 +103,15 @@ export const nasdaq: Provider = {
     const to = isoDay(new Date());
     const data = await get(
       `/quote/${inst.providerId}/historical?assetclass=${assetClass(inst)}&fromdate=${from}&todate=${to}&limit=2000`,
-      3600,
+      0,
     );
     return parseNasdaqRows(data.tradesTable?.rows ?? []);
   },
 
-  async intraday(inst): Promise<Intraday> {
-    const data = await get(`/quote/${inst.providerId}/chart?assetclass=${assetClass(inst)}`, 120);
+  async intraday(inst): Promise<Intraday | null> {
+    // Nasdaq answers without data for a few shares (BRK.B): the chart then says there is no intraday series.
+    const data = JSON.parse(await fetchText(`${API}/quote/${inst.providerId}/chart?assetclass=${assetClass(inst)}`)).data;
+    if (!data) return null;
     // The feed stamps points with New York wall-clock time written as if it were UTC.
     const points: { t: number; price: number }[] = [];
     for (const p of data.chart ?? []) {
@@ -116,7 +120,7 @@ export const nasdaq: Provider = {
       if (hhmm < '09:30' || hhmm > '16:00') continue;
       points.push({ t: zonedTime(wall.slice(0, 10), hhmm, 'America/New_York').getTime(), price: p.y });
     }
-    return { candles: bucket(points, 5), prevClose: num(data.previousClose) };
+    return { candles: bucket(points, 1), prevClose: num(data.previousClose) };
   },
 
   async details(inst): Promise<DetailExtras> {
@@ -157,9 +161,102 @@ export const nasdaq: Provider = {
   },
 };
 
+export interface ScreenerRow {
+  ticker: string;
+  name: string;
+  sector: string;
+  industry: string;
+  price: number;
+  change: number;
+  changePct: number;
+  volume: number | null;
+  marketCap: number | null;
+}
+
+// Preferred shares, notes, warrants and units share the screener with ordinary shares.
+const NOT_A_SHARE = /\d%|preferred (stock|units)|interest in a share|warrants?\b|equity units?|corporate units/i;
+const SHARE_CLASS =
+  /\s*(\([^)]*\)\s*)?(Class [A-Z] )?(Common (Stock|Shares|Units)|Ordinary Shares?|Capital Stock|(Exchangeable )?Limited Voting Shares|Subordinate Voting Shares|American Deposit[ao]ry Shares|NY Registry Shares|Spons[a-z]* ADR|ADR|ADS|Limited Partnership Units)\b.*$/i;
+
+// "Apple Inc. Common Stock" -> "Apple Inc."
+export const companyName = (name: string) => name.replace(SHARE_CLASS, '').trim();
+
+// The stock screener's download: every share of one exchange with its last close, in one call.
+// Its prices are a session behind while the market trades.
+export function parseUsScreener(json: any): ScreenerRow[] {
+  const rows: ScreenerRow[] = [];
+  for (const r of json?.data?.rows ?? []) {
+    const price = num(r.lastsale);
+    if (price === null || NOT_A_SHARE.test(r.name) || !/^[A-Z][A-Z./]*$/.test(r.symbol)) continue;
+    rows.push({
+      ticker: r.symbol,
+      name: companyName(r.name),
+      sector: r.sector,
+      industry: r.industry,
+      price,
+      change: num(r.netchange) ?? 0,
+      changePct: num(r.pctchange) ?? 0,
+      volume: num(r.volume),
+      marketCap: num(r.marketCap) || null,
+    });
+  }
+  return rows;
+}
+
+export async function usScreener(exchange: ExchangeId): Promise<ScreenerRow[]> {
+  const market = exchange === 'XNAS' ? 'nasdaq' : 'nyse';
+  // Large and mega caps only: several hundred rows instead of seven thousand.
+  const url = `${API}/screener/stocks?tableonly=true&download=true&limit=5000&marketcap=mega|large&exchange=${market}`;
+  const rows = parseUsScreener(JSON.parse(await fetchText(url)));
+  if (rows.length === 0) throw new UpstreamError(`Nasdaq screener returned no ${market} shares`);
+  return rows;
+}
+
+export interface WatchlistRow {
+  ticker: string;
+  price: number;
+  change: number;
+  changePct: number;
+  volume: number | null;
+  time: string;
+}
+
+// Live last-sale quotes of up to 20 shares per call.
+export function parseWatchlist(json: any): WatchlistRow[] {
+  const rows: WatchlistRow[] = [];
+  for (const r of json?.data ?? []) {
+    const price = num(r.lastSalePrice);
+    const time = Date.parse(r.lastTradeTimestampDateTime ?? '');
+    if (price === null || Number.isNaN(time)) continue;
+    rows.push({
+      ticker: r.symbol,
+      price,
+      change: num(r.netChange) ?? 0,
+      changePct: num(r.percentageChange) ?? 0,
+      volume: num(r.volume),
+      time: new Date(time).toISOString(),
+    });
+  }
+  return rows;
+}
+
+const WATCHLIST_SIZE = 20;
+
+export async function usWatchlist(tickers: string[]): Promise<WatchlistRow[]> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < tickers.length; i += WATCHLIST_SIZE) chunks.push(tickers.slice(i, i + WATCHLIST_SIZE));
+  const parts = await Promise.all(
+    chunks.map(async (chunk) => {
+      const query = chunk.map((t) => `symbol=${encodeURIComponent(`${t.toLowerCase()}|stocks`)}`).join('&');
+      return parseWatchlist(JSON.parse(await fetchText(`${API}/quote/watchlist?${query}`)));
+    }),
+  );
+  return parts.flat();
+}
+
 const roundOrNull = (value: number | null) => (value === null ? null : Math.round(value));
 
-// Groups price ticks into fixed-minute OHLC bars.
+// Groups price ticks into fixed-minute OHLC bars. Sources with one point a minute give o = h = l = c.
 export function bucket(points: { t: number; price: number; volume?: number }[], minutes: number): Candle[] {
   const size = minutes * 60000;
   const bars = new Map<number, Candle>();

@@ -1,7 +1,10 @@
 export type Region = 'US' | 'EU' | 'BAL';
-export type Sector = 'T' | 'C' | 'D' | 'S' | 'F' | 'E' | 'H' | 'U' | 'I' | 'M';
+// A group of exchanges whose prices come from one bulk source: the unit of /api/quotes and /api/universe.
+export type Market = 'us' | 'nordic' | 'euronext' | 'baltic';
+export type Sector = 'T' | 'C' | 'D' | 'S' | 'F' | 'E' | 'H' | 'U' | 'I' | 'M' | 'R';
 export type ProviderId = 'nasdaq' | 'nordic' | 'euronext' | 'baltic';
-export type ExchangeId = 'XNAS' | 'XNYS' | 'XAMS' | 'XPAR' | 'XMIL' | 'XCSE' | 'XHEL' | 'XLIT' | 'XTAL';
+export type ExchangeId =
+  | 'XNAS' | 'XNYS' | 'XAMS' | 'XPAR' | 'XMIL' | 'XCSE' | 'XHEL' | 'XSTO' | 'XLIT' | 'XRIS' | 'XTAL';
 export type Range = '1D' | '5D' | '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | '5Y';
 
 // How fresh a provider's quote is. Shown next to every price.
@@ -19,6 +22,23 @@ export interface Instrument {
   providerId: string;
   // Title of the company's English Wikipedia article.
   wiki?: string;
+  // Where the provider identifier is not one (Nasdaq Nordic orderbook ids).
+  isin?: string;
+}
+
+// What the browser needs to know about a covered stock: /api/universe returns these.
+export type Listing = Omit<Instrument, 'providerId' | 'wiki' | 'isin'>;
+
+// One row of /api/quotes: a stock's latest price from its market's bulk list.
+export interface BulkQuote {
+  symbol: string;
+  price: number;
+  change: number;
+  changePct: number;
+  volume: number | null;
+  marketCap: number | null;
+  time: string;
+  freshness: Freshness;
 }
 
 export interface Candle {
@@ -49,7 +69,7 @@ export interface Quote {
   avgVolume: number | null;
 }
 
-export interface StockSummary extends Instrument, Quote {
+export interface StockSummary extends Listing, Quote {
   high52: number | null;
   low52: number | null;
   return1Y: number | null;

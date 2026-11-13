@@ -30,7 +30,7 @@
     "Giedra",
     "Sausra"
   ],
-  "baroNote": "Rodmuo sudaromas iš to, kiek iš {n} stebimų akcijų brangsta, ir jų vidutinio pokyčio dydžio. Tai paprastas vidinis matuoklis, o ne visos rinkos indeksas.",
+  "baroNote": "Rodmuo sudaromas iš to, kiek iš {n} stebimų akcijų brangsta, ir jų vidutinio pokyčio dydžio; kiekviena akcija turi vienodą svorį. Tai paprastas vidinis matuoklis, o ne visos rinkos indeksas.",
   "movers": "Dienos judėjimai",
   "mv": [
     "Brangsta",
@@ -46,7 +46,7 @@
   "cChg": "Pokytis",
   "cVol": "Apyvarta",
   "sectors": "Sektoriai šiandien",
-  "sectorsNote": "Vidutinis kiekvieno sektoriaus stebimų akcijų pokytis; plytelės dydis atitinka jų skaičių",
+  "sectorsNote": "Vidutinis kiekvieno sektoriaus stebimų akcijų pokytis, kiekvienai akcijai suteikiant vienodą svorį; plytelės dydis atitinka jų skaičių",
   "sec": {
     "T": "Technologijos",
     "F": "Finansai",
@@ -56,7 +56,8 @@
     "I": "Pramonė",
     "E": "Energetika",
     "U": "Komunalinės paslaugos",
-    "M": "Žaliavos"
+    "M": "Žaliavos",
+    "R": "Nekilnojamasis turtas"
   },
   "news": "Baltijos bendrovių naujienos",
   "allNews": "Visi pranešimai",

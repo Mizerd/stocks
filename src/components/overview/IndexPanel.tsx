@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { memo, useId, useMemo, useState } from 'react';
 import { EXCHANGES, sessionState } from '../../../shared/exchanges';
 import type { History, Range, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { isUnavailable, useHistory } from '../../lib/api';
-import { linePath, scaleOf, spread, yOf } from '../../lib/chart';
+import { scaleOf, smoothPath, spread, timeTicks, toneOf, yOf } from '../../lib/chart';
+import type { XY } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { niceTicks } from '../../lib/indicators';
 import { useChartSelection } from '../../lib/useChartSelection';
@@ -17,6 +18,42 @@ const H = 300;
 // How far past the last traded point the pointer still snaps to it, in viewBox units.
 const SNAP_SLACK = 20;
 const PLACEHOLDER_HEIGHT = 364;
+const DENSE_POINTS = 150;
+
+interface PlotProps {
+  points: XY[];
+  baseY: number;
+  tone: string;
+  label: string;
+}
+
+const IndexSvg = memo(function IndexSvg({ points, baseY, tone, label }: PlotProps) {
+  const fadeId = `fade${useId().replace(/[^\w-]/g, '')}`;
+  const line = useMemo(() => smoothPath(points), [points]);
+  const lastX = points[points.length - 1][0];
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      width="100%"
+      height="100%"
+      role="img"
+      aria-label={label}
+      style={{ position: 'absolute', inset: 0, display: 'block' }}
+    >
+      <defs>
+        <linearGradient id={fadeId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style={{ stopColor: tone, stopOpacity: 0.2 }} />
+          <stop offset="1" style={{ stopColor: tone, stopOpacity: 0 }} />
+        </linearGradient>
+      </defs>
+      <path d="M0 0.5H1000M0 75H1000M0 150H1000M0 225H1000" style={{ fill: 'none', stroke: 'var(--hair)', strokeWidth: 1, vectorEffect: 'non-scaling-stroke' }} />
+      <path d={`${line}L${lastX.toFixed(1)} ${H}L${points[0][0].toFixed(1)} ${H}Z`} style={{ fill: `url(#${fadeId})` }} />
+      <path d={`M0 ${baseY.toFixed(1)}H${W}`} style={{ fill: 'none', stroke: 'var(--brass)', strokeWidth: 1, strokeDasharray: '4 4', vectorEffect: 'non-scaling-stroke' }} />
+      <path className="sl" d={line} style={{ stroke: tone, strokeWidth: points.length > DENSE_POINTS ? 1.5 : 2 }} />
+    </svg>
+  );
+});
 
 function IndexChart({ index, history, range }: { index: StockSummary; history: History; range: Range }) {
   const { t } = useT();
@@ -34,17 +71,14 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
   const end = intraday ? session.closesAt.getTime() : candles[candles.length - 1].t;
   const xOf = (time: number) => (end > start ? ((time - start) / (end - start)) * W : 0);
 
-  const points = candles.map((c): [number, number] => [xOf(c.t), yOf(c.c, scale, H)]);
-  const line = linePath(points);
-  const lastX = points[points.length - 1][0];
-  const area = `${line}L${lastX.toFixed(1)} ${H}L0 ${H}Z`;
+  const points = useMemo(() => candles.map((c): XY => [xOf(c.t), yOf(c.c, scale, H)]), [history]);
   const baseY = yOf(base, scale, H);
   const last = points[points.length - 1];
   const change = ((closes[closes.length - 1] - base) / base) * 100;
 
   const ticks = niceTicks(scale.min, scale.max, 5).reverse();
   const labelTimes = intraday
-    ? [0.08, 0.36, 0.64, 0.92].map((share) => start + share * (end - start))
+    ? timeTicks(start, end, 5)
     : spread(candles.length, 5).map((i) => candles[i].t);
   const xLabel = (time: number) => {
     if (intraday) return f.time(time);
@@ -52,7 +86,8 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
     return range === '1Y' ? f.month(time) : f.dateShort(time, 'UTC');
   };
 
-  const selection = useChartSelection(points.map(([x]) => x / W), SNAP_SLACK / W);
+  const shares = useMemo(() => points.map(([x]) => x / W), [points]);
+  const selection = useChartSelection(shares, SNAP_SLACK / W);
   const markOf = (i: number | null): Mark | null =>
     i === null ? null : { t: candles[i].t, c: candles[i].c, left: points[i][0] / 10, top: (points[i][1] / H) * 100 };
   const marks = {
@@ -69,26 +104,13 @@ function IndexChart({ index, history, range }: { index: StockSummary; history: H
       </div>
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
         <div className="plot-ix" style={{ position: 'relative', flex: '1 1 0%', minWidth: 0, borderBottom: '1px solid var(--ink3)' }}>
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            width="100%"
-            height="100%"
-            role="img"
-            aria-label={`${index.name} ${t('overview.chart')}, ${range}: ${f.pct(change)}`}
-            style={{ position: 'absolute', inset: 0, display: 'block' }}
-          >
-            <path d="M0 0.5H1000M0 75H1000M0 150H1000M0 225H1000" style={{ fill: 'none', stroke: 'var(--hair)', strokeWidth: 1, vectorEffect: 'non-scaling-stroke' }} />
-            <path d={area} style={{ fill: 'var(--sel)' }} />
-            <path d={`M0 ${baseY.toFixed(1)}H${W}`} style={{ fill: 'none', stroke: 'var(--brass)', strokeWidth: 1, strokeDasharray: '4 4', vectorEffect: 'non-scaling-stroke' }} />
-            <path className="sl" d={line} style={{ strokeWidth: 2 }} />
-          </svg>
+          <IndexSvg points={points} baseY={baseY} tone={toneOf(change)} label={`${index.name} ${t('overview.chart')}, ${range}: ${f.pct(change)}`} />
           {intraday && (
             <span
               className="live"
               style={{
                 position: 'absolute', left: `${last[0] / 10}%`, top: `${(last[1] / H) * 100}%`, width: 10, height: 10,
-                margin: '-5px 0 0 -5px', borderRadius: '50%', background: 'var(--brass)', boxShadow: '0 0 0 3px var(--paper)',
+                margin: '-5px 0 0 -5px', borderRadius: '50%', background: toneOf(change), boxShadow: '0 0 0 3px var(--paper)',
               }}
             />
           )}
