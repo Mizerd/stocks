@@ -1,6 +1,7 @@
 // Helpers for the hand-built SVG charts. Charts use a fixed viewBox stretched with
 // preserveAspectRatio="none", so x and y here are viewBox units, not pixels.
-import type { Candle } from '../../shared/types';
+import { zonedParts } from '../../shared/exchanges';
+import type { Candle, History, StockSummary } from '../../shared/types';
 import { direction } from './format';
 
 export interface Scale {
@@ -41,9 +42,12 @@ function tangents(points: XY[]): number[] {
 
 // A smooth curve through every point. `start` is 'L' to continue an open path instead of
 // starting a new one.
+// Below this many points a curve swings between them and invents shape, so the line stays straight.
+export const SMOOTH_MIN = 24;
+
 export function smoothPath(points: XY[], start: 'M' | 'L' = 'M'): string {
   if (points.length === 0) return '';
-  if (points.length < 3) return points.map((p, i) => `${i ? 'L' : start}${xy(p)}`).join('');
+  if (points.length < SMOOTH_MIN) return points.map((p, i) => `${i ? 'L' : start}${xy(p)}`).join('');
   const slope = tangents(points);
   let path = `${start}${xy(points[0])}`;
   for (let i = 1; i < points.length; i++) {
@@ -159,4 +163,23 @@ export function pointDiff<P extends Point>(a: P, b: P) {
 export function toneOf(change: number | null): string {
   const tone = direction(change);
   return tone === 'up' ? 'var(--up)' : tone === 'dn' ? 'var(--down)' : 'var(--ink)';
+}
+
+// Daily histories end at the last completed session; add the current session from the live quote.
+export function withLatestQuote(history: History, quote: StockSummary | undefined, timezone: string): History {
+  const bars = history.candles;
+  if (!quote || history.interval !== 'day' || bars.length === 0) return history;
+  const day = zonedParts(new Date(quote.time), timezone).day;
+  const t = Date.parse(`${day}T00:00:00Z`);
+  if (t <= bars[bars.length - 1].t) return history;
+  const open = quote.open ?? quote.prevClose;
+  const bar: Candle = {
+    t,
+    o: open,
+    h: Math.max(quote.high ?? quote.price, quote.price, open),
+    l: Math.min(quote.low ?? quote.price, quote.price, open),
+    c: quote.price,
+    v: quote.volume,
+  };
+  return { ...history, candles: [...bars, bar] };
 }

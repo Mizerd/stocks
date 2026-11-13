@@ -498,3 +498,5 @@
 @media (pointer:coarse) and (min-width:641px){
   .rt .c-sym{align-self:stretch;display:flex;align-items:center}
 }
+
+.pt-dot{position:absolute;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;box-shadow:0 0 0 2px var(--paper);pointer-events:none}

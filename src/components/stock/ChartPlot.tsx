@@ -3,7 +3,7 @@ import type { RefObject } from 'react';
 import { EXCHANGES } from '../../../shared/exchanges';
 import type { Candle, ExchangeId, History } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { aggregateCandles, barInterval, curvePath, runs, scaleOf, smoothPath, timeTicks, toneOf, yOf } from '../../lib/chart';
+import { aggregateCandles, barInterval, curvePath, runs, scaleOf, smoothPath, SMOOTH_MIN, timeTicks, toneOf, yOf } from '../../lib/chart';
 import { createFormat, direction } from '../../lib/format';
 import type { Format } from '../../lib/format';
 import { bollinger, niceTicks, rsi, sma } from '../../lib/indicators';
@@ -306,6 +306,9 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
         <div ref={plot} className="plot-main" style={{ position: 'relative', flex: 1, minWidth: 0, borderTop: '1px solid var(--hair)', borderBottom: '1px solid var(--ink3)' }}>
           <MainSvg paths={paths} shown={shown} tone={tone} thin={bars.length > DENSE_POINTS} label={label} />
+          {type === 'line' && bars.length < SMOOTH_MIN && bars.slice(0, last).map((bar, i) => (
+            <span key={bar.t} className="pt-dot" aria-hidden="true" style={{ left: `${(xs[i] / W) * 100}%`, top: percentY(bar.c), background: tone }} />
+          ))}
           {type === 'line' && (
             <span
               className={intraday ? 'live' : undefined}

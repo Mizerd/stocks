@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Candle, FxRates, History, Listing, StockSummary } from '../shared/types';
-import { aggregateCandles, barInterval, curvePath, nearestIndex, pointDiff, smoothPath, timeTicks } from '../src/lib/chart';
+import { aggregateCandles, barInterval, curvePath, nearestIndex, pointDiff, smoothPath, timeTicks, SMOOTH_MIN, withLatestQuote } from '../src/lib/chart';
 import type { XY } from '../src/lib/chart';
 import { createFormat } from '../src/lib/format';
 import { bollinger, niceTicks, rsi, sma } from '../src/lib/indicators';
@@ -451,7 +451,8 @@ const cubic = (a: number, b: number, c: number, d: number, t: number) =>
   (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d;
 
 describe('smooth chart lines', () => {
-  const points: XY[] = [[0, 50], [10, 20], [20, 25], [30, 80], [40, 80], [50, 10]];
+  const shape = [50, 20, 25, 80, 80, 10];
+  const points: XY[] = Array.from({ length: SMOOTH_MIN }, (_, i) => [i * 10, shape[i % shape.length]]);
 
   it('passes through every point', () => {
     expect(pathEnds(smoothPath(points))).toEqual(points);
@@ -477,8 +478,13 @@ describe('smooth chart lines', () => {
   });
 
   it('keeps a flat run flat', () => {
-    const path = smoothPath([[0, 10], [10, 10], [20, 10]]);
-    expect(path).toBe('M0.0 10.0C3.3 10.0 6.7 10.0 10.0 10.0C13.3 10.0 16.7 10.0 20.0 10.0');
+    const flat: XY[] = Array.from({ length: SMOOTH_MIN }, (_, i) => [i * 10, 10]);
+    const ys = smoothPath(flat).match(/-?[\d.]+/g)!.filter((_, i) => i % 2 === 1).map(Number);
+    expect(new Set(ys)).toEqual(new Set([10]));
+  });
+
+  it('draws short series as straight lines, since a curve through few points invents shape', () => {
+    expect(smoothPath([[0, 0], [10, 5], [20, 0]])).toBe('M0.0 0.0L10.0 5.0L20.0 0.0');
   });
 
   it('breaks the line where values are missing', () => {
@@ -512,5 +518,24 @@ describe('intraday bars', () => {
     const close = open + 390 * minute;
     expect(timeTicks(open, close, 7).map((t) => new Date(t).getUTCHours())).toEqual([15, 16, 17, 18, 19, 20, 21]);
     expect(timeTicks(open, close, 4).map((t) => new Date(t).getUTCHours())).toEqual([16, 18, 20]);
+  });
+});
+
+describe('latest session on daily charts', () => {
+  const day = (d: number, c: number) => ({ t: Date.UTC(2026, 10, d), o: c, h: c, l: c, c, v: 1 });
+  const history = { symbol: 'X', range: '5D' as const, interval: 'day' as const, warmup: 0, prevClose: null, candles: [day(11, 10), day(12, 11)] };
+  const quote = (time: string) => ({
+    price: 12, open: 11.5, high: 12.5, low: 11.2, prevClose: 11, volume: 7, time,
+  }) as unknown as StockSummary;
+
+  it('adds today from the quote when the history stops at yesterday', () => {
+    const out = withLatestQuote(history, quote('2026-11-13T15:00:00Z'), 'America/New_York');
+    expect(out.candles).toHaveLength(3);
+    expect(out.candles[2]).toEqual({ t: Date.UTC(2026, 10, 13), o: 11.5, h: 12.5, l: 11.2, c: 12, v: 7 });
+  });
+
+  it('leaves the history alone when the quote belongs to the last bar or the chart is not daily', () => {
+    expect(withLatestQuote(history, quote('2026-11-12T20:00:00Z'), 'America/New_York')).toBe(history);
+    expect(withLatestQuote({ ...history, interval: 'week' }, quote('2026-11-13T15:00:00Z'), 'UTC').candles).toHaveLength(2);
   });
 });

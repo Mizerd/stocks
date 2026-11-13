@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { shortSymbol } from '../../../shared/catalog';
-import type { History, Listing, Range } from '../../../shared/types';
+import { EXCHANGES } from '../../../shared/exchanges';
+import type { History, Listing, Range, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { isUnavailable, useHistory } from '../../lib/api';
+import { withLatestQuote } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { ErrorNotice, Loading, Notice, Seg } from '../ui';
 import { ChartPlot } from './ChartPlot';
@@ -32,7 +34,7 @@ function rangeReturn(history: History): number | null {
   return (visible[visible.length - 1].c / base - 1) * 100;
 }
 
-export function PriceChart({ inst }: { inst: Listing }) {
+export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummary }) {
   const { t, list } = useT();
   const f = useFormat();
   const [params, setParams] = useSearchParams();
@@ -41,7 +43,9 @@ export function PriceChart({ inst }: { inst: Listing }) {
   const range = RANGES.find((r) => r === params.get('range')) ?? DEFAULT_RANGE;
   const type: ChartType = params.get('type') === 'candles' ? 'candles' : 'line';
   const { data, error, loading } = useHistory(inst.symbol, range);
-  const history = data && !isUnavailable(data) && data.candles.length > data.warmup ? data : undefined;
+  const loaded = data && !isUnavailable(data) && data.candles.length > data.warmup ? data : undefined;
+  const timezone = EXCHANGES[inst.exchange].timezone;
+  const history = useMemo(() => loaded && withLatestQuote(loaded, quote, timezone), [loaded, quote, timezone]);
   const change = history ? rangeReturn(history) : null;
 
   // Defaults stay out of the URL.

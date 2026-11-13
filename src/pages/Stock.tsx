@@ -98,7 +98,7 @@ function StockPage({ inst }: { inst: Listing }) {
       </section>
 
       <section className="st-top">
-        <PriceChart inst={inst} />
+        <PriceChart inst={inst} quote={detail?.summary} />
         <aside className="side">
           <section className="pnl">
             {detail ? <KeyFigures summary={detail.summary} /> : loading ? <Loading height={300} /> : error && <ErrorNotice height={300} />}
