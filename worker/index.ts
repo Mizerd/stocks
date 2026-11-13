@@ -1,7 +1,7 @@
 import { INDICES, STOCKS, toListing } from '../shared/catalog';
 import { EXCHANGES, MARKET_EXCHANGES, MARKETS, sessionState } from '../shared/exchanges';
 import type { Instrument, Market, ProviderStatus, Range } from '../shared/types';
-import { edgeCache, takeBackgroundWork } from './http';
+import { edgeCache, LIVE_GRACE, takeBackgroundWork } from './http';
 import { detail, history, PROVIDERS, summary } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
@@ -13,6 +13,7 @@ const RANGES: Range[] = ['1D', '5D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 const MAX_SYMBOLS = 8;
 // Up to this many, their candles also go through the edge cache, which takes two more subrequests each.
 const MAX_EDGE_SYMBOLS = 4;
+const DAY = 24 * 3600;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -20,12 +21,13 @@ class HttpError extends Error {
   }
 }
 
-function json(body: unknown, status = 200, maxAge = 0): Response {
+// `grace`: how long after max-age the edge cache may still serve the answer while it loads a new one.
+function json(body: unknown, status = 200, maxAge = 0, grace = 0): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': maxAge > 0 ? `public, max-age=${maxAge}` : 'no-store',
+      'Cache-Control': maxAge > 0 ? `public, max-age=${maxAge}${grace > 0 ? `, stale-while-revalidate=${grace}` : ''}` : 'no-store',
       'Access-Control-Allow-Origin': '*',
     },
   });
@@ -54,12 +56,13 @@ function quotesMaxAge(market: Market): number {
 async function quotes(market: Market): Promise<Response> {
   const { items, failed } = await marketData(market);
   const body = { items: items.flatMap((item) => (item.quote ? [item.quote] : [])), failed };
-  return json(body, 200, failed.length ? 30 : quotesMaxAge(market));
+  return failed.length ? json(body, 200, 30) : json(body, 200, quotesMaxAge(market), LIVE_GRACE);
 }
 
 async function universe(market: Market): Promise<Response> {
   const { items, failed } = await marketData(market);
-  return json({ items: items.map((item) => toListing(item.inst)), failed }, 200, failed.length ? 60 : 86400);
+  const body = { items: items.map((item) => toListing(item.inst)), failed };
+  return failed.length ? json(body, 200, 60) : json(body, 200, DAY, 7 * DAY);
 }
 
 // The browser takes live prices from /api/quotes; stock summaries add slower figures and may be a few minutes old.
@@ -68,7 +71,7 @@ async function summaries(instruments: Instrument[], maxAge: number) {
   const results = await Promise.allSettled(instruments.map((inst) => summary(inst, edge)));
   const items = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
   const failed = instruments.filter((_, i) => results[i].status === 'rejected').map((i) => i.symbol);
-  return json({ items, failed }, 200, failed.length ? 0 : maxAge);
+  return failed.length ? json({ items, failed }) : json({ items, failed }, 200, maxAge, LIVE_GRACE);
 }
 
 async function status(): Promise<Response> {
@@ -116,20 +119,21 @@ async function route(url: URL): Promise<Response> {
       if (!RANGES.includes(range)) throw new HttpError(400, 'Unknown range');
       const data = await history(await instrumentParam(url), range);
       if (!data) return json({ unavailable: true }, 200, 300);
-      return json(data, 200, range === '1D' ? 120 : 900);
+      // Past days do not change; the chart takes the latest price from the quote.
+      return range === '1D' ? json(data, 200, 120, LIVE_GRACE) : json(data, 200, 900, 3600);
     }
     case '/api/detail':
-      return json(await detail(await instrumentParam(url)), 200, 60);
+      return json(await detail(await instrumentParam(url)), 200, 60, LIVE_GRACE);
     case '/api/fx':
-      return json(await fxRates(), 200, 3600);
+      return json(await fxRates(), 200, 3600, 2 * DAY);
     case '/api/news':
-      return json(await balticNews(url.searchParams.get('lang') === 'lt' ? 'lt' : 'en'), 200, 300);
+      return json(await balticNews(url.searchParams.get('lang') === 'lt' ? 'lt' : 'en'), 200, 300, 900);
     case '/api/about': {
       const lang = url.searchParams.get('lang') === 'lt' ? 'lt' : 'en';
       const data = await about(await instrumentParam(url), lang);
-      if (!data) return json({ unavailable: true }, 200, 86400);
+      if (!data) return json({ unavailable: true }, 200, DAY, 7 * DAY);
       // An English fallback for a Lithuanian reader is kept for an hour only, in case the Lithuanian fetch merely failed.
-      return json(data, 200, data.lang === lang ? 86400 : 3600);
+      return json(data, 200, data.lang === lang ? DAY : 3600, 7 * DAY);
     }
     case '/api/status':
       return status();
@@ -152,18 +156,42 @@ interface Context {
   waitUntil(promise: Promise<unknown>): void;
 }
 
+// Answers the request and keeps a public answer in the edge cache: fresh for its max-age, then served stale
+// for its stale-while-revalidate time while a new one loads. The browser sees the max-age alone.
+async function answer(request: Request, ctx?: Context): Promise<Response> {
+  const response = await respond(request);
+  const work = takeBackgroundWork();
+  const edge = edgeCache();
+  const [, maxAge, grace = '0'] = response.headers.get('Cache-Control')!.match(/^public, max-age=(\d+)(?:, stale-while-revalidate=(\d+))?/) ?? [];
+  if (maxAge) {
+    const kept = edge && response.clone();
+    response.headers.set('Cache-Control', `public, max-age=${maxAge}`);
+    if (kept) {
+      kept.headers.set('Cache-Control', `public, max-age=${Number(maxAge) + Number(grace)}`);
+      kept.headers.set('Expires', new Date(Date.now() + Number(maxAge) * 1000).toUTCString());
+      work.push(edge.put(request, kept));
+    }
+  }
+  if (ctx) ctx.waitUntil(Promise.all(work));
+  else await Promise.all(work);
+  return response;
+}
+
+// URLs whose stale edge copy this isolate is already replacing.
+const revalidating = new Set<string>();
+
 export default {
-  // Complete responses are kept in the edge cache for as long as their Cache-Control allows.
   async fetch(request: Request, _env?: unknown, ctx?: Context): Promise<Response> {
     if (request.method !== 'GET') return json({ error: 'Read-only API' }, 405);
-    const edge = edgeCache();
-    const cached = await edge?.match(request);
-    if (cached) return cached;
-    const response = await respond(request);
-    const work = takeBackgroundWork();
-    if (edge && response.headers.get('Cache-Control')?.startsWith('public')) work.push(edge.put(request, response.clone()));
-    if (ctx) ctx.waitUntil(Promise.all(work));
-    else await Promise.all(work);
+    const cached = await edgeCache()?.match(request);
+    if (!cached) return answer(request, ctx);
+    const freshFor = Math.floor((Date.parse(cached.headers.get('Expires') ?? '') - Date.now()) / 1000) || 0;
+    if (freshFor <= 0 && ctx && !revalidating.has(request.url)) {
+      revalidating.add(request.url);
+      ctx.waitUntil(answer(request, ctx).finally(() => revalidating.delete(request.url)));
+    }
+    const response = new Response(cached.body, cached);
+    response.headers.set('Cache-Control', `public, max-age=${Math.max(0, freshFor)}`);
     return response;
   },
 };

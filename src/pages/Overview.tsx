@@ -1,4 +1,5 @@
-import { STOCKS } from '../../shared/catalog';
+import { useEffect } from 'react';
+import { INDICES, STOCKS } from '../../shared/catalog';
 import type { StockSummary } from '../../shared/types';
 import { Barometer } from '../components/overview/Barometer';
 import { Highlights } from '../components/overview/Highlights';
@@ -9,7 +10,7 @@ import { Sectors } from '../components/overview/Sectors';
 import { TickerTape } from '../components/overview/TickerTape';
 import { ErrorNotice, Loading } from '../components/ui';
 import { useT } from '../i18n';
-import { useFx, useIndices, useNews, useSummaries, withHistory } from '../lib/api';
+import { fetchJson, historyPath, useFx, useIndices, useNews, useSummaries, withHistory } from '../lib/api';
 import { useFormat } from '../lib/format';
 import { barometer, currentStocks, sectorMoves, type SectorMove } from '../lib/market';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -49,6 +50,11 @@ export function Overview() {
   const { indices } = useIndices();
   const fx = useFx();
   const news = useNews(lang);
+
+  // The index chart shows once every market's quotes are in; its data loads meanwhile.
+  useEffect(() => {
+    fetchJson(historyPath(INDICES[0].symbol, '1D')).catch(() => undefined);
+  }, []);
 
   if (loading) return <main className="wrap page"><Loading height={420} /></main>;
   if (error || stocks.length === 0) return <main className="wrap page"><ErrorNotice height={420} /></main>;

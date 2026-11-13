@@ -6,6 +6,7 @@ import { useT } from '../../i18n';
 import { direction, useFormat } from '../../lib/format';
 import { anyMarketOpen } from '../../lib/market';
 import { useFlash } from '../../lib/useFlash';
+import { prefetchProps } from '../../lib/prefetch';
 import { useNow } from '../../lib/useNow';
 import { LivePill } from '../LivePill';
 
@@ -16,7 +17,7 @@ function TapeItem({ item, hidden }: { item: StockSummary; hidden: boolean }) {
   const f = useFormat();
   const flash = useFlash(item.price);
   return (
-    <Link to={`/stock/${item.symbol}`} className="tape-item num" tabIndex={hidden ? -1 : undefined}>
+    <Link to={`/stock/${item.symbol}`} className="tape-item num" tabIndex={hidden ? -1 : undefined} {...prefetchProps(item.symbol)}>
       <span style={{ fontWeight: 600 }}>{item.kind === 'index' ? item.name : shortSymbol(item.symbol)}</span>
       <span key={flash.tick} className={flash.className} style={{ color: 'var(--ink2)' }}>{f.price(item.price)}</span>
       <span className={direction(item.changePct)} style={{ fontWeight: 500 }}>{f.pct(item.changePct)}</span>

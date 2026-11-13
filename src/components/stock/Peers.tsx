@@ -4,6 +4,7 @@ import type { StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { useSummaries, withHistory } from '../../lib/api';
 import { useFormat } from '../../lib/format';
+import { prefetchProps } from '../../lib/prefetch';
 import { Badge, PanelTitle, Sparkline } from '../ui';
 
 export function Peers({ stocks: quoted, compareTo }: { stocks: StockSummary[]; compareTo: string }) {
@@ -31,7 +32,7 @@ export function Peers({ stocks: quoted, compareTo }: { stocks: StockSummary[]; c
               <span className="r">{t('stock.cCap')}</span>
             </div>
             {stocks.map((s) => (
-              <Link key={s.symbol} to={`/stock/${s.symbol}`} className="row tbl-row qt-peers">
+              <Link key={s.symbol} to={`/stock/${s.symbol}`} className="row tbl-row qt-peers" {...prefetchProps(s.symbol)}>
                 <span className="num c-sym" style={{ fontWeight: 600 }}>{shortSymbol(s.symbol)}</span>
                 <span className="clip c-name">{s.name}</span>
                 <span className="c-spark"><Sparkline values={s.spark} change={s.changePct} /></span>

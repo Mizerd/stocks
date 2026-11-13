@@ -4,6 +4,7 @@ import { INDICES, shortSymbol, STOCKS } from '../../shared/catalog';
 import { EXCHANGES } from '../../shared/exchanges';
 import type { Listing } from '../../shared/types';
 import { useT } from '../i18n';
+import { prefetchProps } from '../lib/prefetch';
 import { useListings } from '../lib/universe';
 
 // Until the universe has loaded, the catalogue is searched.
@@ -105,7 +106,7 @@ export function Search() {
           {results.length === 0 && <li><p style={{ display: 'block', color: 'var(--ink2)' }}>{t('common.noResults', { q: query.trim() })}</p></li>}
           {results.map((inst, i) => (
             <li key={inst.symbol} role="option" aria-selected={i === active}>
-              <Link to={`/stock/${inst.symbol}`} className={i === active ? 'on' : ''} tabIndex={-1} onClick={() => go(inst)}>
+              <Link to={`/stock/${inst.symbol}`} className={i === active ? 'on' : ''} tabIndex={-1} onClick={() => go(inst)} {...prefetchProps(inst.symbol)}>
                 <span className="num" style={{ fontWeight: 600 }}>{shortSymbol(inst.symbol)}</span>
                 <span className="clip">{inst.name}</span>
                 <span style={{ fontSize: 11.5, color: 'var(--ink3)' }}>

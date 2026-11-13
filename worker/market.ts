@@ -28,8 +28,8 @@ function daily(inst: Instrument, years: number, edge = true): Promise<Candle[]> 
 
 export function summary(inst: Instrument, edge = true): Promise<StockSummary> {
   return memo(`summary:${inst.symbol}`, 60, async () => {
-    const candles = await daily(inst, SUMMARY_YEARS, edge);
-    const quote = await PROVIDERS[inst.provider].quote(inst, candles);
+    const bars = daily(inst, SUMMARY_YEARS, edge);
+    const [candles, quote] = await Promise.all([bars, PROVIDERS[inst.provider].quote(inst, bars)]);
     return { ...toListing(inst), ...quote, ...yearStats(candles, quote.price) };
   });
 }

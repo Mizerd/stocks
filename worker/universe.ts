@@ -1,7 +1,7 @@
 import { findInstrument, isSymbolShaped, STOCKS } from '../shared/catalog';
 import { EXCHANGES, lastSessionTime, latestSession, MARKET_EXCHANGES } from '../shared/exchanges';
 import type { BulkQuote, ExchangeId, Instrument, Market, Sector } from '../shared/types';
-import { memo } from './http';
+import { memo, shared } from './http';
 import { summary } from './market';
 import { balticShareList, quoteTime } from './providers/baltic';
 import { euronextList, LIST_MICS, liveQuote } from './providers/euronext';
@@ -54,9 +54,6 @@ function listed(inst: Instrument, quote: Omit<BulkQuote, 'symbol'> | null): List
   const entry = known(inst);
   return { inst: entry, quote: quote && { symbol: entry.symbol, ...quote } };
 }
-
-// Bulk lists without a timestamp: the price is as of now while the session runs, else as of its close.
-const sessionStamp = (exchange: ExchangeId) => lastSessionTime(EXCHANGES[exchange], new Date()).toISOString();
 
 // The screener lists a session's closing prices, but publishes them some time after the close.
 // A share quoted both ways shows which session the list holds: if its listed price is the live
@@ -139,8 +136,8 @@ function nordicSource(market: NordicMarket): Source {
     market: 'nordic',
     suffixes: [suffix],
     async load() {
-      const rows = await nordicScreener(market);
-      const time = sessionStamp(exchange);
+      const { fetched, rows } = await nordicScreener(market);
+      const time = lastSessionTime(EXCHANGES[exchange], new Date(fetched)).toISOString();
       return rows.map((r) =>
         listed(
           {
@@ -196,17 +193,18 @@ const euronextSource: Source = {
   market: 'euronext',
   suffixes: [],
   async load() {
-    const lists = new Map(await Promise.all(LIST_MICS.map(async (mic) => [mic, await euronextList(mic).catch(() => null)] as const)));
+    const mic = (inst: Instrument) => inst.providerId.split('-')[1];
+    // Lines outside the live lists (SAP's EuroTLX line) are quoted from their end-of-day file, fetched alongside.
+    const endOfDay = new Map(euronextStocks.filter((inst) => !LIST_MICS.includes(mic(inst))).map((inst) => [inst.symbol, summary(inst).catch(() => null)]));
+    const lists = new Map(await Promise.all(LIST_MICS.map(async (id) => [id, await euronextList(id).catch(() => null)] as const)));
     if ([...lists.values()].every((list) => list === null)) throw new Error('Euronext lists are unavailable');
     return Promise.all(
       euronextStocks.map(async (inst): Promise<Listed> => {
-        const mic = inst.providerId.split('-')[1];
-        if (lists.has(mic)) {
-          const row = lists.get(mic)?.[inst.providerId];
+        if (lists.has(mic(inst))) {
+          const row = lists.get(mic(inst))?.[inst.providerId];
           return listed(inst, row ? { ...liveQuote(row), volume: null, marketCap: null, time: row.time, freshness: 'delayed' } : null);
         }
-        // Lines outside the live lists (SAP's EuroTLX line) are quoted from their end-of-day file.
-        const s = await summary(inst).catch(() => null);
+        const s = await endOfDay.get(inst.symbol)!;
         return listed(inst, s && { price: s.price, change: s.change, changePct: s.changePct, volume: s.volume, marketCap: null, time: s.time, freshness: s.freshness });
       }),
     );
@@ -251,6 +249,11 @@ export async function marketData(market: Market): Promise<MarketData> {
 
 const suffixOf = (symbol: string) => symbol.match(/\.[A-Z]{2}$/)?.[0] ?? '';
 
+// Which shares a source lists changes rarely, so symbol lookups keep the list for an hour per data centre,
+// and for a week as a stale copy served while a new one loads, instead of reading the minute-fresh bulk lists.
+const instrumentsOf = (source: Source) =>
+  shared(`instruments:${source.id}`, 3600, async () => source.instruments?.() ?? (await loadSource(source)).map((item) => item.inst), 7 * 24 * 3600);
+
 // A catalogue stock, or one in its market's bulk list. Only listed symbols ever reach a provider.
 export async function resolveSymbol(input: string): Promise<Instrument | undefined> {
   const known = findInstrument(input);
@@ -258,8 +261,7 @@ export async function resolveSymbol(input: string): Promise<Instrument | undefin
   const symbol = input.trim().toUpperCase();
   if (!isSymbolShaped(symbol)) return undefined;
   for (const source of SOURCES.filter((s) => s.suffixes.includes(suffixOf(symbol)))) {
-    const instruments = source.instruments?.() ?? loadSource(source).then((items) => items.map((item) => item.inst));
-    const match = (await instruments.catch(() => [])).find((inst) => inst.symbol === symbol);
+    const match = (await instrumentsOf(source).catch(() => [])).find((inst) => inst.symbol === symbol);
     if (match) return match;
   }
   return undefined;

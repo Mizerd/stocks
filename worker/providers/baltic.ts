@@ -1,6 +1,6 @@
 import type { Candle, Instrument, Quote } from '../../shared/types';
 import { EXCHANGES, zonedParts, zonedTime, type Exchange } from '../../shared/exchanges';
-import { fetchBytes, fetchText, daysAgo, isoDay, num, shared, UpstreamError } from '../http';
+import { fetchBytes, fetchText, daysAgo, isoDay, LIVE_GRACE, num, shared, UpstreamError } from '../http';
 import { unzipFile } from '../unzip';
 import { bucket } from './nasdaq';
 import { emptyFundamentals, NO_EXTRAS, type DetailExtras, type Intraday, type Provider } from './provider';
@@ -103,7 +103,7 @@ export function balticShareList() {
     const list = parseBalticShareList(await fetchText(`${BASE}/shares`, 'text/html'));
     if (Object.keys(list.rows).length === 0) throw new UpstreamError('Nasdaq Baltic share list is unavailable');
     return list;
-  });
+  }, LIVE_GRACE);
 }
 
 async function indexSeries(inst: Instrument, years: number): Promise<Candle[]> {
@@ -127,8 +127,9 @@ async function dayChart(inst: Instrument, day: string): Promise<Intraday | null>
 const dayStart = (t: number) => Math.floor(t / 86400000) * 86400000;
 
 export const baltic: Provider = {
-  async quote(inst, daily) {
+  async quote(inst, dailyBars) {
     const ex = EXCHANGES[inst.exchange];
+    const [daily, list] = await Promise.all([dailyBars, inst.kind === 'index' ? null : balticShareList().catch(() => null)]);
     if (inst.kind === 'index') {
       // Index values come from the daily series: today's value updates during the session.
       const last = daily[daily.length - 1];
@@ -145,7 +146,6 @@ export const baltic: Provider = {
       };
     }
 
-    const list = await balticShareList().catch(() => null);
     const row = list?.rows[inst.providerId];
     const lastBar = daily[daily.length - 1];
     const prevBar = daily[daily.length - 2];

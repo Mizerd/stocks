@@ -3,6 +3,7 @@ import { shortSymbol } from '../../../shared/catalog';
 import type { StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { direction, useFormat } from '../../lib/format';
+import { prefetchProps } from '../../lib/prefetch';
 import { Badge, PanelTitle, Sparkline } from '../ui';
 
 export function Highlights({ stocks }: { stocks: StockSummary[] }) {
@@ -29,7 +30,7 @@ export function Highlights({ stocks }: { stocks: StockSummary[] }) {
             <span className="r c-1y">{heads[8]}</span>
           </div>
           {stocks.map((s) => (
-            <Link key={s.symbol} to={`/stock/${s.symbol}`} className="row tbl-row qt-hl">
+            <Link key={s.symbol} to={`/stock/${s.symbol}`} className="row tbl-row qt-hl" {...prefetchProps(s.symbol)}>
               <span className="num c-sym" style={{ fontWeight: 600 }}>{shortSymbol(s.symbol)}</span>
               <span className="clip c-name">{s.name}</span>
               <span className="c-spark"><Sparkline values={s.spark} change={s.spark[s.spark.length - 1] - s.spark[0]} /></span>

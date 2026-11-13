@@ -242,7 +242,7 @@ describe('Nasdaq Baltic', () => {
       const day = 24 * 3600 * 1000;
       const t = Date.UTC(2026, 10, 9);
       const bars = [{ t, o: 20, h: 20, l: 20, c: 20, v: 10 }, { t: t + day, o: 20, h: 21, l: 20, c: 21, v: 30 }];
-      const quote = await baltic.quote(STOCKS.find((s) => s.symbol === 'IGN1L.VS')!, bars);
+      const quote = await baltic.quote(STOCKS.find((s) => s.symbol === 'IGN1L.VS')!, Promise.resolve(bars));
       expect(quote).toMatchObject({ price: 21, change: 1, prevClose: 20, volume: 30, freshness: 'eod' });
       expect(quote.changePct).toBeCloseTo(5);
       expect(quote.time).toBe('2026-11-10T14:00:00.000Z');

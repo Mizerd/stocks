@@ -3,6 +3,7 @@ import { findInstrument, shortSymbol } from '../../../shared/catalog';
 import { useT } from '../../i18n';
 import { DASH, direction, useFormat } from '../../lib/format';
 import type { Row } from '../../lib/portfolio';
+import { prefetchProps } from '../../lib/prefetch';
 import { Badge } from '../ui';
 
 interface Props {
@@ -24,7 +25,7 @@ export function HoldingRow({ row: { entry, stock, position }, valued, largest, a
   const details = [entry.buyDate && t('portfolio.bought', { date: f.date(entry.buyDate, 'UTC') }), entry.note].filter(Boolean).join(' · ');
   return (
     <div className="hd-item">
-      <Link to={`/stock/${entry.symbol}`} className="row tbl-row hd-cols">
+      <Link to={`/stock/${entry.symbol}`} className="row tbl-row hd-cols" {...prefetchProps(entry.symbol)}>
         <span className="num c-sym" style={{ fontWeight: 600 }}>{symbol}</span>
         <span className="c-name" style={{ minWidth: 0 }}>
           <span className="clip" style={{ display: 'block' }}>{stock?.name ?? findInstrument(entry.symbol)?.name}</span>

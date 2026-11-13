@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { shortSymbol } from '../../shared/catalog';
 import { EXCHANGES } from '../../shared/exchanges';
 import type { FxRates, Listing, StockSummary } from '../../shared/types';
@@ -8,15 +8,16 @@ import { AboutCompany } from '../components/stock/AboutCompany';
 import { AnalystView } from '../components/stock/AnalystView';
 import { KeyFigures } from '../components/stock/KeyFigures';
 import { Peers } from '../components/stock/Peers';
-import { PriceChart } from '../components/stock/PriceChart';
+import { chartRange, PriceChart } from '../components/stock/PriceChart';
 import { Quarters } from '../components/stock/Quarters';
 import { QuoteLive } from '../components/stock/QuoteLive';
 import { Returns } from '../components/stock/Returns';
 import { ErrorNotice, FreshnessNote, Loading, Notice } from '../components/ui';
 import { useT } from '../i18n';
-import { useDetail, useFx } from '../lib/api';
+import { aboutPath, fetchJson, historyPath, prefetchStock, useDetail, useFx } from '../lib/api';
 import { direction, useFormat } from '../lib/format';
 import { turnoverEur } from '../lib/market';
+import { BENCHMARK } from '../lib/returns';
 import { capEur } from '../lib/screener';
 import { useInstrument, useMarket } from '../lib/universe';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -60,7 +61,7 @@ function HeroPrice({ summary }: { summary: StockSummary }) {
 }
 
 function StockPage({ inst }: { inst: Listing }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { data: detail, error, loading } = useDetail(inst.symbol);
   const isStock = inst.kind === 'stock';
   const market = useMarket();
@@ -68,6 +69,14 @@ function StockPage({ inst }: { inst: Listing }) {
   const peers = isStock && inst.sector ? peerStocks(inst, market.stocks, fx) : [];
   const compareTo = `/screener?pick=${encodeURIComponent(inst.symbol)}`;
   usePageTitle(`${inst.name} (${shortSymbol(inst.symbol)})`);
+
+  // The company text and the return table wait for the quote before they show; their data need not.
+  useEffect(() => {
+    if (!isStock) return;
+    const benchmark = BENCHMARK[inst.region];
+    const histories = (['1Y', '5Y'] as const).flatMap((range) => [historyPath(inst.symbol, range), historyPath(benchmark, range)]);
+    for (const path of [aboutPath(inst.symbol, lang), ...histories]) fetchJson(path).catch(() => undefined);
+  }, [inst, isStock, lang]);
 
   useEffect(() => {
     try {
@@ -127,7 +136,14 @@ function StockPage({ inst }: { inst: Listing }) {
 export function Stock() {
   const { symbol = '' } = useParams();
   const { search } = useLocation();
+  const [params] = useSearchParams();
   const { listing: inst, loading } = useInstrument(symbol);
+
+  // A stock outside the catalogue waits for the universe list; its data loads meanwhile.
+  useEffect(() => {
+    prefetchStock(symbol, chartRange(params));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol]);
 
   if (loading) return <main className="wrap page"><Loading height={420} /></main>;
   if (!inst) return <UnknownStock symbol={symbol} />;

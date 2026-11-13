@@ -4,7 +4,7 @@ import { shortSymbol } from '../../../shared/catalog';
 import { EXCHANGES } from '../../../shared/exchanges';
 import type { History, Listing, Range, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { isUnavailable, useHistory } from '../../lib/api';
+import { DEFAULT_RANGE, isUnavailable, useHistory } from '../../lib/api';
 import { withLatestQuote } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { ErrorNotice, Loading, Notice, Seg, SessionNote } from '../ui';
@@ -12,7 +12,8 @@ import { ChartPlot } from './ChartPlot';
 import type { ChartType, Indicator } from './ChartPlot';
 
 const RANGES: Range[] = ['1D', '5D', '1M', '6M', '1Y', '5Y'];
-const DEFAULT_RANGE: Range = '6M';
+
+export const chartRange = (params: URLSearchParams): Range => RANGES.find((r) => r === params.get('range')) ?? DEFAULT_RANGE;
 const TYPES: ChartType[] = ['line', 'candles'];
 
 // In the order of the labels in stock.indL.
@@ -40,7 +41,7 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
   const [params, setParams] = useSearchParams();
   const [shown, setShown] = useState<Record<Indicator, boolean>>({ sma20: true, sma50: false, bb: false, vol: true, rsi: true });
 
-  const range = RANGES.find((r) => r === params.get('range')) ?? DEFAULT_RANGE;
+  const range = chartRange(params);
   const type: ChartType = params.get('type') === 'candles' ? 'candles' : 'line';
   const { data, error, loading } = useHistory(inst.symbol, range);
   const loaded = data && !isUnavailable(data) && data.candles.length > data.warmup ? data : undefined;

@@ -5,6 +5,7 @@ import { Badge } from '../ui';
 import { useT } from '../../i18n';
 import { direction, useFormat } from '../../lib/format';
 import { dayMove } from '../../lib/market';
+import { prefetchProps } from '../../lib/prefetch';
 import { MAX_PICKS, SORT_KEYS, type SortKey } from '../../lib/screener';
 
 const TEXT_COLUMNS = 3;
@@ -58,7 +59,7 @@ export function ResultsTable({ stocks, sort, desc, picks, onSort, onTogglePick }
                   onChange={() => onTogglePick(stock.symbol)}
                 />
               </label>
-              <Link to={`/stock/${stock.symbol}`} className="num hl c-sym" style={{ fontWeight: 600 }}>{name}</Link>
+              <Link to={`/stock/${stock.symbol}`} className="num hl c-sym" style={{ fontWeight: 600 }} {...prefetchProps(stock.symbol)}>{name}</Link>
               <span className="clip c-name">{stock.name}</span>
               <span className="clip c-sec" style={{ fontSize: 13, color: 'var(--ink2)' }}>
                 {stock.sector && t(`screener.sec.${stock.sector}`)}

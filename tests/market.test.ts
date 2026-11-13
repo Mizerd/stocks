@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { findInstrument, STOCKS } from '../shared/catalog';
 import { EXCHANGES, isCurrentQuote, lastSessionTime, sessionState, tradingDayOfYear, zonedTime } from '../shared/exchanges';
 import type { Candle, Listing } from '../shared/types';
-import { shared, takeBackgroundWork } from '../worker/http';
+import { memo, shared, takeBackgroundWork } from '../worker/http';
 import worker from '../worker/index';
 import { currentSession, history, previousSession, previousTradingDay, toWeekly, yearStats } from '../worker/market';
 import { resolveSymbol, tickerSymbol, toSector } from '../worker/universe';
@@ -230,6 +230,129 @@ describe('edge cache of parsed data', () => {
   it('works without a cache, as in tests and local scripts', async () => {
     expect(await shared('test:none', 60, async () => [3])).toEqual([3]);
     expect(takeBackgroundWork()).toEqual([]);
+  });
+});
+
+describe('stale-while-revalidate', () => {
+  const start = Date.parse('2026-11-13T12:00:00Z');
+  const at = (seconds: number) => vi.setSystemTime(start + seconds * 1000);
+
+  afterEach(() => {
+    takeBackgroundWork();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  function counter() {
+    const loads = { n: 0, fail: false };
+    const load = async () => {
+      loads.n++;
+      if (loads.fail) throw new Error('source down');
+      return loads.n;
+    };
+    return { loads, load };
+  }
+
+  it('serves a fresh value without loading again', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    at(0);
+    const { loads, load } = counter();
+    expect(await memo('swr:fresh', 60, load, 120)).toBe(1);
+    at(59);
+    expect(await memo('swr:fresh', 60, load, 120)).toBe(1);
+    expect(loads.n).toBe(1);
+    expect(takeBackgroundWork()).toEqual([]);
+  });
+
+  it('serves a stale value at once and refreshes it once in the background', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    at(0);
+    const { loads, load } = counter();
+    await memo('swr:stale', 60, load, 120);
+    at(90);
+    expect(await Promise.all([memo('swr:stale', 60, load, 120), memo('swr:stale', 60, load, 120)])).toEqual([1, 1]);
+    const work = takeBackgroundWork();
+    expect(work).toHaveLength(1);
+    await Promise.all(work);
+    expect(loads.n).toBe(2);
+    expect(await memo('swr:stale', 60, load, 120)).toBe(2);
+  });
+
+  it('waits for a new value once the grace period is over', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    at(0);
+    const { loads, load } = counter();
+    await memo('swr:expired', 60, load, 120);
+    at(181);
+    expect(await memo('swr:expired', 60, load, 120)).toBe(2);
+    expect(loads.n).toBe(2);
+    expect(takeBackgroundWork()).toEqual([]);
+  });
+
+  it('keeps the stale value when a refresh fails, and tries again on the next request', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    at(0);
+    const { loads, load } = counter();
+    await memo('swr:failing', 60, load, 120);
+    loads.fail = true;
+    at(90);
+    expect(await memo('swr:failing', 60, load, 120)).toBe(1);
+    await Promise.all(takeBackgroundWork());
+    expect(await memo('swr:failing', 60, load, 120)).toBe(1);
+    expect(takeBackgroundWork()).toHaveLength(1);
+    expect(loads.n).toBe(3);
+  });
+
+  it('serves a stale edge copy to a fresh isolate and replaces it in the background', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    at(100);
+    const stored = new Map<string, Response>();
+    vi.stubGlobal('caches', { default: {
+      async match(url: string) { return stored.get(url)?.clone(); },
+      async put(url: string, response: Response) { stored.set(url, response); },
+    } });
+    const url = 'https://cache.internal/swr%3Aedge';
+    stored.set(url, new Response('{"v":"old"}', { headers: { Expires: new Date(start + 60_000).toUTCString() } }));
+    const load = vi.fn(async () => ({ v: 'new' }));
+    expect(await shared('swr:edge', 60, load, 120)).toEqual({ v: 'old' });
+    await Promise.all(takeBackgroundWork());
+    await Promise.all(takeBackgroundWork());
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(await stored.get(url)!.clone().json()).toEqual({ v: 'new' });
+    expect(stored.get(url)!.headers.get('Cache-Control')).toBe('max-age=180');
+    expect(await shared('swr:edge', 60, load, 120)).toEqual({ v: 'new' });
+  });
+
+  it('serves a stale API answer from the edge cache at once and replaces it in the background, once', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    at(4000);
+    const stored = new Map<string, Response>();
+    vi.stubGlobal('caches', { default: {
+      async match(request: Request) { return stored.get(request.url)?.clone(); },
+      async put(request: Request, response: Response) { stored.set(request.url, response); },
+    } });
+    const xml = "<Cube time='2026-11-13'><Cube currency='USD' rate='1.1'/></Cube>";
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(xml)));
+    const url = 'https://example.com/api/fx';
+    stored.set(url, new Response('{"stale":true}', { headers: { 'Cache-Control': 'public, max-age=176400', Expires: new Date(start + 3600_000).toUTCString() } }));
+
+    const waits: Promise<unknown>[] = [];
+    const ctx = { waitUntil: (p: Promise<unknown>) => waits.push(p) };
+    for (let i = 0; i < 2; i++) {
+      const res = await worker.fetch(new Request(url), {}, ctx);
+      expect(await res.json()).toEqual({ stale: true });
+      expect(res.headers.get('Cache-Control')).toBe('public, max-age=0');
+    }
+    await Promise.all(waits);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const kept = stored.get(url)!;
+    expect(await kept.clone().json()).toEqual({ date: '2026-11-13', perEur: { EUR: 1, USD: 1.1 } });
+    expect(kept.headers.get('Cache-Control')).toBe('public, max-age=176400');
+    expect(Date.parse(kept.headers.get('Expires')!)).toBe(start + 7600_000);
+
+    const fresh = await worker.fetch(new Request(url), {}, ctx);
+    expect(fresh.headers.get('Cache-Control')).toBe('public, max-age=3600');
+    expect(waits).toHaveLength(2);
   });
 });
 

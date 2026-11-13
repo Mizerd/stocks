@@ -1,7 +1,7 @@
 import { STOCKS } from '../../shared/catalog';
 import type { Candle, Instrument, Quote } from '../../shared/types';
 import { EXCHANGES, zonedTime } from '../../shared/exchanges';
-import { daysAgo, fetchText, isoDay, num, shared, UpstreamError } from '../http';
+import { daysAgo, fetchText, isoDay, LIVE_GRACE, num, shared, UpstreamError } from '../http';
 import { emptyFundamentals, NO_EXTRAS, type DetailExtras, type Provider } from './provider';
 
 const BASE = 'https://live.euronext.com/en/ajax/AwlHistoricalPrice/getFullDownloadAjax';
@@ -41,15 +41,16 @@ export function parseEuronextList(json: any, mic: string, wanted: ReadonlySet<st
   return rows;
 }
 
-// One market's whole list (a few hundred rows) in one call. The site is slow to answer, hence the long timeout.
+// One market's whole list (a few hundred rows) in one call. The site often takes seconds to answer, hence the
+// longer timeout; asking for fewer rows is no faster. Each row carries its own trade time.
 export function euronextList(mic: string): Promise<Record<string, EuronextRow>> {
   return shared(`euronext:list:${mic}`, 60, async () => {
     const form = 'iDisplayStart=0&iDisplayLength=2000';
-    const json = JSON.parse(await fetchText(`${LIST}?mics=${mic}`, 'application/json', { form, timeoutMs: 20000 }));
+    const json = JSON.parse(await fetchText(`${LIST}?mics=${mic}`, 'application/json', { form, timeoutMs: 15000 }));
     const rows = parseEuronextList(json, mic, COVERED);
     if (Object.keys(rows).length === 0) throw new UpstreamError(`Euronext returned no ${mic} shares`);
     return rows;
-  });
+  }, LIVE_GRACE);
 }
 
 const listMic = (inst: Instrument) => inst.providerId.split('-')[1];
@@ -90,10 +91,10 @@ export function liveQuote(row: EuronextRow) {
 
 export const euronext: Provider = {
   // The live list has no volume or day range; those come from the end-of-day file when it covers the same day.
-  async quote(inst, daily) {
+  async quote(inst, dailyBars) {
+    const [daily, live] = await Promise.all([dailyBars, euronextLive(inst)]);
     const last = daily[daily.length - 1];
     const prev = daily[daily.length - 2];
-    const live = await euronextLive(inst);
     if (live) {
       const sameDay = last && isoDay(new Date(last.t)) === live.time.slice(0, 10);
       const quote = liveQuote(live);

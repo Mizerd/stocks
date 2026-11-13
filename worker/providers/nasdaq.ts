@@ -1,6 +1,6 @@
 import type { Candle, ExchangeId, Instrument, QuarterFigure, Quote } from '../../shared/types';
 import { US_PREMARKET_OPEN, zonedTime } from '../../shared/exchanges';
-import { cachedJson, daysAgo, fetchText, isoDay, num, shared, UpstreamError } from '../http';
+import { cachedJson, daysAgo, fetchText, isoDay, LIVE_GRACE, num, shared, UpstreamError } from '../http';
 import type { DetailExtras, Intraday, Provider } from './provider';
 
 const API = 'https://api.nasdaq.com/api';
@@ -224,7 +224,7 @@ export function usScreener(exchange: ExchangeId): Promise<ScreenerRow[]> {
     const rows = parseUsScreener(JSON.parse(await fetchText(url)));
     if (rows.length === 0) throw new UpstreamError(`Nasdaq screener returned no ${market} shares`);
     return rows;
-  });
+  }, LIVE_GRACE);
 }
 
 export interface WatchlistRow {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Candle, FxRates, History, Listing, StockSummary } from '../shared/types';
 import { aggregateCandles, barInterval, curvePath, nearestIndex, pointDiff, smoothPath, timeTicks, SMOOTH_MIN, withLatestQuote } from '../src/lib/chart';
 import type { XY } from '../src/lib/chart';
@@ -9,6 +9,7 @@ import { anyMarketOpen, barometer, currentStocks, dayMove, sectorMoves } from '.
 import { cleanEntry, isDate, parseDecimal, parseList, serializeList, upsert } from '../src/lib/myList';
 import { allocation, listRows, portfolioReturns, sortRows, valuePortfolio } from '../src/lib/portfolio';
 import { quarterRows } from '../src/lib/quarters';
+import { createPrefetcher } from '../src/lib/prefetch';
 import { periodStart, rangePosition, returnSince } from '../src/lib/returns';
 import { filterStocks, NO_FILTERS, parseState, sortStocks, toSearchParams } from '../src/lib/screener';
 import { alignCloses } from '../src/lib/series';
@@ -542,5 +543,58 @@ describe('latest session on daily charts', () => {
   it('leaves the history alone when the quote belongs to the last bar or the chart is not daily', () => {
     expect(withLatestQuote(history, quote('2026-11-12T20:00:00Z'), 'America/New_York')).toBe(history);
     expect(withLatestQuote({ ...history, interval: 'week' }, quote('2026-11-13T15:00:00Z'), 'UTC').candles).toHaveLength(2);
+  });
+});
+
+describe('prefetching a stock on hover', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function setup() {
+    vi.useFakeTimers();
+    const loads: string[] = [];
+    const pending: (() => void)[] = [];
+    const prefetcher = createPrefetcher((symbol) => {
+      loads.push(symbol);
+      return new Promise<void>((resolve) => pending.push(resolve));
+    });
+    const finish = async () => {
+      pending.splice(0).forEach((resolve) => resolve());
+      await vi.advanceTimersByTimeAsync(0);
+    };
+    return { prefetcher, loads, finish };
+  }
+
+  it('loads only after the pointer has rested on a link', () => {
+    const { prefetcher, loads } = setup();
+    prefetcher.rest('AAPL');
+    vi.advanceTimersByTime(60);
+    prefetcher.leave();
+    prefetcher.rest('MSFT');
+    vi.advanceTimersByTime(99);
+    expect(loads).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(loads).toEqual(['MSFT']);
+  });
+
+  it('runs one prefetch at a time and loads each stock once', async () => {
+    const { prefetcher, loads, finish } = setup();
+    prefetcher.rest('AAPL');
+    vi.advanceTimersByTime(100);
+    prefetcher.rest('MSFT');
+    vi.advanceTimersByTime(100);
+    expect(loads).toEqual(['AAPL']);
+    await finish();
+    prefetcher.rest('AAPL');
+    vi.advanceTimersByTime(100);
+    prefetcher.rest('MSFT');
+    vi.advanceTimersByTime(100);
+    expect(loads).toEqual(['AAPL', 'MSFT']);
+    await finish();
+    vi.advanceTimersByTime(5 * 60_000);
+    prefetcher.rest('AAPL');
+    vi.advanceTimersByTime(100);
+    expect(loads).toEqual(['AAPL', 'MSFT', 'AAPL']);
   });
 });

@@ -5,11 +5,16 @@ import type { CompanyAbout, FxRates, History, NewsItem, Range, StockDetail, Stoc
 interface Entry {
   time: number;
   promise: Promise<unknown>;
+  // The last answer, and when it was asked for.
+  data?: unknown;
+  dataTime?: number;
 }
 
 // Shared between components so the same URL is fetched once per minute at most.
 const cache = new Map<string, Entry>();
 const FRESH_MS = 60_000;
+// An earlier answer this recent is shown at once while a new one loads.
+const SHOW_EARLIER_MS = 15 * 60_000;
 
 export function fetchJson<T>(path: string): Promise<T> {
   const hit = cache.get(path);
@@ -18,9 +23,19 @@ export function fetchJson<T>(path: string): Promise<T> {
     if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? `HTTP ${res.status}`);
     return res.json() as Promise<T>;
   });
-  cache.set(path, { time: Date.now(), promise });
-  promise.catch(() => cache.delete(path));
+  const entry: Entry = { time: Date.now(), promise, data: hit?.data, dataTime: hit?.dataTime };
+  cache.set(path, entry);
+  promise.then(
+    (data) => Object.assign(entry, { data, dataTime: entry.time }),
+    () => cache.get(path) === entry && cache.delete(path),
+  );
   return promise;
+}
+
+// The last answer for `path`, if it is recent enough to show while a new one loads.
+export function earlierJson<T>(path: string): T | undefined {
+  const hit = cache.get(path);
+  return hit?.dataTime !== undefined && Date.now() - hit.dataTime < SHOW_EARLIER_MS ? (hit.data as T) : undefined;
 }
 
 export interface ApiState<T> {
@@ -34,7 +49,8 @@ const anyExchangeOpen = () => Object.values(EXCHANGES).some((ex) => sessionState
 
 // Loads `load()` whenever `key` changes and again every `refreshMs`. A null key loads nothing.
 // Refreshes pause in a hidden tab (and catch up when it is shown) and slow to a quarter-hour while every exchange is closed.
-function useLoader<T>(key: string | null, load: () => Promise<T>, refreshMs = 0): ApiState<T> {
+// `earlier` is shown while the first load for a key runs.
+function useLoader<T>(key: string | null, load: () => Promise<T>, refreshMs = 0, earlier?: T): ApiState<T> {
   const [state, setState] = useState<ApiState<T> & { key: string | null }>({
     key, data: undefined, error: undefined, loading: key !== null,
   });
@@ -66,12 +82,12 @@ function useLoader<T>(key: string | null, load: () => Promise<T>, refreshMs = 0)
   }, [key, refreshMs]);
 
   // While a new key loads, don't show the previous key's data.
-  if (state.key !== key) return { data: undefined, error: undefined, loading: key !== null };
-  return state;
+  if (state.key !== key) return { data: earlier, error: undefined, loading: key !== null };
+  return state.data === undefined && state.loading ? { ...state, data: earlier } : state;
 }
 
 export function useApi<T>(path: string | null, refreshMs = 0): ApiState<T> {
-  return useLoader(path, () => fetchJson<T>(path!), refreshMs);
+  return useLoader(path, () => fetchJson<T>(path!), refreshMs, path === null ? undefined : earlierJson<T>(path));
 }
 
 interface SummaryList {
@@ -153,29 +169,41 @@ export function useHistory(symbol: string | null, range: Range) {
   return useApi<HistoryResult>(symbol ? historyPath(symbol, range) : null, range === '1D' ? 120_000 : 0);
 }
 
+const available = (h: HistoryResult | undefined) => (h && !isUnavailable(h) ? h : undefined);
+
 // Histories of several symbols at once, in the order given. Failed ones come back undefined.
 export function useHistories(symbols: string[], range: Range) {
-  return useLoader(`${symbols.join(',')}|${range}`, () =>
-    Promise.all(
-      symbols.map((s) =>
-        fetchJson<HistoryResult>(historyPath(s, range)).then(
-          (h) => (isUnavailable(h) ? undefined : h),
-          () => undefined,
-        ),
-      ),
-    ),
+  const paths = symbols.map((s) => historyPath(s, range));
+  const earlier = paths.map((path) => earlierJson<HistoryResult>(path));
+  return useLoader(
+    `${symbols.join(',')}|${range}`,
+    () => Promise.all(paths.map((path) => fetchJson<HistoryResult>(path).then(available, () => undefined))),
+    0,
+    earlier.every(Boolean) ? earlier.map(available) : undefined,
   );
 }
 
+const detailPath = (symbol: string) => `/api/detail?symbol=${encodeURIComponent(symbol)}`;
+
 export function useDetail(symbol: string) {
-  return useApi<StockDetail>(`/api/detail?symbol=${encodeURIComponent(symbol)}`, FRESH_MS);
+  return useApi<StockDetail>(detailPath(symbol), FRESH_MS);
+}
+
+// The stock chart's range when the page address names none.
+export const DEFAULT_RANGE: Range = '6M';
+
+// Loads what a stock page shows first, ahead of the page or alongside the universe list it waits for.
+export function prefetchStock(symbol: string, range = DEFAULT_RANGE): Promise<unknown> {
+  return Promise.all([fetchJson(detailPath(symbol)), fetchJson(historyPath(symbol, range))]).catch(() => undefined);
 }
 
 export type AboutResult = CompanyAbout | { unavailable: true };
 
+export const aboutPath = (symbol: string, lang: 'lt' | 'en') => `/api/about?symbol=${encodeURIComponent(symbol)}&lang=${lang}`;
+
 // A short Wikipedia summary of the company, in the reader's language where there is one.
 export function useAbout(symbol: string, lang: 'lt' | 'en') {
-  return useApi<AboutResult>(`/api/about?symbol=${encodeURIComponent(symbol)}&lang=${lang}`);
+  return useApi<AboutResult>(aboutPath(symbol, lang));
 }
 
 export function useNews(lang: 'lt' | 'en') {

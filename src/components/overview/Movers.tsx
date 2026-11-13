@@ -5,6 +5,7 @@ import type { FxRates, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { direction, useFormat } from '../../lib/format';
 import { turnoverEur } from '../../lib/market';
+import { prefetchProps } from '../../lib/prefetch';
 import { PanelTitle, Seg } from '../ui';
 
 type Tab = 'gainers' | 'losers' | 'active';
@@ -49,6 +50,7 @@ export function Movers({ stocks, fx }: { stocks: StockSummary[]; fx: FxRates | u
             to={`/stock/${stock.symbol}`}
             className="row tbl-row"
             style={{ gridTemplateColumns: '60px minmax(0, 1fr) 48px 88px', gap: 10, minHeight: 46, padding: '0 6px' }}
+            {...prefetchProps(stock.symbol)}
           >
             <span className="num" style={{ fontSize: 13, fontWeight: 600 }}>{shortSymbol(stock.symbol)}</span>
             <span className="clip" style={{ fontSize: 13, color: 'var(--ink2)' }}>{stock.name}</span>
