@@ -131,7 +131,8 @@ async function fetchOnce(url: string, accept: string, options: FetchOptions = {}
     headers: {
       Accept: accept,
       // Wikimedia and other public APIs ask automated clients to say where they come from.
-      'User-Agent': `stocks-viewer/1.0 (+${brand.siteUrl})`,
+      // Nasdaq refuses a User-Agent that holds a full URL, so it names the site's host only.
+      'User-Agent': `stocks-viewer/1.0 (+${brand.siteUrl.replace(/^https?:\/\//, '')})`,
       ...(options.form ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
     },
     signal: AbortSignal.timeout(options.timeoutMs ?? 8000),
