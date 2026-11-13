@@ -1,9 +1,10 @@
-import type { Candle, ExchangeId, Instrument, QuarterFigure, Quote } from '../../shared/types';
-import { US_PREMARKET_OPEN, zonedTime } from '../../shared/exchanges';
+import type { Candle, ExchangeId, ExtendedQuote, Instrument, QuarterFigure, Quote, Upcoming } from '../../shared/types';
+import { US_PREMARKET_OPEN, zonedParts, zonedTime } from '../../shared/exchanges';
 import { cachedJson, daysAgo, fetchText, isoDay, LIVE_GRACE, num, shared, UpstreamError } from '../http';
 import type { DetailExtras, Intraday, Provider } from './provider';
 
 const API = 'https://api.nasdaq.com/api';
+const NEW_YORK = 'America/New_York';
 
 // ttl 0: not kept, for results the caller keeps in parsed form itself.
 async function get(path: string, ttl: number): Promise<any> {
@@ -33,7 +34,7 @@ export function parseNasdaqTime(text: string): string {
   let hour = m[4] ? Number(m[4]) % 12 : 16;
   if (m[6] === 'PM') hour += 12;
   const hhmm = `${String(hour).padStart(2, '0')}:${m[5] ?? '00'}`;
-  return zonedTime(day, hhmm, 'America/New_York').toISOString();
+  return zonedTime(day, hhmm, NEW_YORK).toISOString();
 }
 
 export function parseNasdaqRows(rows: any[]): Candle[] {
@@ -62,38 +63,103 @@ function trailingEps(epsData: any): number | null {
   return reported.slice(-4).reduce((a, b) => a + b, 0);
 }
 
+// Before the open and after the close, Nasdaq gives the latest extended-hours trade as primaryData
+// and the regular session's close as secondaryData ("Closed at Nov 12, 2026 4:00 PM ET").
+export function parseNasdaqInfo(info: any) {
+  const closed = String(info.secondaryData?.lastTradeTimestamp ?? '').startsWith('Closed') ? info.secondaryData : null;
+  const regular = closed ?? info.primaryData;
+  const price = num(regular.lastSalePrice);
+  const time = parseNasdaqTime(regular.lastTradeTimestamp ?? '');
+  let extended: ExtendedQuote | undefined;
+  const lastTrade = closed && num(info.primaryData.lastSalePrice);
+  if (price !== null && lastTrade) {
+    const tradeTime = parseNasdaqTime(info.primaryData.lastTradeTimestamp ?? '');
+    const minutes = zonedParts(new Date(tradeTime), NEW_YORK).minutes;
+    const change = lastTrade - price;
+    if (tradeTime > time) {
+      extended = { session: minutes < 9 * 60 + 30 ? 'pre' : 'post', price: lastTrade, change, changePct: (change / price) * 100, time: tradeTime };
+    }
+  }
+  return {
+    price,
+    change: num(regular.netChange) ?? 0,
+    changePct: num(regular.percentageChange) ?? 0,
+    volume: num(regular.volume),
+    time,
+    // Also when Nasdaq gives the close alone, overnight.
+    closed: String(regular.lastTradeTimestamp ?? '').startsWith('Closed'),
+    realtime: Boolean(info.primaryData.isRealTime),
+    extended,
+  };
+}
+
+// The daily bar of the session a quote belongs to, once Nasdaq has added it (after the session).
+// Nasdaq publishes no opening price otherwise.
+export function sessionBar(daily: Candle[], time: string): Candle | null {
+  const last = daily[daily.length - 1];
+  return last && isoDay(new Date(last.t)) === zonedParts(new Date(time), NEW_YORK).day ? last : null;
+}
+
+const usDay = (text: unknown) => {
+  const m = String(text ?? '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : null;
+};
+
+// "… is expected* to report earnings on  12/09/2026 after market close." or "… is estimated to report earnings on  12/09/2026."
+export function parseEarningsDate(data: any, today: string): Upcoming['earnings'] {
+  const text = String(data?.reportText ?? '');
+  const day = usDay(text.match(/report earnings on\s+([\d/]+)/)?.[1]);
+  if (!day || day < today) return null;
+  const timing = /before market open/.test(text) ? 'pre' : /after market close/.test(text) ? 'post' : null;
+  return { day, estimated: /is estimated/.test(text), timing };
+}
+
+// The latest declared dividend, newest row first, while its ex-date or payment is still ahead.
+export function parseNextDividend(data: any, today: string): Upcoming['dividend'] {
+  const row = data?.dividends?.rows?.[0];
+  const ahead = (text: unknown) => {
+    const day = usDay(text);
+    return day && day >= today ? day : null;
+  };
+  const exDay = ahead(row?.exOrEffDate);
+  const payDay = ahead(row?.paymentDate);
+  return exDay || payDay ? { exDay, payDay, amount: num(row.amount) } : null;
+}
+
 export const nasdaq: Provider = {
-  async quote(inst) {
+  async quote(inst, daily) {
     const cls = assetClass(inst);
-    const [info, summary, epsData] = await Promise.all([
+    const [info, summary, epsData, bars] = await Promise.all([
       get(`/quote/${inst.providerId}/info?assetclass=${cls}`, 60),
       inst.kind === 'stock' ? tryGet(`/quote/${inst.providerId}/summary?assetclass=${cls}`, 300) : null,
       inst.kind === 'stock' ? tryGet(`/quote/${inst.providerId}/eps`, 6 * 3600) : null,
+      daily.catch(() => []),
     ]);
-    const primary = info.primaryData;
-    const price = num(primary.lastSalePrice);
+    const { price, change, changePct, volume, time, closed, realtime, extended } = parseNasdaqInfo(info);
     if (price === null) throw new UpstreamError(`Nasdaq returned no price for ${inst.symbol}`);
-    const change = num(primary.netChange) ?? 0;
     const s = summary?.summaryData ?? {};
     const [high, low] = String(s.TodayHighLow?.value ?? '').split('/').map(num);
     const eps = trailingEps(epsData);
+    const bar = sessionBar(bars, time);
     const quote: Quote = {
       price,
       change,
-      changePct: num(primary.percentageChange) ?? 0,
-      prevClose: num(s.PreviousClose?.value) ?? price - change,
-      open: null,
-      high: high ?? null,
-      low: low ?? null,
-      volume: roundOrNull(num(primary.volume) ?? num(s.ShareVolume?.value)),
-      time: parseNasdaqTime(primary.lastTradeTimestamp ?? ''),
-      freshness: primary.isRealTime ? 'realtime' : 'delayed',
+      changePct,
+      // Outside the session Nasdaq's previous close is the close shown as the price, and its volumes count extended-hours trades.
+      prevClose: (closed ? null : num(s.PreviousClose?.value)) ?? price - change,
+      open: bar?.o ?? null,
+      high: high ?? bar?.h ?? null,
+      low: low ?? bar?.l ?? null,
+      volume: roundOrNull(closed ? (bar?.v ?? null) : (volume ?? num(s.ShareVolume?.value))),
+      time,
+      freshness: realtime ? 'realtime' : 'delayed',
       marketCap: num(s.MarketCap?.value),
       pe: eps && eps > 0 ? price / eps : null,
       eps,
       dividend: num(s.AnnualizedDividend?.value),
       dividendYield: num(s.Yield?.value),
       avgVolume: num(s.AverageVolume?.value),
+      extended,
     };
     return quote;
   },
@@ -127,7 +193,7 @@ export const nasdaq: Provider = {
       const day = wall.slice(0, 10);
       let offset = offsets.get(day);
       if (offset === undefined) {
-        offset = zonedTime(day, '12:00', 'America/New_York').getTime() - Date.parse(`${day}T12:00:00Z`);
+        offset = zonedTime(day, '12:00', NEW_YORK).getTime() - Date.parse(`${day}T12:00:00Z`);
         offsets.set(day, offset);
       }
       points.push({ t: Math.floor(p.x / 60000) * 60000 + offset, price: p.y });
@@ -137,12 +203,16 @@ export const nasdaq: Provider = {
 
   async details(inst): Promise<DetailExtras> {
     const id = inst.providerId;
-    const [profile, epsData, financials, target] = await Promise.all([
+    const [profile, epsData, financials, target, earningsDate, dividends] = await Promise.all([
       tryGet(`/company/${id}/company-profile`, 24 * 3600),
       tryGet(`/quote/${id}/eps`, 6 * 3600),
       tryGet(`/company/${id}/financials?frequency=2`, 24 * 3600),
       tryGet(`/analyst/${id}/targetprice`, 6 * 3600),
+      inst.kind === 'stock' ? tryGet(`/analyst/${id}/earnings-date`, 6 * 3600) : null,
+      // Nasdaq has dividend history for its own listings only.
+      inst.kind === 'stock' && inst.exchange === 'XNAS' ? tryGet(`/quote/${id}/dividends?assetclass=stocks`, 6 * 3600) : null,
     ]);
+    const today = zonedParts(new Date(), NEW_YORK).day;
 
     const quarterlyEps: QuarterFigure[] = (epsData?.earningsPerShare ?? [])
       .filter((q: any) => q.type === 'PreviousQuarter')
@@ -169,6 +239,7 @@ export const nasdaq: Provider = {
       analysts: consensus
         ? { buy: consensus.buy, hold: consensus.hold, sell: consensus.sell, target: consensus.priceTarget ?? null }
         : null,
+      upcoming: { earnings: parseEarningsDate(earningsDate, today), dividend: parseNextDividend(dividends, today) },
     };
   },
 };

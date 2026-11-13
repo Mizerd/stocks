@@ -103,6 +103,7 @@ export function Holdings({ entries, stocks, valuation, fx, edit }: Props) {
           <div className="lbl tbl-head hd-cols">
             <span>{t('portfolio.cSym')}</span>
             <span>{t('portfolio.cName')}</span>
+            <span className="c-tr">{t('portfolio.cTrend')}</span>
             {valued && (
               <>
                 <span className="r c-qty">{t('portfolio.cQty')}</span>
@@ -124,6 +125,7 @@ export function Holdings({ entries, stocks, valuation, fx, edit }: Props) {
             <div className="tbl-row hd-cols tot" style={{ borderTop: '1px solid var(--ink3)', fontWeight: 600 }}>
               <span className="c-sym" />
               <span className="c-name">{t('portfolio.total')}</span>
+              <span className="c-tr" />
               <span className="c-qty" />
               <span className="c-avg" />
               <span className="c-price" />

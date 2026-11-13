@@ -1,6 +1,7 @@
 import type { FxRates, Sector, StockSummary } from '../../shared/types';
 import { toEur } from './api';
 import type { ListEntry, SortKey } from './myList';
+import { rangePosition } from './returns';
 
 // A list entry with both a quantity and a purchase price. Entries without them are only watched.
 export type Holding = ListEntry & { quantity: number; buyPrice: number };
@@ -110,6 +111,13 @@ export interface Row {
   entry: ListEntry;
   stock?: StockSummary;
   position?: Position;
+}
+
+// Where the price sits in its 52-week range, in percent from the low. Null when either end is unknown.
+export function yearRange(stock: StockSummary | undefined): { low: number; high: number; position: number } | null {
+  if (!stock || stock.low52 === null || stock.high52 === null) return null;
+  const position = rangePosition(stock.low52, stock.high52, stock.price);
+  return position === null ? null : { low: stock.low52, high: stock.high52, position };
 }
 
 export function listRows(entries: ListEntry[], stocks: StockSummary[], valuation: Valuation): Row[] {

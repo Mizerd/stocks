@@ -61,7 +61,7 @@ export function ResultsTable({ stocks, sort, desc, picks, onSort, onTogglePick }
               </label>
               <Link to={`/stock/${stock.symbol}`} className="num hl c-sym" style={{ fontWeight: 600 }} {...prefetchProps(stock.symbol)}>{name}</Link>
               <span className="clip c-name">{stock.name}</span>
-              <span className="clip c-sec" style={{ fontSize: 13, color: 'var(--ink2)' }}>
+              <span className="c-sec" style={{ fontSize: 13, lineHeight: 1.25, color: 'var(--ink2)' }}>
                 {stock.sector && t(`screener.sec.${stock.sector}`)}
               </span>
               <span className="num r c-price">

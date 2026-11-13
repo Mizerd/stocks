@@ -1,17 +1,30 @@
 import { Link } from 'react-router-dom';
 import { shortSymbol } from '../../../shared/catalog';
-import type { StockSummary } from '../../../shared/types';
+import { EXCHANGES } from '../../../shared/exchanges';
+import type { Listing } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { useSummaries, withHistory } from '../../lib/api';
 import { useFormat } from '../../lib/format';
+import type { Peer, PeerReason } from '../../lib/market';
 import { prefetchProps } from '../../lib/prefetch';
 import { Badge, PanelTitle, Sparkline } from '../ui';
 
-export function Peers({ stocks: quoted, compareTo }: { stocks: StockSummary[]; compareTo: string }) {
+const REASON_KEY: Record<PeerReason, string> = { sectorExchange: 'stock.whySecEx', sectorRegion: 'stock.whySecReg', exchange: 'stock.whyEx' };
+
+interface Props {
+  inst: Listing;
+  peers: Peer[];
+  compareTo: string;
+}
+
+export function Peers({ inst, peers, compareTo }: Props) {
   const { t } = useT();
   const f = useFormat();
-  const histories = useSummaries(quoted.map((s) => s.symbol));
-  const stocks = quoted.map((s) => withHistory(s, histories.get(s.symbol)));
+  const histories = useSummaries(peers.map((p) => p.stock.symbol));
+  const stocks = peers.map((p) => withHistory(p.stock, histories.get(p.stock.symbol)));
+  const why = (reason: PeerReason) => t(REASON_KEY[reason], {
+    place: reason === 'sectorRegion' ? t(`common.bloc.${inst.region.toLowerCase()}`) : EXCHANGES[inst.exchange].short,
+  });
 
   return (
     <section className="pnl">
@@ -31,10 +44,13 @@ export function Peers({ stocks: quoted, compareTo }: { stocks: StockSummary[]; c
               <span className="r">{t('stock.cPe')}</span>
               <span className="r">{t('stock.cCap')}</span>
             </div>
-            {stocks.map((s) => (
+            {stocks.map((s, i) => (
               <Link key={s.symbol} to={`/stock/${s.symbol}`} className="row tbl-row qt-peers" {...prefetchProps(s.symbol)}>
                 <span className="num c-sym" style={{ fontWeight: 600 }}>{shortSymbol(s.symbol)}</span>
-                <span className="clip c-name">{s.name}</span>
+                <span className="c-name" style={{ minWidth: 0 }}>
+                  <span className="clip" style={{ display: 'block' }}>{s.name}</span>
+                  <span style={{ display: 'block', fontSize: 11.5, lineHeight: 1.3, color: 'var(--ink3)' }}>{why(peers[i].reason)}</span>
+                </span>
                 <span className="c-spark"><Sparkline values={s.spark} change={s.changePct} /></span>
                 <span className="num r c-price">
                   {f.price(s.price)} <span className="cur">{s.currency}</span>

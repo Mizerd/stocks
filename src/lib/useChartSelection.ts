@@ -8,6 +8,8 @@ const CLICK_SLOP = 6;
 const BUBBLE_REACH = 22;
 
 type PlotPointer = PointerEvent<HTMLElement>;
+
+const noSelecting = (event: Event) => event.preventDefault();
 export type Axis = 'x' | 'y' | null;
 
 // Which way a finger is heading once it has left the slop: along the chart or scrolling the page.
@@ -16,12 +18,17 @@ export function dragAxis(dx: number, dy: number, slop = CLICK_SLOP): Axis {
   return Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
 }
 
+// Whether a mouse that went down `dx` pixels away has dragged out a range rather than clicked.
+export function isDrag(dx: number, slop = CLICK_SLOP): boolean {
+  return Math.abs(dx) >= slop;
+}
+
 // Whether a touch at `x` pixels lands on the bubble resting at `share` of a plot `width` pixels wide.
 export function onBubble(x: number, share: number | undefined, width: number, reach = BUBBLE_REACH): boolean {
   return share !== undefined && Math.abs(x - share * width) <= reach;
 }
 
-// Hover, click-to-anchor and touch selection over the points of a chart.
+// Hover, click-to-anchor, drag-to-measure and touch selection over the points of a chart.
 // `shares` is where each point sits across the plot (0 at its left edge, 1 at its right);
 // a mouse further than `slack` past the first or last point selects nothing.
 export function useChartSelection(shares: number[], slack: number) {
@@ -29,7 +36,11 @@ export function useChartSelection(shares: number[], slack: number) {
   const [hover, setHover] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<number | null>(null);
   const layer = useRef<HTMLDivElement>(null);
-  const pressedAt = useRef(0);
+  // Where the mouse went down, and the point under it; null when the button is up.
+  const press = useRef<{ x: number; index: number } | null>(null);
+  const dragging = useRef(false);
+  // A range dragged out with the mouse stays put until the next click or Escape.
+  const measured = useRef(false);
   // The point under each finger on the plot, by pointerId.
   const fingers = useRef(new Map<number, number>());
   const twoFingers = useRef(false);
@@ -43,21 +54,54 @@ export function useChartSelection(shares: number[], slack: number) {
   }
 
   function clear() {
+    measured.current = false;
     setHover(null);
     setAnchor(null);
   }
 
   function toggleAnchor(index: number) {
     ranged.current = false;
+    measured.current = false;
     setAnchor(anchor === null ? index : null);
   }
 
   // ----- Mouse and pen -----
 
-  function mouseUp(event: PlotPointer) {
+  function mouseDown(event: PlotPointer) {
+    if (event.button !== 0) return;
+    dragging.current = false;
     const index = nearestIndex(shares, shareUnder(event), slack);
-    const clicked = event.button === 0 && Math.abs(event.clientX - pressedAt.current) < CLICK_SLOP;
-    if (clicked && index !== null) toggleAnchor(index);
+    if (index === null) return;
+    press.current = { x: event.clientX, index };
+    // Captured, the drag goes on when the mouse slips past the plot's edge.
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    document.addEventListener('selectstart', noSelecting);
+  }
+
+  function mouseMove(event: PlotPointer) {
+    const start = press.current;
+    if (start && (dragging.current || isDrag(event.clientX - start.x))) {
+      dragging.current = true;
+      measured.current = true;
+      setAnchor(start.index);
+      setHover(nearestIndex(shares, shareUnder(event)));
+      return;
+    }
+    if (!measured.current) setHover(nearestIndex(shares, shareUnder(event), slack));
+  }
+
+  function mouseUp(event: PlotPointer) {
+    const start = press.current;
+    release();
+    if (dragging.current || event.button !== 0) return;
+    if (measured.current) return clear();
+    const index = nearestIndex(shares, shareUnder(event), slack);
+    if (start && index !== null) toggleAnchor(index);
+  }
+
+  function release() {
+    press.current = null;
+    document.removeEventListener('selectstart', noSelecting);
   }
 
   // ----- Touch -----
@@ -143,6 +187,7 @@ export function useChartSelection(shares: number[], slack: number) {
     return () => {
       plot.removeEventListener('touchmove', holdPage);
       document.removeEventListener('pointerup', tapOutside);
+      document.removeEventListener('selectstart', noSelecting);
     };
   }, []);
 
@@ -152,12 +197,12 @@ export function useChartSelection(shares: number[], slack: number) {
 
   function onPointerDown(event: PlotPointer) {
     if (isTouch(event)) return touchDown(event);
-    pressedAt.current = event.clientX;
+    mouseDown(event);
   }
 
   function onPointerMove(event: PlotPointer) {
     if (isTouch(event)) return touchMove(event);
-    setHover(nearestIndex(shares, shareUnder(event), slack));
+    mouseMove(event);
   }
 
   function onPointerUp(event: PlotPointer) {
@@ -167,11 +212,12 @@ export function useChartSelection(shares: number[], slack: number) {
 
   function onPointerCancel(event: PlotPointer) {
     if (isTouch(event)) touchCancel(event);
+    else release();
   }
 
   function onPointerLeave(event: PlotPointer) {
     // A finger "leaves" the moment it lifts, and its bubble stays to be read.
-    if (!isTouch(event)) setHover(null);
+    if (!isTouch(event) && !measured.current) setHover(null);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -202,7 +248,7 @@ export function useChartSelection(shares: number[], slack: number) {
       onPointerCancel,
       onPointerLeave,
       onKeyDown,
-      onBlur: () => setHover(null),
+      onBlur: () => (measured.current ? clear() : setHover(null)),
     },
   };
 }

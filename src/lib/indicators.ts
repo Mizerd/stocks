@@ -46,6 +46,13 @@ export function rsi(values: number[], period = 14): (number | null)[] {
   });
 }
 
+// Whether an indicator has enough values in the visible window to be drawn as a line rather than
+// a stub: at least two, covering at least half of the window.
+export function drawable(values: unknown[], share = 0.5): boolean {
+  const count = values.filter((v) => v !== null).length;
+  return count >= 2 && count >= values.length * share;
+}
+
 // Axis ticks on a step of 1, 2, 5 or 10 x 10^n, about `target` of them.
 export function niceTicks(min: number, max: number, target = 6): number[] {
   if (!(max > min)) return [min];

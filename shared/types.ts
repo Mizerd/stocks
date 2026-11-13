@@ -67,6 +67,17 @@ export interface Quote {
   dividend: number | null;
   dividendYield: number | null;
   avgVolume: number | null;
+  // US trades before the open or after the close, when there are any since the last regular close.
+  extended?: ExtendedQuote;
+}
+
+export interface ExtendedQuote {
+  session: 'pre' | 'post';
+  price: number;
+  // Against the regular session's close.
+  change: number;
+  changePct: number;
+  time: string;
 }
 
 export interface StockSummary extends Listing, Quote {
@@ -109,6 +120,13 @@ export interface StockDetail {
   quarterlyEps: QuarterFigure[];
   quarterlyRevenue: QuarterFigure[];
   analysts: { buy: number; hold: number; sell: number; target: number | null } | null;
+  upcoming: Upcoming;
+}
+
+// Dates still to come, as calendar days at the exchange ("2026-12-09").
+export interface Upcoming {
+  earnings: { day: string; estimated: boolean; timing: 'pre' | 'post' | null } | null;
+  dividend: { exDay: string | null; payDay: string | null; amount: number | null } | null;
 }
 
 export interface CompanyAbout {

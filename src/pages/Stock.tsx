@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { shortSymbol } from '../../shared/catalog';
 import { EXCHANGES } from '../../shared/exchanges';
-import type { FxRates, Listing, StockSummary } from '../../shared/types';
+import type { Listing, StockSummary } from '../../shared/types';
 import { AddToList } from '../components/AddToList';
 import { AboutCompany } from '../components/stock/AboutCompany';
 import { AnalystView } from '../components/stock/AnalystView';
@@ -10,27 +10,17 @@ import { KeyFigures } from '../components/stock/KeyFigures';
 import { Peers } from '../components/stock/Peers';
 import { chartRange, PriceChart } from '../components/stock/PriceChart';
 import { Quarters } from '../components/stock/Quarters';
-import { QuoteLive } from '../components/stock/QuoteLive';
+import { ExtendedLine, QuoteLive } from '../components/stock/QuoteLive';
 import { Returns } from '../components/stock/Returns';
-import { ErrorNotice, FreshnessNote, Loading, Notice } from '../components/ui';
+import { Upcoming } from '../components/stock/Upcoming';
+import { ErrorNotice, Loading, Notice } from '../components/ui';
 import { useT } from '../i18n';
 import { aboutPath, fetchJson, historyPath, prefetchStock, useDetail, useFx } from '../lib/api';
 import { direction, useFormat } from '../lib/format';
-import { turnoverEur } from '../lib/market';
+import { similarStocks } from '../lib/market';
 import { BENCHMARK } from '../lib/returns';
-import { capEur } from '../lib/screener';
 import { useInstrument, useMarket } from '../lib/universe';
 import { usePageTitle } from '../lib/usePageTitle';
-
-// The largest other stocks of the same sector and region: by market value where it is published,
-// else by value traded today.
-function peerStocks(inst: Listing, stocks: StockSummary[], fx: FxRates | undefined): StockSummary[] {
-  const size = (s: StockSummary) => capEur(s, fx) ?? turnoverEur(s, fx) ?? 0;
-  return stocks
-    .filter((s) => s.sector === inst.sector && s.region === inst.region && s.symbol !== inst.symbol)
-    .sort((a, b) => size(b) - size(a))
-    .slice(0, 5);
-}
 
 function UnknownStock({ symbol }: { symbol: string }) {
   const { t } = useT();
@@ -54,8 +44,8 @@ function HeroPrice({ summary }: { summary: StockSummary }) {
       <span className={`num bdg ${direction(summary.changePct)}`} style={{ fontSize: 15, minWidth: 0 }}>
         {f.signed(summary.change)} ({f.pct(summary.changePct)})
       </span>
-      <FreshnessNote freshness={summary.freshness} time={summary.time} />
       <QuoteLive summary={summary} />
+      <ExtendedLine summary={summary} />
     </div>
   );
 }
@@ -66,7 +56,7 @@ function StockPage({ inst }: { inst: Listing }) {
   const isStock = inst.kind === 'stock';
   const market = useMarket();
   const fx = useFx().data;
-  const peers = isStock && inst.sector ? peerStocks(inst, market.stocks, fx) : [];
+  const peers = isStock ? similarStocks(inst, market.stocks, fx) : [];
   const compareTo = `/screener?pick=${encodeURIComponent(inst.symbol)}`;
   usePageTitle(`${inst.name} (${shortSymbol(inst.symbol)})`);
 
@@ -113,6 +103,7 @@ function StockPage({ inst }: { inst: Listing }) {
             {detail ? <KeyFigures summary={detail.summary} /> : loading ? <Loading height={300} /> : error && <ErrorNotice height={300} />}
           </section>
           {detail?.analysts && <AnalystView analysts={detail.analysts} summary={detail.summary} />}
+          {detail && <Upcoming upcoming={detail.upcoming} summary={detail.summary} />}
         </aside>
       </section>
 
@@ -128,7 +119,7 @@ function StockPage({ inst }: { inst: Listing }) {
         </section>
       )}
 
-      {peers.length > 0 && <Peers stocks={peers} compareTo={compareTo} />}
+      {peers.length > 0 && <Peers inst={inst} peers={peers} compareTo={compareTo} />}
     </main>
   );
 }

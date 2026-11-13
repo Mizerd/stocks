@@ -6,16 +6,22 @@ import { direction, useFormat } from '../../lib/format';
 import { prefetchProps } from '../../lib/prefetch';
 import { Badge, PanelTitle, Sparkline } from '../ui';
 
-export function Highlights({ stocks }: { stocks: StockSummary[] }) {
+interface HighlightsProps {
+  title: string;
+  more: { to: string; label: string };
+  stocks: StockSummary[];
+}
+
+export function Highlights({ title, more, stocks }: HighlightsProps) {
   const { t, list } = useT();
   const f = useFormat();
   // The extra columns on wide screens reuse the screener's headings.
   const heads = list('screener.heads');
   return (
-    <div className="pnl" style={{ flex: '999 1 560px', minWidth: 0 }}>
+    <section className="pnl">
       <div className="pnl-head">
-        <PanelTitle>{t('overview.watch')}</PanelTitle>
-        <Link to="/screener" className="link">{t('overview.manage')}</Link>
+        <PanelTitle>{title}</PanelTitle>
+        <Link to={more.to} className="link">{more.label}</Link>
       </div>
       <div className="scroll-x" style={{ marginTop: 10 }}>
         <div className="qt">
@@ -45,6 +51,6 @@ export function Highlights({ stocks }: { stocks: StockSummary[] }) {
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

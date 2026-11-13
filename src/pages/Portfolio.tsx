@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { INDICES } from '../../shared/catalog';
+import { useListWithUndo } from '../components/AddToList';
 import { Allocation } from '../components/portfolio/Allocation';
 import { Dividends } from '../components/portfolio/Dividends';
 import { EntryForm } from '../components/portfolio/EntryForm';
@@ -8,6 +9,7 @@ import { Holdings } from '../components/portfolio/Holdings';
 import { ListTools } from '../components/portfolio/ListTools';
 import { Performance } from '../components/portfolio/Performance';
 import { Summary } from '../components/portfolio/Summary';
+import { Toast } from '../components/Toast';
 import { ErrorNotice, Loading } from '../components/ui';
 import { useT } from '../i18n';
 import { useFx, useSummaries, withHistory } from '../lib/api';
@@ -22,6 +24,7 @@ export function Portfolio() {
   const { t } = useT();
   usePageTitle(t('portfolio.title'));
   const myList = useMyList();
+  const undoable = useListWithUndo();
   const [adding, setAdding] = useState(false);
   const market = useMarket();
   const fx = useFx();
@@ -60,7 +63,7 @@ export function Portfolio() {
             <EntryForm
               taken={myList.entries.map((e) => e.symbol)}
               onSave={(entry) => {
-                myList.add(entry);
+                undoable.add(entry);
                 setAdding(false);
               }}
               onCancel={() => setAdding(false)}
@@ -92,11 +95,12 @@ export function Portfolio() {
             stocks={stocks}
             valuation={valuation}
             fx={rates}
-            edit={{ save: myList.add, remove: myList.remove }}
+            edit={{ save: myList.add, remove: undoable.remove }}
           />
           {valued && <Dividends valuation={valuation} />}
         </>
       )}
+      <Toast />
     </main>
   );
 }

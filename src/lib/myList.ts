@@ -150,6 +150,11 @@ function subscribe(listener: () => void) {
 const actions = {
   add: (entry: ListEntry) => save(upsert(entries, entry)),
   remove: (symbol: string) => save(entries.filter((e) => e.symbol !== symbol)),
+  // Puts a removed entry back where it was.
+  restore: (entry: ListEntry, index: number) => {
+    const rest = entries.filter((e) => e.symbol !== entry.symbol);
+    save([...rest.slice(0, index), entry, ...rest.slice(index)]);
+  },
   clear: () => save([]),
   // Imported entries replace the ones for the same stock and keep the rest.
   importEntries: (imported: ListEntry[]) => save(imported.reduce(upsert, entries)),

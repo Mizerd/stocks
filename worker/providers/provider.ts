@@ -24,6 +24,7 @@ export interface Provider {
 
 export const NO_EXTRAS: DetailExtras = {
   isin: null, industry: null, description: null, quarterlyEps: [], quarterlyRevenue: [], analysts: null,
+  upcoming: { earnings: null, dividend: null },
 };
 
 export function emptyFundamentals() {

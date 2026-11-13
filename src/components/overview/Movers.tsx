@@ -49,20 +49,23 @@ export function Movers({ stocks, fx }: { stocks: StockSummary[]; fx: FxRates | u
             key={stock.symbol}
             to={`/stock/${stock.symbol}`}
             className="row tbl-row"
-            style={{ gridTemplateColumns: '60px minmax(0, 1fr) 48px 88px', gap: 10, minHeight: 46, padding: '0 6px' }}
+            style={{ gridTemplateColumns: '64px minmax(0, 1fr) auto', gap: 12, minHeight: 50, padding: '0 6px' }}
             {...prefetchProps(stock.symbol)}
           >
             <span className="num" style={{ fontSize: 13, fontWeight: 600 }}>{shortSymbol(stock.symbol)}</span>
-            <span className="clip" style={{ fontSize: 13, color: 'var(--ink2)' }}>{stock.name}</span>
-            <span style={{ height: 6, borderRadius: 3, overflow: 'hidden', background: 'var(--sel)' }}>
-              <span
-                style={{
-                  display: 'block', width: `${(Math.abs(figure) / largest) * 100}%`, height: '100%', borderRadius: 3,
-                  background: tab === 'active' ? 'var(--ink)' : tab === 'gainers' ? 'var(--up)' : 'var(--down)',
-                }}
-              />
+            {/* The bar sits under the name, so the name keeps the row's width. */}
+            <span style={{ minWidth: 0 }}>
+              <span className="clip" style={{ display: 'block', fontSize: 13, color: 'var(--ink2)' }}>{stock.name}</span>
+              <span style={{ display: 'block', height: 4, marginTop: 4, borderRadius: 2, overflow: 'hidden', background: 'var(--sel)' }}>
+                <span
+                  style={{
+                    display: 'block', width: `${(Math.abs(figure) / largest) * 100}%`, height: '100%', borderRadius: 2,
+                    background: tab === 'active' ? 'var(--ink)' : tab === 'gainers' ? 'var(--up)' : 'var(--down)',
+                  }}
+                />
+              </span>
             </span>
-            <span className={`num ${tab === 'active' ? '' : direction(figure)}`} style={{ fontSize: 13, fontWeight: 500, textAlign: 'right' }}>
+            <span className={`num ${tab === 'active' ? '' : direction(figure)}`} style={{ minWidth: 64, fontSize: 13, fontWeight: 500, textAlign: 'right' }}>
               {tab === 'active' ? `${f.big(figure)} €` : f.pct(figure)}
             </span>
           </Link>

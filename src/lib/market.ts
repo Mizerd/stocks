@@ -1,5 +1,5 @@
 import { EXCHANGES, isCurrentQuote, sessionState } from '../../shared/exchanges';
-import type { FxRates, Sector, StockSummary } from '../../shared/types';
+import type { FxRates, Listing, Sector, StockSummary } from '../../shared/types';
 import { toEur } from './api';
 
 // The overview groups consumer staples with consumer discretionary, as the design does.
@@ -52,3 +52,32 @@ export const currentStocks = (stocks: StockSummary[], now: Date) =>
 // Today's move, or null when the quote is from an earlier session.
 export const dayMove = (stock: StockSummary, now: Date) =>
   isCurrentQuote(EXCHANGES[stock.exchange], stock.time, now) ? stock.changePct : null;
+
+export type PeerReason = 'sectorExchange' | 'sectorRegion' | 'exchange';
+const PEER_ORDER: PeerReason[] = ['sectorExchange', 'sectorRegion', 'exchange'];
+
+export interface Peer {
+  stock: StockSummary;
+  reason: PeerReason;
+}
+
+function peerReason(inst: Listing, s: StockSummary): PeerReason | null {
+  if (s.symbol === inst.symbol) return null;
+  if (s.sector === inst.sector && s.exchange === inst.exchange) return 'sectorExchange';
+  if (s.sector === inst.sector && s.region === inst.region) return 'sectorRegion';
+  return s.exchange === inst.exchange ? 'exchange' : null;
+}
+
+// Other stocks closest to `inst`: the same sector on the same exchange, then in the same region, then
+// anything on the same exchange. Largest first within each, by market value where it is published, else by value traded today.
+export function similarStocks(inst: Listing, stocks: StockSummary[], fx: FxRates | undefined, count = 5): Peer[] {
+  const size = (s: StockSummary) => (s.marketCap !== null ? toEur(s.marketCap, s.currency, fx) : null) ?? turnoverEur(s, fx) ?? 0;
+  return stocks
+    .flatMap((stock) => {
+      const reason = peerReason(inst, stock);
+      return reason ? [{ stock, reason, size: size(stock) }] : [];
+    })
+    .sort((a, b) => PEER_ORDER.indexOf(a.reason) - PEER_ORDER.indexOf(b.reason) || b.size - a.size)
+    .slice(0, count)
+    .map(({ stock, reason }) => ({ stock, reason }));
+}

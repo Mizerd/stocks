@@ -142,6 +142,9 @@ export function useMarket(): MarketState {
   return useSyncExternalStore(subscribe, () => state);
 }
 
+// The quotes loaded so far, read without starting to load or refresh them.
+export const loadedStocks = () => state.stocks;
+
 // The universe alone, for search and symbol checks; null while it loads.
 export function useListings(): Listing[] | null {
   const [all, setAll] = useState<Listing[] | null>(null);

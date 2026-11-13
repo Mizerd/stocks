@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { INDICES, shortSymbol, STOCKS } from '../../shared/catalog';
 import { EXCHANGES } from '../../shared/exchanges';
 import type { Listing } from '../../shared/types';
 import { useT } from '../i18n';
+import { direction, useFormat } from '../lib/format';
 import { prefetchProps } from '../lib/prefetch';
-import { useListings } from '../lib/universe';
+import { loadedStocks, useListings } from '../lib/universe';
 
 // Until the universe has loaded, the catalogue is searched.
 export function useSearchable(): Listing[] {
@@ -28,14 +30,18 @@ export function searchInstruments(query: string, all: readonly Listing[]): Listi
   return [...starts, ...contains].slice(0, 8);
 }
 
-export function Search() {
+// On phones the field hides behind a button until `expanded`; Escape or leaving the field folds it again.
+export function Search({ expanded, onExpandedChange }: { expanded: boolean; onExpandedChange(expanded: boolean): void }) {
   const { t } = useT();
+  const f = useFormat();
   const navigate = useNavigate();
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const results = searchInstruments(query, useSearchable());
+  // Prices only from the quote lists already loaded for the page: nothing is fetched while typing.
+  const quotes = new Map(results.length > 0 ? loadedStocks().map((s) => [s.symbol, s]) : []);
 
   // "/" jumps to the search field from anywhere on the page.
   useEffect(() => {
@@ -57,6 +63,17 @@ export function Search() {
     navigate(`/stock/${inst.symbol}`);
   }
 
+  // Focused in the same tap that shows the field, or iOS does not raise the keyboard.
+  function expand() {
+    flushSync(() => onExpandedChange(true));
+    input.current?.focus();
+  }
+
+  function close() {
+    setOpen(false);
+    onExpandedChange(false);
+  }
+
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -67,56 +84,74 @@ export function Search() {
     } else if (e.key === 'Enter' && results[active]) {
       go(results[active]);
     } else if (e.key === 'Escape') {
-      setOpen(false);
       input.current?.blur();
     }
   }
 
   return (
-    <label className="srch">
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ flex: '0 0 auto' }}>
-        <circle cx="7" cy="7" r="4.75" style={{ fill: 'none', stroke: 'var(--ink2)', strokeWidth: 1.5 }} />
-        <path d="M10.6 10.6L14 14" style={{ stroke: 'var(--ink2)', strokeWidth: 1.5, strokeLinecap: 'round' }} />
-      </svg>
-      <input
-        ref={input}
-        type="search"
-        role="combobox"
-        aria-expanded={open && query !== ''}
-        aria-controls="search-results"
-        aria-autocomplete="list"
-        autoComplete="off"
-        enterKeyHint="search"
-        value={query}
-        placeholder={t('common.search')}
-        aria-label={t('common.search')}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setActive(0);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onKeyDown={onKeyDown}
-      />
-      <kbd className="srch-key" aria-hidden="true">/</kbd>
-      {open && query.trim() !== '' && (
-        // Keep focus in the input when a result is pressed, so the click still lands.
-        <ul id="search-results" className="srch-list" role="listbox" onMouseDown={(e) => e.preventDefault()}>
-          {results.length === 0 && <li><p style={{ display: 'block', color: 'var(--ink2)' }}>{t('common.noResults', { q: query.trim() })}</p></li>}
-          {results.map((inst, i) => (
-            <li key={inst.symbol} role="option" aria-selected={i === active}>
-              <Link to={`/stock/${inst.symbol}`} className={i === active ? 'on' : ''} tabIndex={-1} onClick={() => go(inst)} {...prefetchProps(inst.symbol)}>
-                <span className="num" style={{ fontWeight: 600 }}>{shortSymbol(inst.symbol)}</span>
-                <span className="clip">{inst.name}</span>
-                <span style={{ fontSize: 11.5, color: 'var(--ink3)' }}>
-                  {inst.kind === 'index' ? t('common.index') : EXCHANGES[inst.exchange].short}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </label>
+    <>
+      <button className="icon-btn srch-btn" aria-label={t('common.searchOpen')} aria-expanded={expanded} onClick={expand}>
+        <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.75" style={{ fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }} />
+          <path d="M10.6 10.6L14 14" style={{ stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }} />
+        </svg>
+      </button>
+      <label className="srch">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ flex: '0 0 auto' }}>
+          <circle cx="7" cy="7" r="4.75" style={{ fill: 'none', stroke: 'var(--ink2)', strokeWidth: 1.5 }} />
+          <path d="M10.6 10.6L14 14" style={{ stroke: 'var(--ink2)', strokeWidth: 1.5, strokeLinecap: 'round' }} />
+        </svg>
+        <input
+          ref={input}
+          type="search"
+          role="combobox"
+          aria-expanded={open && query !== ''}
+          aria-controls="search-results"
+          aria-autocomplete="list"
+          autoComplete="off"
+          enterKeyHint="search"
+          value={query}
+          placeholder={t('common.search')}
+          aria-label={t('common.search')}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setActive(0);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={close}
+          onKeyDown={onKeyDown}
+        />
+        <kbd className="srch-key" aria-hidden="true">/</kbd>
+        {open && query.trim() !== '' && (
+          // Keep focus in the input when a result is pressed, so the click still lands.
+          <ul id="search-results" className="srch-list" role="listbox" onMouseDown={(e) => e.preventDefault()}>
+            {results.length === 0 && <li><p style={{ display: 'block', color: 'var(--ink2)' }}>{t('common.noResults', { q: query.trim() })}</p></li>}
+            {results.map((inst, i) => {
+              const quote = quotes.get(inst.symbol);
+              return (
+                <li key={inst.symbol} role="option" aria-selected={i === active}>
+                  <Link to={`/stock/${inst.symbol}`} className={i === active ? 'on' : ''} tabIndex={-1} onClick={() => go(inst)} {...prefetchProps(inst.symbol)}>
+                    <span className="num" style={{ fontWeight: 600 }}>{shortSymbol(inst.symbol)}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="clip" style={{ display: 'block' }}>{inst.name}</span>
+                      <span className="clip" style={{ display: 'block', fontSize: 11.5, color: 'var(--ink3)' }}>
+                        {inst.kind === 'index' ? t('common.index') : EXCHANGES[inst.exchange].short}
+                      </span>
+                    </span>
+                    {quote && (
+                      <span className="num r" style={{ lineHeight: 1.35 }}>
+                        <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{f.price(quote.price)} <span className="cur">{quote.currency}</span></span>
+                        <span className={direction(quote.changePct)} style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>{f.pct(quote.changePct)}</span>
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </label>
+    </>
   );
 }

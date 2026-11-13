@@ -4,9 +4,9 @@ import { EXCHANGES, US_PREMARKET_OPEN, zonedTime } from '../../../shared/exchang
 import type { Candle, ExchangeId, History } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { aggregateCandles, barInterval, curvePath, runs, scaleOf, smoothPath, SMOOTH_MIN, timeTicks, toneOf, yOf } from '../../lib/chart';
-import { createFormat, direction } from '../../lib/format';
+import { createFormat, DASH, direction } from '../../lib/format';
 import type { Format } from '../../lib/format';
-import { bollinger, niceTicks, rsi, sma } from '../../lib/indicators';
+import { bollinger, drawable, niceTicks, rsi, sma } from '../../lib/indicators';
 import { useChartSelection } from '../../lib/useChartSelection';
 import { useSettings } from '../../settings';
 import { ChartSelection, SelectionReadout } from '../ChartSelection';
@@ -19,6 +19,8 @@ const W = 1000;
 const PLOT_H = 400;
 const VOLUME_H = 64;
 const RSI_H = 72;
+// Room above 100 and below 0, so the RSI line is never cut by the panel's edge.
+const RSI_PAD = 4;
 const AXIS_WIDTH = 62;
 const MINUTE = 60_000;
 const CANDLE_MS = 5 * MINUTE;
@@ -51,6 +53,9 @@ function timeWindow(history: History, exchange: ExchangeId): { start: number; mi
   const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
   return { start: history.candles[0].t, minutes: minutes(ex.close) - minutes(ex.open) };
 }
+
+const rsiY = (value: number) => RSI_PAD + ((RSI_H - 2 * RSI_PAD) * (100 - value)) / 100;
+const rsiTop = (value: number) => `${(rsiY(value) / RSI_H) * 100}%`;
 
 function useWidth(ref: RefObject<HTMLElement | null>): number {
   const [width, setWidth] = useState(0);
@@ -125,6 +130,8 @@ function buildChart(history: History, exchange: ExchangeId, type: ChartType, sho
   const sma50 = sma(closes, 50).slice(history.warmup);
   const bands = bollinger(closes).slice(history.warmup);
   const rsi14 = rsi(closes).slice(history.warmup);
+  // Short windows without warm-up bars leave too few values; a stub at the right edge would mislead.
+  const has = { sma20: drawable(sma20), sma50: drawable(sma50), bb: drawable(bands), rsi: drawable(rsi14) };
 
   // Intraday bars sit at their time of day, so the line grows across the session and quiet
   // minutes leave a gap. Daily and weekly bars are simply spread evenly.
@@ -142,7 +149,7 @@ function buildChart(history: History, exchange: ExchangeId, type: ChartType, sho
 
   // The line only draws closes, so fitting the axis to highs and lows would leave it half empty.
   const extremes = type === 'line' ? bars.map((bar) => bar.c) : bars.flatMap((bar) => [bar.l, bar.h]);
-  if (shown.bb) bands.forEach((band) => band && extremes.push(band.lower, band.upper));
+  if (shown.bb && has.bb) bands.forEach((band) => band && extremes.push(band.lower, band.upper));
   const scale = scaleOf(extremes, 0.07);
   const y = (value: number) => yOf(value, scale, PLOT_H);
   const ticks = niceTicks(scale.min, scale.max);
@@ -152,7 +159,7 @@ function buildChart(history: History, exchange: ExchangeId, type: ChartType, sho
   const lower = runs(bands.map((band) => band && band.lower), x, y);
 
   return {
-    intraday, bars, barSlots: spanMs ? (slots * step) / spanMs : slots, sma20, sma50, bands, rsi14, xs, ticks, scale, slots, slotWidth, step, start,
+    intraday, bars, barSlots: spanMs ? (slots * step) / spanMs : slots, sma20, sma50, bands, rsi14, has, xs, ticks, scale, slots, slotWidth, step, start,
     paths: {
       grid: ticks.map((v) => `M0 ${y(v).toFixed(1)}H${W}`).join(''),
       line,
@@ -164,7 +171,7 @@ function buildChart(history: History, exchange: ExchangeId, type: ChartType, sho
       sma20: curvePath(sma20, x, y),
       sma50: curvePath(sma50, x, y),
       volume: volumePaths(shownBars, shownX, shownWidth),
-      rsi: curvePath(rsi14, x, (v) => (RSI_H * (100 - v)) / 100),
+      rsi: curvePath(rsi14, x, rsiY),
     },
   };
 }
@@ -198,7 +205,7 @@ function axisLabels(chart: Chart, range: History['range'], narrow: boolean, f: F
 
 interface MainProps {
   paths: Paths;
-  shown: Record<Indicator, boolean>;
+  shown: Pick<Record<Indicator, boolean>, 'sma20' | 'sma50' | 'bb'>;
   tone: string;
   thin: boolean;
   label: string;
@@ -251,7 +258,7 @@ const VolumeSvg = memo(function VolumeSvg({ paths, solid }: { paths: Paths; soli
 const RsiSvg = memo(function RsiSvg({ paths }: { paths: Paths }) {
   return (
     <svg viewBox={`0 0 ${W} ${RSI_H}`} preserveAspectRatio="none" width="100%" height="100%" aria-hidden="true" style={svgStyle}>
-      <path d={`M0 ${RSI_H * 0.3}H${W}M0 ${RSI_H * 0.7}H${W}`} style={{ ...gridStyle, stroke: 'var(--ink3)', strokeDasharray: '2 4' }} />
+      <path d={`M0 ${rsiY(70)}H${W}M0 ${rsiY(30)}H${W}`} style={{ ...gridStyle, stroke: 'var(--ink3)', strokeDasharray: '2 4' }} />
       <path className="sl" d={paths.rsi} style={{ strokeWidth: 1.25 }} />
     </svg>
   );
@@ -267,7 +274,10 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
 
   const spanMs = barSpan(history, exchange, plotWidth);
   const chart = useMemo(() => buildChart(history, exchange, type, shown, spanMs), [history, exchange, type, shown, spanMs]);
-  const { intraday, bars, sma20, sma50, bands, rsi14, xs, ticks, scale, slotWidth, paths } = chart;
+  const { intraday, bars, sma20, sma50, bands, rsi14, has, xs, ticks, scale, slotWidth, paths } = chart;
+  const drawn = useMemo(() => ({ sma20: shown.sma20 && has.sma20, sma50: shown.sma50 && has.sma50, bb: shown.bb && has.bb }), [shown, has]);
+  const names = { sma20: 'SMA 20', sma50: 'SMA 50', bb: t('stock.bb') };
+  const missing = (['sma20', 'sma50', 'bb'] as const).filter((id) => shown[id] && !has[id]).map((id) => names[id]);
   const last = bars.length - 1;
   const percentY = (value: number) => `${100 - ((value - scale.min) / (scale.max - scale.min)) * 100}%`;
 
@@ -299,11 +309,16 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
         <span>{t('stock.l')} {f.price(bar.l)}</span>
         <span>{t('stock.c')} {f.price(bar.c)}</span>
         <span className={direction(change)} style={{ fontWeight: 500 }}>{f.pct(change)}</span>
-        {shown.sma20 && <span style={{ color: 'var(--brass)' }}>SMA 20 {f.price(sma20[active])}</span>}
-        {shown.sma50 && <span>SMA 50 {f.price(sma50[active])}</span>}
-        {shown.bb && (
+        {drawn.sma20 && <span style={{ color: 'var(--brass)' }}>SMA 20 {f.price(sma20[active])}</span>}
+        {drawn.sma50 && <span>SMA 50 {f.price(sma50[active])}</span>}
+        {drawn.bb && (
           <span style={{ color: 'var(--ink3)' }}>
-            {t('stock.bb')} {bands[active] ? `${f.price(bands[active].lower)}–${f.price(bands[active].upper)}` : f.price(null)}
+            {t('stock.bb')} {bands[active] ? `${f.price(bands[active].lower)}–${f.price(bands[active].upper)}` : DASH}
+          </span>
+        )}
+        {missing.length > 0 && (
+          <span style={{ color: 'var(--ink3)' }}>
+            {t('stock.noData', { name: missing.join(', ') })}
           </span>
         )}
       </div>
@@ -312,7 +327,7 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
 
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
         <div ref={plot} className="plot-main" style={{ position: 'relative', flex: 1, minWidth: 0, borderTop: '1px solid var(--hair)', borderBottom: '1px solid var(--ink3)' }}>
-          <MainSvg paths={paths} shown={shown} tone={tone} thin={bars.length > DENSE_POINTS} label={label} />
+          <MainSvg paths={paths} shown={drawn} tone={tone} thin={bars.length > DENSE_POINTS} label={label} />
           {type === 'line' && bars.length < SMOOTH_MIN && bars.slice(0, last).map((bar, i) => (
             <span key={bar.t} className="pt-dot" aria-hidden="true" style={{ left: `${(xs[i] / W) * 100}%`, top: percentY(bar.c), background: tone }} />
           ))}
@@ -364,16 +379,20 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
       )}
 
       {shown.rsi && (
-        <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 0, height: RSI_H, borderBottom: '1px solid var(--hair)' }}>
-            <RsiSvg paths={paths} />
-            <span className="lbl" style={subLabelStyle}>
-              RSI 14 · <span className="num" style={{ color: 'var(--ink)' }}>{f.num(rsi14[active], 1)}</span>
-            </span>
-          </div>
-          <div className="num" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: AXIS_WIDTH, height: RSI_H, fontSize: 11, color: 'var(--ink3)' }}>
-            <span style={{ position: 'absolute', left: 4, top: '30%', transform: 'translateY(-50%)' }}>70</span>
-            <span style={{ position: 'absolute', left: 4, top: '70%', transform: 'translateY(-50%)' }}>30</span>
+        <div style={{ marginTop: 10 }}>
+          {/* Above the panel rather than over it, where it would hide a line near 100. */}
+          <span className="lbl" style={{ display: 'block' }}>
+            RSI 14{has.rsi && <> · <span className="num" style={{ color: 'var(--ink)' }}>{f.num(rsi14[active], 1)}</span></>}
+          </span>
+          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 0, height: RSI_H, borderBottom: '1px solid var(--hair)' }}>
+              {has.rsi ? <RsiSvg paths={paths} /> : <p className="ind-none">{t('stock.noData', { name: 'RSI 14' })}</p>}
+            </div>
+            <div className="num" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: AXIS_WIDTH, height: RSI_H, fontSize: 11, color: 'var(--ink3)' }}>
+              {has.rsi && [70, 30].map((level) => (
+                <span key={level} style={{ position: 'absolute', left: 4, top: rsiTop(level), transform: 'translateY(-50%)' }}>{level}</span>
+              ))}
+            </div>
           </div>
         </div>
       )}

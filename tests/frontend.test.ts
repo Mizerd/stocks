@@ -3,18 +3,18 @@ import type { Candle, FxRates, History, Listing, StockSummary } from '../shared/
 import { aggregateCandles, barInterval, curvePath, nearestIndex, pointDiff, smoothPath, timeTicks, SMOOTH_MIN, withLatestQuote } from '../src/lib/chart';
 import type { XY } from '../src/lib/chart';
 import { createFormat } from '../src/lib/format';
-import { bollinger, niceTicks, rsi, sma } from '../src/lib/indicators';
+import { bollinger, drawable, niceTicks, rsi, sma } from '../src/lib/indicators';
 import { withHistory } from '../src/lib/api';
-import { anyMarketOpen, barometer, currentStocks, dayMove, sectorMoves } from '../src/lib/market';
+import { anyMarketOpen, barometer, currentStocks, dayMove, sectorMoves, similarStocks } from '../src/lib/market';
 import { cleanEntry, isDate, parseDecimal, parseList, serializeList, upsert } from '../src/lib/myList';
-import { allocation, listRows, portfolioReturns, sortRows, valuePortfolio } from '../src/lib/portfolio';
+import { allocation, listRows, portfolioReturns, sortRows, valuePortfolio, yearRange } from '../src/lib/portfolio';
 import { quarterRows } from '../src/lib/quarters';
 import { createPrefetcher } from '../src/lib/prefetch';
 import { periodStart, rangePosition, returnSince } from '../src/lib/returns';
 import { filterStocks, NO_FILTERS, parseState, sortStocks, toSearchParams } from '../src/lib/screener';
 import { alignCloses } from '../src/lib/series';
 import { shortSummary } from '../src/lib/text';
-import { dragAxis, onBubble } from '../src/lib/useChartSelection';
+import { dragAxis, isDrag, onBubble } from '../src/lib/useChartSelection';
 
 const fx: FxRates = { date: '2026-11-09', perEur: { EUR: 1, USD: 1.25 } };
 
@@ -596,5 +596,72 @@ describe('prefetching a stock on hover', () => {
     prefetcher.rest('AAPL');
     vi.advanceTimersByTime(100);
     expect(loads).toEqual(['AAPL', 'MSFT', 'AAPL']);
+  });
+});
+
+describe('similar companies', () => {
+  const vilnius = { exchange: 'XLIT', region: 'BAL', currency: 'EUR', marketCap: null } as const;
+  const telia = stock({ ...vilnius, symbol: 'TEL1L', sector: 'C' });
+  const list = [
+    telia,
+    stock({ symbol: 'GOOGL', sector: 'C', marketCap: 3e12 }),
+    stock({ ...vilnius, symbol: 'IGN1L', sector: 'U', volume: 50_000, price: 22 }),
+    stock({ ...vilnius, symbol: 'APG1L', sector: 'I', volume: 1_000, price: 2 }),
+    stock({ ...vilnius, exchange: 'XRIS', symbol: 'SAF1R', sector: 'C', volume: 100, price: 16 }),
+    stock({ ...vilnius, symbol: 'TVC', sector: 'C', volume: 10, price: 1 }),
+    stock({ ...vilnius, exchange: 'XTAL', symbol: 'TKM1T', sector: 'S', volume: 1e6, price: 10 }),
+  ];
+
+  it('ranks the same sector and exchange, then sector and region, then exchange, largest first', () => {
+    const peers = similarStocks(telia, list, fx);
+    expect(peers.map((p) => [p.stock.symbol, p.reason])).toEqual([
+      ['TVC', 'sectorExchange'], ['SAF1R', 'sectorRegion'], ['IGN1L', 'exchange'], ['APG1L', 'exchange'],
+    ]);
+    expect(similarStocks(telia, list, fx, 2)).toHaveLength(2);
+  });
+});
+
+describe('drag to measure', () => {
+  it('counts a press as a click until the mouse has moved six pixels sideways', () => {
+    expect(isDrag(0)).toBe(false);
+    expect(isDrag(5)).toBe(false);
+    expect(isDrag(-5.9)).toBe(false);
+    expect(isDrag(6)).toBe(true);
+    expect(isDrag(-40)).toBe(true);
+    expect(isDrag(8, 10)).toBe(false);
+  });
+});
+
+describe('indicators on short windows', () => {
+  it('draws RSI 14 only once it covers enough of the window', () => {
+    const rising = Array.from({ length: 20 }, (_, i) => 100 + i);
+    expect(drawable(rsi(rising))).toBe(false);
+    expect(drawable(rsi(rising.slice(0, 10)))).toBe(false);
+    expect(drawable(rsi([...rising, ...rising]))).toBe(true);
+  });
+
+  it('needs at least two values and half of the window', () => {
+    expect(drawable([null, null, null])).toBe(false);
+    expect(drawable([null, 1])).toBe(false);
+    expect(drawable([null, null, 1, 2])).toBe(true);
+    expect(drawable([null, null, null, 1, 2])).toBe(false);
+    expect(drawable(sma([1, 2, 3, 4, 5], 50))).toBe(false);
+  });
+});
+
+describe('52-week range on list rows', () => {
+  const stock = (price: number, low52: number | null, high52: number | null) => ({ price, low52, high52 }) as StockSummary;
+
+  it('places the price between the low and the high', () => {
+    expect(yearRange(stock(150, 100, 200))).toEqual({ low: 100, high: 200, position: 50 });
+    expect(yearRange(stock(100, 100, 200))?.position).toBe(0);
+    expect(yearRange(stock(210, 100, 200))?.position).toBe(100);
+  });
+
+  it('shows nothing when the range is unknown', () => {
+    expect(yearRange(undefined)).toBeNull();
+    expect(yearRange(stock(150, null, 200))).toBeNull();
+    expect(yearRange(stock(150, 100, null))).toBeNull();
+    expect(yearRange(stock(150, 150, 150))).toBeNull();
   });
 });

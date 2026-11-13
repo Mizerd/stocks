@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { EXCHANGES, tradingDayOfYear } from '../../shared/exchanges';
 import { useT } from '../i18n';
@@ -54,6 +54,60 @@ function Tools() {
   );
 }
 
+// Phones: language, theme and palette behind a "⋯" button.
+function Menu() {
+  const { t } = useT();
+  const { lang, setLang, theme, colorBlind, toggleTheme, toggleColorBlind } = useSettings();
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+
+  // Closes on Escape, or when a tap or the keyboard focus lands outside it.
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: Event) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      button.current?.focus();
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('focusin', outside);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('focusin', outside);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="hdr-menu" ref={box}>
+      <button ref={button} className="icon-btn" aria-label={t('common.menu')} aria-expanded={open} aria-controls="hdr-pop" onClick={() => setOpen(!open)}>
+        <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" style={{ fill: 'currentColor' }}>
+          <circle cx="3" cy="8" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="13" cy="8" r="1.5" />
+        </svg>
+      </button>
+      {open && (
+        <div id="hdr-pop" className="hdr-pop">
+          <div className="seg" role="group" aria-label={t('common.langLabel')}>
+            <button className={lang === 'lt' ? 'on' : ''} aria-pressed={lang === 'lt'} onClick={() => setLang('lt')}>Lietuvių</button>
+            <button className={lang === 'en' ? 'on' : ''} aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
+          </div>
+          <button className="hdr-sw" role="switch" aria-checked={theme === 'dark'} onClick={toggleTheme}>
+            {t('common.dark')}<span className="sw" aria-hidden="true" />
+          </button>
+          <button className="hdr-sw" role="switch" aria-checked={colorBlind} onClick={toggleColorBlind}>
+            {t('common.cbLabel')}<span className="sw" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Tab icons, shown only in the phone tab bar.
 const ICONS: ReactNode[] = [
   <path key="o" d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z" />,
@@ -75,6 +129,7 @@ export function Header() {
   const { pathname } = useLocation();
   const onStock = pathname.startsWith('/stock');
   const short = list('common.navShort');
+  const [searching, setSearching] = useState(false);
   const tabs = [
     { to: '/', label: t('common.n1') },
     { to: `/stock/${lastStock()}`, label: t('common.n2') },
@@ -86,11 +141,12 @@ export function Header() {
     <header>
       <UtilityBar />
       <div className="wrap">
-        <div className="hdr-main">
+        <div className={`hdr-main${searching ? ' searching' : ''}`}>
           <Logo />
-          <Search />
           <SessionWidget />
+          <Search expanded={searching} onExpandedChange={setSearching} />
           <Tools />
+          <Menu />
         </div>
       </div>
       <div className="wrap">

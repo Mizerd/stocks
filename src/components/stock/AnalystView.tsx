@@ -16,7 +16,7 @@ export function AnalystView({ analysts, summary }: Props) {
   const upside = target !== null ? (target / summary.price - 1) * 100 : null;
 
   return (
-    <section className="pnl" style={{ flex: 1 }}>
+    <section className="pnl">
       <h2 className="ser pnl-title" style={{ marginBottom: 12 }}>{t('stock.an')}</h2>
       {total > 0 && (
         <>

@@ -4,7 +4,10 @@ import { STOCKS } from '../shared/catalog';
 import { baltic, parseBalticSheet, parseBalticShareList } from '../worker/providers/baltic';
 import { parseEcbRates } from '../worker/providers/ecb';
 import { liveQuote, parseEuronextCsv, parseEuronextList } from '../worker/providers/euronext';
-import { bucket, companyName, nasdaq, parseNasdaqRows, parseNasdaqTime, parseUsScreener, parseWatchlist } from '../worker/providers/nasdaq';
+import {
+  bucket, companyName, nasdaq, parseEarningsDate, parseNasdaqInfo, parseNasdaqRows, parseNasdaqTime, parseNextDividend, parseUsScreener,
+  parseWatchlist, sessionBar,
+} from '../worker/providers/nasdaq';
 import { parseNewsFeed } from '../worker/providers/news';
 import { parseNordicChart, parseNordicScreener } from '../worker/providers/nordic';
 import { parseLangLink, parseSitelinks, parseSummary, wikidataQuery } from '../worker/providers/wikipedia';
@@ -381,5 +384,61 @@ describe('unzipFile', () => {
   it('finds nothing in a missing file or a page that is not a zip', async () => {
     expect(await unzipFile(await zipOf(files, true), 'xl/worksheets/sheet2.xml')).toBeNull();
     expect(await unzipFile(new TextEncoder().encode('<html>Request unsuccessful.</html>'), 'xl/worksheets/sheet1.xml')).toBeNull();
+  });
+});
+
+describe('Nasdaq quote details', () => {
+  const closedAt = { lastSalePrice: '$354.88', netChange: '-0.48', percentageChange: '-0.14%', lastTradeTimestamp: 'Closed at Nov 12, 2026 4:00 PM ET', isRealTime: false, volume: '' };
+
+  it('keeps the regular close as the price and the pre-market trade apart', () => {
+    const q = parseNasdaqInfo({
+      primaryData: { lastSalePrice: '$355.8147', netChange: '+0.9347', percentageChange: '+0.26%', lastTradeTimestamp: 'Nov 13, 2026 6:34 AM ET', isRealTime: true, volume: '79,894.368768' },
+      secondaryData: closedAt,
+    });
+    expect([q.price, q.change, q.changePct, q.time, q.closed]).toEqual([354.88, -0.48, -0.14, '2026-11-12T21:00:00.000Z', true]);
+    expect(q.extended).toMatchObject({ session: 'pre', price: 355.8147, time: '2026-11-13T11:34:00.000Z' });
+    expect(q.extended!.change).toBeCloseTo(0.9347);
+    expect(q.extended!.changePct).toBeCloseTo(0.2634, 3);
+  });
+
+  it('calls trades after the close after-hours, and has none during the session', () => {
+    const post = parseNasdaqInfo({
+      primaryData: { lastSalePrice: '$355.00', lastTradeTimestamp: 'Nov 12, 2026 6:42 PM ET', isRealTime: true },
+      secondaryData: closedAt,
+    });
+    expect(post.extended?.session).toBe('post');
+    const open = parseNasdaqInfo({
+      primaryData: { lastSalePrice: '$99.165', netChange: '+1.725', percentageChange: '+1.77%', lastTradeTimestamp: 'Nov 13, 2026 11:07 AM ET', isRealTime: true, volume: '4,604,203' },
+      secondaryData: null,
+    });
+    expect([open.price, open.volume, open.closed, open.extended]).toEqual([99.165, 4604203, false, undefined]);
+  });
+
+  it('finds the daily bar of the quote\'s session only', () => {
+    const bars = [{ t: Date.UTC(2026, 10, 12), o: 98.25, h: 98.38, l: 97.38, c: 97.44, v: 1 }];
+    expect(sessionBar(bars, '2026-11-12T21:00:00.000Z')).toBe(bars[0]);
+    expect(sessionBar(bars, '2026-11-13T16:07:00.000Z')).toBeNull();
+    expect(sessionBar([], '2026-11-13T16:07:00.000Z')).toBeNull();
+  });
+
+  it('reads the next earnings date with its timing, and drops a past one', () => {
+    const expected = { reportText: 'Broadcom Inc. Common Stock is expected* to report earnings on  12/09/2026 after market close.  The report will be for the fiscal Quarter ending Oct 2026.' };
+    const estimated = { reportText: 'Oracle Corporation Common Stock is estimated to report earnings on  12/09/2026. The upcoming earnings date is derived from an algorithm.' };
+    const unknown = { reportText: "Our vendor, Zacks Investment Research, hasn't provided us with the upcoming earnings report date." };
+    expect(parseEarningsDate(expected, '2026-11-13')).toEqual({ day: '2026-12-09', estimated: false, timing: 'post' });
+    expect(parseEarningsDate(estimated, '2026-11-13')).toEqual({ day: '2026-12-09', estimated: true, timing: null });
+    expect(parseEarningsDate(unknown, '2026-11-13')).toBeNull();
+    expect(parseEarningsDate(expected, '2026-12-10')).toBeNull();
+  });
+
+  it('reads the latest declared dividend while its dates are ahead', () => {
+    const data = { dividends: { rows: [
+      { exOrEffDate: '11/19/2026', amount: '$0.98', paymentDate: '12/10/2026' },
+      { exOrEffDate: '08/20/2026', amount: '$0.91', paymentDate: '09/10/2026' },
+    ] } };
+    expect(parseNextDividend(data, '2026-11-13')).toEqual({ exDay: '2026-11-19', payDay: '2026-12-10', amount: 0.98 });
+    expect(parseNextDividend(data, '2026-11-20')).toEqual({ exDay: null, payDay: '2026-12-10', amount: 0.98 });
+    expect(parseNextDividend(data, '2026-12-11')).toBeNull();
+    expect(parseNextDividend({ dividends: { rows: null } }, '2026-11-13')).toBeNull();
   });
 });

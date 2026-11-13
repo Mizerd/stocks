@@ -13,6 +13,7 @@ import { useT } from '../i18n';
 import { fetchJson, historyPath, useFx, useIndices, useNews, useSummaries, withHistory } from '../lib/api';
 import { useFormat } from '../lib/format';
 import { barometer, currentStocks, sectorMoves, type SectorMove } from '../lib/market';
+import { useMyList } from '../lib/myList';
 import { usePageTitle } from '../lib/usePageTitle';
 import { marketName, useMarket } from '../lib/universe';
 
@@ -46,7 +47,9 @@ export function Overview() {
   const { t, lang } = useT();
   usePageTitle(t('common.n1'));
   const { stocks, failed, loading, error } = useMarket();
-  const histories = useSummaries(HIGHLIGHTS);
+  const listed = useMyList().entries.map((e) => e.symbol);
+  // Sparklines need each stock's own summary; the visitor's list shares the requests with the highlights.
+  const histories = useSummaries([...new Set([...listed, ...HIGHLIGHTS])]);
   const { indices } = useIndices();
   const fx = useFx();
   const news = useNews(lang);
@@ -62,13 +65,21 @@ export function Overview() {
   // Today's picture uses only quotes from each exchange's latest session.
   const today = currentStocks(stocks, new Date());
   const sectors = sectorMoves(today);
-  const highlights = HIGHLIGHTS.flatMap((symbol) => stocks.filter((s) => s.symbol === symbol)).map((s) => withHistory(s, histories.get(s.symbol)));
+  const bySymbol = new Map(stocks.map((s) => [s.symbol, s]));
+  // The bulk quote with the summary's sparkline, or the summary alone when the bulk list lacks the stock.
+  const rows = (symbols: string[]) => symbols.flatMap((symbol) => {
+    const quote = bySymbol.get(symbol);
+    const full = histories.get(symbol);
+    return quote ? [withHistory(quote, full)] : full ? [full] : [];
+  });
+  const mine = rows(listed);
   const tape = stocks.filter((s) => TAPE.has(s.symbol));
 
   return (
     <>
       <TickerTape items={[...indices, ...tape]} />
       <main className="wrap page">
+        {mine.length > 0 && <Highlights title={t('common.n3')} more={{ to: '/portfolio', label: t('overview.editList') }} stocks={mine} />}
         <section className="ov-top">
           <div style={{ minWidth: 0 }}>
             {today.length > 0 && <Brief stocks={today} sectors={sectors} />}
@@ -84,10 +95,8 @@ export function Overview() {
             {t('common.partial', { list: failed.map(marketName).join('; ') })}
           </p>
         )}
-        <section className="cols">
-          <Highlights stocks={highlights} />
-          <Sectors sectors={sectors} />
-        </section>
+        <Highlights title={t('overview.watch')} more={{ to: '/screener', label: t('overview.manage') }} stocks={rows(HIGHLIGHTS)} />
+        <Sectors stocks={today} fx={fx.data} />
         <News items={news.data ?? []} />
       </main>
     </>

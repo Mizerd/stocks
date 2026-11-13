@@ -18,7 +18,7 @@ import { usePageTitle } from '../lib/usePageTitle';
 import { marketName, useMarket } from '../lib/universe';
 
 // In the order of the "pre" names in screener.json. Limits follow what the data sources publish:
-// dividend yields and P/E exist for US stocks only.
+// P/E exists for US stocks only, dividend yields for Nasdaq-listed ones only.
 const PRESETS: Partial<FilterValues>[] = [
   { dyMin: 0.25 },
   { regions: ['EU'] },
@@ -65,7 +65,9 @@ export function Screener() {
 
   const sortOptions = { sort: state.sort, desc: state.desc, fx, sectorName: (sector: Sector) => t(`screener.sec.${sector}`), locale: lang };
   // The rows on screen are found from the bulk quotes first, then enriched with the figures that need history.
-  const visible = sortStocks(filterStocks(quoted, { ...state, peMax: PE_NO_LIMIT, dyMin: 0 }, fx), sortOptions).slice(0, shown);
+  // A yield filter can only keep Nasdaq-listed shares, so their figures are the ones loaded first.
+  const candidates = state.dyMin > 0 ? quoted.filter((s) => s.exchange === 'XNAS') : quoted;
+  const visible = sortStocks(filterStocks(candidates, { ...state, peMax: PE_NO_LIMIT, dyMin: 0 }, fx), sortOptions).slice(0, shown);
   const histories = useSummaries([...new Set([...ALWAYS_LOADED, ...state.picks, ...visible.map((s) => s.symbol)])]);
   const stocks = quoted.map((s) => withHistory(s, histories.get(s.symbol)));
   const found = sortStocks(filterStocks(stocks, state, fx), sortOptions);

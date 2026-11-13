@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { EXCHANGES, zonedTime } from '../../shared/exchanges';
+import { EXCHANGES, sessionState, zonedTime } from '../../shared/exchanges';
 import type { ExchangeId, Freshness, History } from '../../shared/types';
 import { useT } from '../i18n';
 import { sparkPath } from '../lib/chart';
 import { direction, useFormat } from '../lib/format';
+import { useNow } from '../lib/useNow';
 
 interface SegProps<T extends string> {
   label: string;
@@ -57,13 +58,22 @@ export function Sparkline({ values, change, width = '100%', height = 26 }: Spark
   );
 }
 
+interface FreshnessProps {
+  freshness: Freshness;
+  time: string;
+  // Given, the note says "At close" while that exchange is closed.
+  exchange?: ExchangeId;
+}
+
 // "Delayed 15 min · 16:22": how fresh a price is and when it was published.
-export function FreshnessNote({ freshness, time }: { freshness: Freshness; time: string }) {
+export function FreshnessNote({ freshness, time, exchange }: FreshnessProps) {
   const { t } = useT();
   const f = useFormat();
+  const now = useNow();
+  const closed = exchange !== undefined && !sessionState(EXCHANGES[exchange], now).isOpen;
   return (
     <span style={{ fontSize: 12, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>
-      {t(`common.${freshness}`)} · <span className="num">{f.stamp(time)}</span>
+      {t(closed ? 'common.atClose' : `common.${freshness}`)} · <span className="num">{f.stamp(time)}</span>
     </span>
   );
 }

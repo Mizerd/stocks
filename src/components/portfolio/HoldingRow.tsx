@@ -2,9 +2,10 @@ import { Link } from 'react-router-dom';
 import { findInstrument, shortSymbol } from '../../../shared/catalog';
 import { useT } from '../../i18n';
 import { DASH, direction, useFormat } from '../../lib/format';
+import { yearRange } from '../../lib/portfolio';
 import type { Row } from '../../lib/portfolio';
 import { prefetchProps } from '../../lib/prefetch';
-import { Badge } from '../ui';
+import { Badge, Sparkline } from '../ui';
 
 interface Props {
   row: Row;
@@ -22,6 +23,8 @@ export function HoldingRow({ row: { entry, stock, position }, valued, largest, a
   const { t } = useT();
   const f = useFormat();
   const symbol = shortSymbol(entry.symbol);
+  const year = yearRange(stock);
+  const spark = stock?.spark ?? [];
   const details = [entry.buyDate && t('portfolio.bought', { date: f.date(entry.buyDate, 'UTC') }), entry.note].filter(Boolean).join(' · ');
   return (
     <div className="hd-item">
@@ -30,6 +33,14 @@ export function HoldingRow({ row: { entry, stock, position }, valued, largest, a
         <span className="c-name" style={{ minWidth: 0 }}>
           <span className="clip" style={{ display: 'block' }}>{stock?.name ?? findInstrument(entry.symbol)?.name}</span>
           {details && <span className="clip hd-note">{details}</span>}
+        </span>
+        <span className="c-tr hd-tr">
+          {spark.length > 1 && <Sparkline values={spark} change={spark[spark.length - 1] - spark[0]} width="100%" height={22} />}
+          {year && (
+            <span className="hd-yr" title={t('portfolio.yearRange', { low: f.price(year.low), high: f.price(year.high) })}>
+              <span style={{ left: `${year.position}%` }} />
+            </span>
+          )}
         </span>
         {valued && (
           <>
