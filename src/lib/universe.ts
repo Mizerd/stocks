@@ -27,15 +27,35 @@ export interface MarketState {
 }
 
 let listings: Promise<Listing[]> | undefined;
+// Markets whose stock list did not load; the others still show, and the next refresh tries again.
+const missingLists = new Set<Market>();
+
+function loadMarketList(market: Market): Promise<Listing[]> {
+  return fetchJson<MarketList<Listing>>(`/api/universe?market=${market}`).then(
+    (r) => {
+      missingLists.delete(market);
+      return r.items;
+    },
+    () => {
+      missingLists.add(market);
+      return [];
+    },
+  );
+}
 
 // The universe changes rarely, so it is loaded once per visit. Funds are part of it; a fund list that
 // fails to load leaves the stocks searchable.
 export function loadListings(): Promise<Listing[]> {
-  listings ??= Promise.all([
-    ...MARKETS.map((market) => fetchJson<MarketList<Listing>>(`/api/universe?market=${market}`).then((r) => r.items)),
-    loadFunds().catch(() => [] as Listing[]),
-  ]).then((parts) => parts.flat());
-  listings.catch(() => (listings = undefined));
+  listings ??= Promise.all([...MARKETS.map(loadMarketList), loadFunds().catch(() => [] as Listing[])]).then((parts) => {
+    if (missingLists.size === MARKETS.length) throw new Error('No market list loaded');
+    return parts.flat();
+  });
+  listings.then(
+    () => {
+      if (missingLists.size > 0) listings = undefined;
+    },
+    () => (listings = undefined),
+  );
   return listings;
 }
 
@@ -57,6 +77,9 @@ export function quoteInterval(market: Market): number {
 }
 
 // One shared store, so every component reads the same lists and only one timer per market runs.
+// A market that failed is asked again soon rather than at its normal pace.
+const RETRY_MS = 20_000;
+
 let state: MarketState = { listings: undefined, stocks: [], failed: [], loading: true, error: false };
 const quotes = new Map<Market, { at: number; items: BulkQuote[] }>();
 const failed = new Set<Market>();
@@ -73,7 +96,7 @@ function publish(loadedListings: Listing[] | undefined, listingError = false) {
   state = {
     listings: loadedListings,
     stocks,
-    failed: MARKETS.filter((m) => failed.has(m)),
+    failed: MARKETS.filter((m) => failed.has(m) || missingLists.has(m)),
     loading: !listingError && (!loadedListings || !settled),
     error: listingError || (settled && stocks.length === 0),
   };
@@ -109,7 +132,8 @@ function poll(market: Market) {
         timers.delete(market);
         return;
       }
-      timers.set(market, setTimeout(() => poll(market), quoteInterval(market)));
+      const missing = failed.has(market) || missingLists.has(market);
+      timers.set(market, setTimeout(() => poll(market), missing ? RETRY_MS : quoteInterval(market)));
     });
 }
 
