@@ -68,5 +68,7 @@
     "5520": "Chemicals",
     "6010": "Energy",
     "6510": "Utilities"
-  }
+  },
+  "failed": "This region's prices could not be loaded. Trying again shortly.",
+  "empty": "No prices for this region yet."
 }

@@ -68,5 +68,7 @@
     "5520": "Chemija",
     "6010": "Energetika",
     "6510": "Komunalinės paslaugos"
-  }
+  },
+  "failed": "Šio regiono kainų įkelti nepavyko. Netrukus bandysime dar kartą.",
+  "empty": "Šio regiono kainų dar nėra."
 }

@@ -2,11 +2,11 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefO
 import type { HeatmapMeta } from '../../../shared/heatmap';
 import type { FxRates, Market, Region, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { buildBoard, layoutBoard, regionPending, STACK_BELOW, useHeatmapMeta, useUsMore, type SizeBy } from '../../lib/heatmap';
+import { buildBoard, layoutBoard, regionFailed, regionPending, STACK_BELOW, useHeatmapMeta, useUsMore, type SizeBy } from '../../lib/heatmap';
 import { useFormat } from '../../lib/format';
 import { currentStocks } from '../../lib/market';
 import { quoteToSummary } from '../../lib/universe';
-import { Loading, PanelTitle, Seg } from '../ui';
+import { Loading, Notice, PanelTitle, Seg } from '../ui';
 import { Board } from './heatmap/Board';
 import { Legend } from './heatmap/Legend';
 
@@ -58,7 +58,7 @@ function useInView(ref: RefObject<HTMLElement | null>) {
 }
 
 // stocks: every stock with its latest quote, today's or not; pending: markets still loading.
-export function Heatmap({ stocks, pending, fx }: { stocks: StockSummary[]; pending: Market[]; fx: FxRates | undefined }) {
+export function Heatmap({ stocks, pending, failed, fx }: { stocks: StockSummary[]; pending: Market[]; failed: Market[]; fx: FxRates | undefined }) {
   const [region, setRegion] = useState(() => remembered<Region>('heatmapRegion', REGIONS, 'US'));
   const [sizeBy, setSizeBy] = useState(() => remembered<SizeBy>('heatmapSize', SIZES, 'cap'));
   const [expanded, setExpanded] = useState(false);
@@ -69,12 +69,17 @@ export function Heatmap({ stocks, pending, fx }: { stocks: StockSummary[]; pendi
   const more = useUsMore(region === 'US' && (inView || expanded));
 
   // US ranks 201 to 500 come live from their own request; the main list holds their previous close.
+  // A region shows today's session where it has one, otherwise its latest, which the note dates.
   const current = useMemo(() => {
     const live = new Map(more.map((q) => [q.symbol, q]));
-    return currentStocks(stocks.map((s) => (live.has(s.symbol) ? quoteToSummary(s, live.get(s.symbol)!) : s)), new Date());
+    const all = stocks.map((s) => (live.has(s.symbol) ? quoteToSummary(s, live.get(s.symbol)!) : s));
+    const today = currentStocks(all, new Date());
+    return REGIONS.flatMap((r) => {
+      const fresh = today.filter((s) => s.region === r);
+      return fresh.length > 0 ? fresh : all.filter((s) => s.region === r);
+    });
   }, [stocks, more]);
-  const available = REGIONS.filter((r) => regionPending(r, pending) || current.some((s) => s.region === r));
-  const shown = available.includes(region) ? region : available[0];
+  const shown = region;
 
   useEffect(() => {
     if (!expanded) return;
@@ -86,15 +91,14 @@ export function Heatmap({ stocks, pending, fx }: { stocks: StockSummary[]; pendi
     };
   }, [expanded]);
 
-  if (!shown) return null;
   const panel = (inOverlay: boolean) => (
     <Panel
       stocks={current}
       loading={regionPending(shown, pending)}
+      failed={regionFailed(shown, failed)}
       meta={meta}
       fx={fx}
       region={shown}
-      available={available}
       sizeBy={sizeBy}
       onRegion={(r) => {
         remember('heatmapRegion', r);
@@ -126,10 +130,11 @@ interface PanelProps {
   stocks: StockSummary[];
   // The region's stocks are still on their way.
   loading: boolean;
+  // Every market of the region failed to load (a retry is on its way).
+  failed: boolean;
   meta: HeatmapMeta | null | undefined;
   fx: FxRates | undefined;
   region: Region;
-  available: Region[];
   sizeBy: SizeBy;
   onRegion(region: Region): void;
   onSize(size: SizeBy): void;
@@ -140,7 +145,7 @@ interface PanelProps {
   expandButton?: RefObject<HTMLButtonElement | null>;
 }
 
-function Panel({ stocks, loading, meta, fx, region, available, sizeBy, onRegion, onSize, expanded, open, onExpand, expandButton }: PanelProps) {
+function Panel({ stocks, loading, failed, meta, fx, region, sizeBy, onRegion, onSize, expanded, open, onExpand, expandButton }: PanelProps) {
   const { t } = useT();
   const f = useFormat();
   const noteId = useId();
@@ -184,7 +189,7 @@ function Panel({ stocks, loading, meta, fx, region, available, sizeBy, onRegion,
             label={t('heatmap.region')}
             value={region}
             onChange={onRegion}
-            options={REGIONS.map((r) => ({ value: r, label: t(`screener.reg.${r}`), disabled: !available.includes(r) }))}
+            options={REGIONS.map((r) => ({ value: r, label: t(`screener.reg.${r}`) }))}
           />
           <Seg label={t('heatmap.size')} value={sizeBy} onChange={onSize} options={SIZES.map((s) => ({ value: s, label: t(`heatmap.${SIZE_LABEL[s]}`) }))} />
         </div>
@@ -203,7 +208,13 @@ function Panel({ stocks, loading, meta, fx, region, available, sizeBy, onRegion,
         )}
       </div>
       <div ref={ref} className="hm-board">
-        {!ready ? <Loading height={420} /> : width > 0 && <Board placed={placed} width={width} region={region} noteId={noteId} />}
+        {!ready ? (
+          <Loading height={420} />
+        ) : board.total === 0 ? (
+          <Notice height={420}>{t(failed ? 'heatmap.failed' : 'heatmap.empty')}</Notice>
+        ) : (
+          width > 0 && <Board placed={placed} width={width} region={region} noteId={noteId} />
+        )}
       </div>
       <Legend />
       <p id={noteId} className="pnl-note">{note}</p>

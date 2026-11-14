@@ -105,7 +105,7 @@ export function Overview() {
           </p>
         )}
         <Highlights title={t('overview.watch')} more={{ to: '/screener', label: t('overview.manage') }} stocks={rows(HIGHLIGHTS)} loading={pending.length > 0} />
-        <Heatmap stocks={stocks} pending={pending} fx={fx.data} />
+        <Heatmap stocks={stocks} pending={pending} failed={failed} fx={fx.data} />
         <News items={news.data ?? []} />
       </main>
     </>

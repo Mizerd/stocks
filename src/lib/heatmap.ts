@@ -12,6 +12,7 @@ const REGION_MARKETS: Record<Region, Market[]> = { US: ['us'], EU: ['nordic', 'e
 
 // Whether some of the region's stocks are still on their way.
 export const regionPending = (region: Region, pending: Market[]) => REGION_MARKETS[region].some((m) => pending.includes(m));
+export const regionFailed = (region: Region, failed: Market[]) => REGION_MARKETS[region].every((m) => failed.includes(m));
 
 export type Step = 'none' | 'flat' | 'u1' | 'u2' | 'u3' | 'u4' | 'u5' | 'u6' | 'd1' | 'd2' | 'd3' | 'd4' | 'd5' | 'd6';
 export type SizeBy = 'cap' | 'traded' | 'equal';
