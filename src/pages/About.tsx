@@ -13,7 +13,7 @@ import { useListings } from '../lib/universe';
 import { usePageTitle } from '../lib/usePageTitle';
 
 // Which provider check belongs to each row of the sources table.
-const ROW_PROVIDERS: ProviderStatus['provider'][] = ['nasdaq', 'nordic', 'euronext', 'baltic', 'ecb'];
+const ROW_PROVIDERS: ProviderStatus['provider'][] = ['nasdaq', 'nordic', 'euronext', 'baltic', 'pensionikeskus', 'ecb'];
 
 type DeleteStep = 'idle' | 'asking' | 'done';
 
@@ -77,7 +77,7 @@ export function About() {
       <h1 className="ser h1" style={{ marginBottom: 8 }}>{t('common.aboutTitle')}</h1>
       <section className="pnl">
         <p style={{ margin: '0 0 14px', maxWidth: '68ch', color: 'var(--ink2)', lineHeight: 1.6 }}>
-          {t('common.srcNote', { n: f.num(universe?.length || STOCKS.length, 0), m: INDICES.length })}
+          {t('common.srcNote', { n: f.num(universe?.filter((i) => i.kind === 'stock').length || STOCKS.length, 0), k: f.num(universe?.filter((i) => i.kind === 'fund').length ?? 0, 0), m: INDICES.length })}
         </p>
         <div className="src">
           <div className="lbl tbl-head src-cols">

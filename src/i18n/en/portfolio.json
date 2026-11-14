@@ -50,7 +50,8 @@
     "M": "Materials",
     "R": "Real estate",
     "X": "Cash",
-    "O": "Other"
+    "O": "Other",
+    "N": "Funds"
   },
   "divEmpty": "The data sources publish no dividend for these holdings.",
   "divKnown": "known for {n} of {m} holdings",

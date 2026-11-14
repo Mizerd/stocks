@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { findInstrument, shortSymbol } from '../../../shared/catalog';
+import { findInstrument, isFundSymbol, shortSymbol } from '../../../shared/catalog';
+import { withoutCompany } from '../../lib/funds';
 import { useT } from '../../i18n';
 import { DASH, direction, useFormat } from '../../lib/format';
 import { yearRange } from '../../lib/portfolio';
@@ -22,16 +23,18 @@ const ICON = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLin
 export function HoldingRow({ row: { entry, stock, position }, valued, largest, actions }: Props) {
   const { t } = useT();
   const f = useFormat();
-  const symbol = shortSymbol(entry.symbol);
+  // A fund's ISIN is too long for the symbol column: it goes under the name.
+  const fund = isFundSymbol(entry.symbol);
+  const symbol = fund ? t('common.fund') : shortSymbol(entry.symbol);
   const year = yearRange(stock);
   const spark = stock?.spark ?? [];
-  const details = [entry.buyDate && t('portfolio.bought', { date: f.date(entry.buyDate, 'UTC') }), entry.note].filter(Boolean).join(' · ');
+  const details = [fund && [stock?.company, shortSymbol(entry.symbol)].filter(Boolean).join(' · '), entry.buyDate && t('portfolio.bought', { date: f.date(entry.buyDate, 'UTC') }), entry.note].filter(Boolean).join(' · ');
   return (
     <div className="hd-item">
       <Link to={`/stock/${entry.symbol}`} className="row tbl-row hd-cols" {...prefetchProps(entry.symbol)}>
         <span className="num c-sym" style={{ fontWeight: 600 }}>{symbol}</span>
         <span className="c-name" style={{ minWidth: 0 }}>
-          <span className="clip" style={{ display: 'block' }}>{stock?.name ?? findInstrument(entry.symbol)?.name}</span>
+          <span className="clip" style={{ display: 'block' }}>{fund && stock ? withoutCompany(stock.name, stock.company) : (stock?.name ?? findInstrument(entry.symbol)?.name)}</span>
           {details && <span className="clip hd-note">{details}</span>}
         </span>
         <span className="c-tr hd-tr">

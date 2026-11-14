@@ -72,17 +72,17 @@ export function valuePortfolio(entries: ListEntry[], stocks: StockSummary[], fx:
 }
 
 export interface Slice {
-  // X is cash, O a stock whose source gives no sector.
-  sector: Sector | 'X' | 'O';
+  // X is cash, O a stock whose source gives no sector, N funds.
+  sector: Sector | 'X' | 'O' | 'N';
   valueEur: number;
   share: number;
 }
 
 // Value per sector, largest first, with any cash ("X") last.
 export function allocation(valuation: Valuation, cashEur: number): Slice[] {
-  const bySector = new Map<Sector | 'O', number>();
+  const bySector = new Map<Sector | 'O' | 'N', number>();
   for (const p of valuation.positions) {
-    const sector = p.stock.sector ?? 'O';
+    const sector = p.stock.kind === 'fund' ? 'N' : (p.stock.sector ?? 'O');
     bySector.set(sector, (bySector.get(sector) ?? 0) + p.valueEur);
   }
   const slices: Slice[] = [...bySector.entries()]

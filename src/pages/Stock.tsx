@@ -4,6 +4,7 @@ import { shortSymbol } from '../../shared/catalog';
 import { EXCHANGES } from '../../shared/exchanges';
 import type { Listing, StockSummary } from '../../shared/types';
 import { AddToList } from '../components/AddToList';
+import { FundPage } from '../components/fund/FundPage';
 import { AboutCompany } from '../components/stock/AboutCompany';
 import { AnalystView } from '../components/stock/AnalystView';
 import { KeyFigures } from '../components/stock/KeyFigures';
@@ -140,5 +141,6 @@ export function Stock() {
   if (loading) return <main className="wrap page"><Loading height={420} /></main>;
   if (!inst) return <UnknownStock symbol={symbol} />;
   if (inst.symbol !== symbol) return <Navigate replace to={`/stock/${inst.symbol}${search}`} />;
+  if (inst.kind === 'fund') return <FundPage key={inst.symbol} inst={inst} />;
   return <StockPage key={inst.symbol} inst={inst} />;
 }

@@ -35,7 +35,7 @@
   ],
   "delay": "Kotiruotės vėluoja iki 15 min. · JAV akcijų puslapiuose – tikruoju laiku",
   "rgLabel": "Laikotarpis",
-  "foot1": "Rinkos duomenys: „Nasdaq“, „Nasdaq Nordic“, „Nasdaq Baltic“, „Euronext“ ir ECB; vėlavimas nurodytas prie kiekvienos kainos. Tai nėra investavimo rekomendacija.",
+  "foot1": "Rinkos duomenys: „Nasdaq“, „Nasdaq Nordic“, „Nasdaq Baltic“, „Euronext“ ir ECB, pensijų fondų vieneto vertės – „Pensionikeskus“; vėlavimas nurodytas prie kiekvienos kainos. Tai nėra investavimo rekomendacija.",
   "fData": "Duomenų šaltiniai",
   "fKeys": "Spartieji klavišai",
   "closed": "Rinka uždaryta",
@@ -55,6 +55,8 @@
   "cbLabel": "Paletė neskiriantiems spalvų",
   "unavailable": "Nėra duomenų",
   "index": "Indeksas",
+  "fund": "Fondas",
+  "navOn": "Vieneto vertė · {date}",
   "notFoundH": "Tokio puslapio nėra.",
   "backHome": "Grįžti į apžvalgą",
   "aboutTitle": "Duomenų šaltiniai",
@@ -69,7 +71,7 @@
   "srcOk": "Atsako",
   "srcDown": "Neatsako",
   "srcChecking": "Tikrinama…",
-  "srcNote": "„{brand}“ rodo tik tuos skaičius, kuriuos šaltinis iš tikrųjų skelbia. Jei šaltinis skaičiaus neturi, puslapyje rodomas brūkšnys. Aprėptis: {n} akcijos ir {m} indeksai.",
+  "srcNote": "„{brand}“ rodo tik tuos skaičius, kuriuos šaltinis iš tikrųjų skelbia. Jei šaltinis skaičiaus neturi, puslapyje rodomas brūkšnys. Aprėptis: {n} akcijos, {k} fondai ir {m} indeksai.",
   "srcRows": [
     [
       "JAV („Nasdaq“, NYSE)",
@@ -90,6 +92,11 @@
       "Vilnius, Ryga, Talinas",
       "„Nasdaq Baltic“",
       "Vėluoja 15 min."
+    ],
+    [
+      "Estijos pensijų fondai",
+      "„Pensionikeskus“ (Estijos pensijų registro) statistika",
+      "Vieneto vertė kartą per dieną, su istorija"
     ],
     [
       "Valiutų kursai",

@@ -1,5 +1,6 @@
 import { findInstrument, isSymbolShaped } from '../../shared/catalog';
-import type { FxRates, History, Region, Sector, StockSummary } from '../../shared/types';
+import type { FundCategory, FundRow, FxRates, History, Region, Sector, StockSummary } from '../../shared/types';
+import { FUND_CATEGORIES } from '../../shared/funds';
 import { toEur } from './api';
 import { dayMove } from './market';
 import { returnsPct } from './indicators';
@@ -11,6 +12,11 @@ export const DIRECTIONS = ['all', 'up', 'down'] as const;
 export const COMPARE_RANGES = ['1M', '6M', '1Y', '5Y'] as const;
 export const SORT_KEYS = ['symbol', 'name', 'sector', 'price', 'day', 'cap', 'pe', 'dy', 'ret'] as const;
 
+export const SCREENER_TYPES = ['stocks', 'funds'] as const;
+export const FUND_SORT_KEYS = ['name', 'type', 'nav', 'day', 'ret', 'fee', 'risk'] as const;
+
+export type ScreenerType = (typeof SCREENER_TYPES)[number];
+export type FundSortKey = (typeof FUND_SORT_KEYS)[number];
 export type Direction = (typeof DIRECTIONS)[number];
 export type CompareRange = (typeof COMPARE_RANGES)[number];
 export type SortKey = (typeof SORT_KEYS)[number];
@@ -33,11 +39,20 @@ export interface Filters {
   direction: Direction;
 }
 
-export interface ScreenerState extends Filters {
+export interface FundFilters {
+  fundCats: FundCategory[];
+  // Fund companies, as the sources name them.
+  companies: string[];
+}
+
+export interface ScreenerState extends Filters, FundFilters {
+  type: ScreenerType;
   sort: SortKey;
   desc: boolean;
   picks: string[];
   range: CompareRange;
+  fsort: FundSortKey;
+  fdesc: boolean;
 }
 
 export const NO_FILTERS: Filters = {
@@ -46,7 +61,11 @@ export const NO_FILTERS: Filters = {
 
 const DEFAULT_PICKS = ['AAPL', 'ASML.AS', 'IGN1L.VS'];
 
-const DEFAULTS: ScreenerState = { ...NO_FILTERS, sort: 'cap', desc: true, picks: DEFAULT_PICKS, range: '1Y' };
+export const NO_FUND_FILTERS: FundFilters = { fundCats: [], companies: [] };
+
+const DEFAULTS: ScreenerState = {
+  ...NO_FILTERS, ...NO_FUND_FILTERS, type: 'stocks', sort: 'cap', desc: true, picks: DEFAULT_PICKS, range: '1Y', fsort: 'ret', fdesc: true,
+};
 
 export function capEur(stock: StockSummary, fx: FxRates | undefined): number | null {
   return stock.marketCap === null ? null : toEur(stock.marketCap, stock.currency, fx);
@@ -142,6 +161,12 @@ function picksParam(params: URLSearchParams): string[] {
 
 export function parseState(params: URLSearchParams): ScreenerState {
   return {
+    type: choiceParam(params, 'type', SCREENER_TYPES, DEFAULTS.type),
+    fundCats: listParam(params, 'fcat', FUND_CATEGORIES),
+    // Any company name is accepted; one no fund has simply matches nothing.
+    companies: (params.get('fco') ?? '').split(',').filter(Boolean).slice(0, 10),
+    fsort: choiceParam(params, 'fsort', FUND_SORT_KEYS, DEFAULTS.fsort),
+    fdesc: params.get('forder') !== 'asc',
     query: params.get('q') ?? '',
     sectors: listParam(params, 'sec', SECTORS),
     regions: listParam(params, 'reg', REGIONS),
@@ -159,6 +184,7 @@ export function parseState(params: URLSearchParams): ScreenerState {
 // Only what differs from the defaults goes into the URL.
 export function toSearchParams(state: ScreenerState): URLSearchParams {
   const params = new URLSearchParams();
+  if (state.type !== DEFAULTS.type) params.set('type', state.type);
   if (state.query) params.set('q', state.query);
   if (state.sectors.length > 0) params.set('sec', state.sectors.join(','));
   if (state.regions.length > 0) params.set('reg', state.regions.join(','));
@@ -170,7 +196,45 @@ export function toSearchParams(state: ScreenerState): URLSearchParams {
   if (!state.desc) params.set('order', 'asc');
   if (state.picks.join(',') !== DEFAULT_PICKS.join(',')) params.set('pick', state.picks.join(',') || 'none');
   if (state.range !== DEFAULTS.range) params.set('range', state.range);
+  if (state.fundCats.length > 0) params.set('fcat', state.fundCats.join(','));
+  if (state.companies.length > 0) params.set('fco', state.companies.join(','));
+  if (state.fsort !== DEFAULTS.fsort) params.set('fsort', state.fsort);
+  if (!state.fdesc) params.set('forder', 'asc');
   return params;
+}
+
+export function filterFunds(funds: FundRow[], query: string, filters: FundFilters): FundRow[] {
+  const q = query.trim().toLowerCase();
+  return funds.filter((fund) => {
+    if (q && !fund.name.toLowerCase().includes(q) && !fund.isin.toLowerCase().includes(q) && !(fund.company ?? '').toLowerCase().includes(q)) return false;
+    if (filters.fundCats.length > 0 && !(fund.category && filters.fundCats.includes(fund.category))) return false;
+    if (filters.companies.length > 0 && !filters.companies.includes(fund.company ?? '')) return false;
+    return true;
+  });
+}
+
+function fundSortValue(fund: FundRow, sort: FundSortKey): string | number | null {
+  switch (sort) {
+    case 'name': return fund.name;
+    case 'type': return fund.category ? FUND_CATEGORIES.indexOf(fund.category) : null;
+    case 'nav': return fund.price;
+    case 'day': return fund.changePct;
+    case 'ret': return fund.return1Y;
+    case 'fee': return fund.ongoingCharge;
+    case 'risk': return fund.risk;
+  }
+}
+
+// Unknown values go last whichever way the column is sorted; ties keep name order.
+export function sortFunds(funds: FundRow[], sort: FundSortKey, desc: boolean, locale: string): FundRow[] {
+  const sign = desc ? -1 : 1;
+  return [...funds].sort((a, b) => {
+    const x = fundSortValue(a, sort);
+    const y = fundSortValue(b, sort);
+    if (x === null || y === null) return x === y ? a.name.localeCompare(b.name, locale) : x === null ? 1 : -1;
+    const order = typeof x === 'string' ? x.localeCompare(String(y), locale) : x - Number(y);
+    return sign * order || a.name.localeCompare(b.name, locale);
+  });
 }
 
 export interface AlignedReturns {

@@ -2,7 +2,8 @@ import { useState, type ReactNode } from 'react';
 import { PanelTitle, Seg } from '../ui';
 import { useT } from '../../i18n';
 import { useFormat } from '../../lib/format';
-import { CAP_MAX, DIRECTIONS, DY_MAX, PE_MIN, PE_NO_LIMIT, REGIONS, SECTORS, type Filters as FilterValues } from '../../lib/screener';
+import { FUND_CATEGORIES } from '../../../shared/funds';
+import { CAP_MAX, DIRECTIONS, DY_MAX, PE_MIN, PE_NO_LIMIT, REGIONS, SECTORS, type Filters as FilterValues, type FundFilters } from '../../lib/screener';
 
 interface ChipGroupProps<T extends string> {
   label: string;
@@ -71,10 +72,9 @@ interface FiltersProps {
   onClear(): void;
 }
 
-export function Filters({ filters, onChange, onClear }: FiltersProps) {
-  const { t, list } = useT();
-  const f = useFormat();
-  const directionNames = list('screener.dirs');
+// The filter panel's frame: title, clear, and on phones a toggle that folds the body away.
+function FilterPanel({ onClear, children }: { onClear(): void; children: ReactNode }) {
+  const { t } = useT();
   // Below the sidebar breakpoint the filters fold away above the results; CSS ignores this when there is room.
   const [open, setOpen] = useState(false);
 
@@ -90,59 +90,100 @@ export function Filters({ filters, onChange, onClear }: FiltersProps) {
         </button>
       </div>
       <div id="filters" className="flt-body" style={{ marginTop: 18 }}>
-        <ChipGroup
-          label={t('screener.fSec')}
-          options={SECTORS}
-          selected={filters.sectors}
-          nameOf={(sector) => t(`screener.sec.${sector}`)}
-          onChange={(sectors) => onChange({ sectors })}
-        />
-        <ChipGroup
-          label={t('screener.fReg')}
-          options={REGIONS}
-          selected={filters.regions}
-          nameOf={(region) => t(`screener.reg.${region}`)}
-          onChange={(regions) => onChange({ regions })}
-        />
-        <Slider
-          label={t('screener.fCap')}
-          readout={filters.capMin === 0 ? t('screener.any') : `≥ ${f.big(filters.capMin * 1e9)} EUR`}
-          min={0}
-          max={CAP_MAX}
-          step={50}
-          value={filters.capMin}
-          onChange={(capMin) => onChange({ capMin })}
-        />
-        <Slider
-          label={t('screener.fPe')}
-          readout={filters.peMax >= PE_NO_LIMIT ? t('screener.noLimit') : `≤ ${f.num(filters.peMax, 0)}`}
-          min={PE_MIN}
-          max={PE_NO_LIMIT}
-          step={1}
-          value={filters.peMax}
-          onChange={(peMax) => onChange({ peMax })}
-        />
-        <Slider
-          label={t('screener.fDy')}
-          readout={filters.dyMin === 0 ? t('screener.any') : `≥ ${f.plainPct(filters.dyMin)}`}
-          min={0}
-          max={DY_MAX}
-          step={0.25}
-          value={filters.dyMin}
-          onChange={(dyMin) => onChange({ dyMin })}
-        />
-        <div>
-          <p className="lbl" style={{ margin: '0 0 8px' }}>{t('screener.fDir')}</p>
-          <div style={{ width: 'max-content', maxWidth: '100%' }}>
-            <Seg
-              label={t('screener.fDir')}
-              options={DIRECTIONS.map((value, i) => ({ value, label: directionNames[i] }))}
-              value={filters.direction}
-              onChange={(direction) => onChange({ direction })}
-            />
-          </div>
-        </div>
+        {children}
       </div>
     </aside>
+  );
+}
+
+export function Filters({ filters, onChange, onClear }: FiltersProps) {
+  const { t, list } = useT();
+  const f = useFormat();
+  const directionNames = list('screener.dirs');
+
+  return (
+    <FilterPanel onClear={onClear}>
+      <ChipGroup
+        label={t('screener.fSec')}
+        options={SECTORS}
+        selected={filters.sectors}
+        nameOf={(sector) => t(`screener.sec.${sector}`)}
+        onChange={(sectors) => onChange({ sectors })}
+      />
+      <ChipGroup
+        label={t('screener.fReg')}
+        options={REGIONS}
+        selected={filters.regions}
+        nameOf={(region) => t(`screener.reg.${region}`)}
+        onChange={(regions) => onChange({ regions })}
+      />
+      <Slider
+        label={t('screener.fCap')}
+        readout={filters.capMin === 0 ? t('screener.any') : `≥ ${f.big(filters.capMin * 1e9)} EUR`}
+        min={0}
+        max={CAP_MAX}
+        step={50}
+        value={filters.capMin}
+        onChange={(capMin) => onChange({ capMin })}
+      />
+      <Slider
+        label={t('screener.fPe')}
+        readout={filters.peMax >= PE_NO_LIMIT ? t('screener.noLimit') : `≤ ${f.num(filters.peMax, 0)}`}
+        min={PE_MIN}
+        max={PE_NO_LIMIT}
+        step={1}
+        value={filters.peMax}
+        onChange={(peMax) => onChange({ peMax })}
+      />
+      <Slider
+        label={t('screener.fDy')}
+        readout={filters.dyMin === 0 ? t('screener.any') : `≥ ${f.plainPct(filters.dyMin)}`}
+        min={0}
+        max={DY_MAX}
+        step={0.25}
+        value={filters.dyMin}
+        onChange={(dyMin) => onChange({ dyMin })}
+      />
+      <div>
+        <p className="lbl" style={{ margin: '0 0 8px' }}>{t('screener.fDir')}</p>
+        <div style={{ width: 'max-content', maxWidth: '100%' }}>
+          <Seg
+            label={t('screener.fDir')}
+            options={DIRECTIONS.map((value, i) => ({ value, label: directionNames[i] }))}
+            value={filters.direction}
+            onChange={(direction) => onChange({ direction })}
+          />
+        </div>
+      </div>
+    </FilterPanel>
+  );
+}
+
+interface FundFiltersProps {
+  filters: FundFilters;
+  companies: string[];
+  onChange(patch: Partial<FundFilters>): void;
+  onClear(): void;
+}
+
+export function FundFilterPanel({ filters, companies, onChange, onClear }: FundFiltersProps) {
+  const { t } = useT();
+  return (
+    <FilterPanel onClear={onClear}>
+      <ChipGroup
+        label={t('screener.fund.fCat')}
+        options={FUND_CATEGORIES}
+        selected={filters.fundCats}
+        nameOf={(category) => t(`screener.fund.cat.${category}`)}
+        onChange={(fundCats) => onChange({ fundCats })}
+      />
+      <ChipGroup
+        label={t('screener.fund.fCo')}
+        options={companies}
+        selected={filters.companies}
+        nameOf={(company) => company}
+        onChange={(picked) => onChange({ companies: picked })}
+      />
+    </FilterPanel>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { INDICES } from '../../shared/catalog';
+import { INDICES, isFundSymbol } from '../../shared/catalog';
 import { useListWithUndo } from '../components/AddToList';
 import { Allocation } from '../components/portfolio/Allocation';
 import { Dividends } from '../components/portfolio/Dividends';
@@ -13,6 +13,7 @@ import { Toast } from '../components/Toast';
 import { ErrorNotice, Loading } from '../components/ui';
 import { useT } from '../i18n';
 import { useFx, useSummaries, withHistory } from '../lib/api';
+import { fundSummary, useFunds } from '../lib/funds';
 import { useMyList } from '../lib/myList';
 import { allocation, valuePortfolio } from '../lib/portfolio';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -32,10 +33,12 @@ export function Portfolio() {
   const entries = myList.entries;
   // Dividends need each listed stock's own figures; prices come from the bulk quotes.
   const histories = useSummaries(entries.map((e) => e.symbol));
-  const stocks = market.stocks
+  // Funds are priced from the fund list rather than the market quotes.
+  const funds = useFunds();
+  const stocks = [...market.stocks, ...(funds.funds ?? []).map(fundSummary)]
     .filter((s) => entries.some((e) => e.symbol === s.symbol))
     .map((s) => withHistory(s, histories.get(s.symbol)));
-  const loading = market.loading && market.stocks.length === 0;
+  const loading = (market.loading && market.stocks.length === 0) || (funds.funds === null && entries.some((e) => isFundSymbol(e.symbol)));
   const error = market.error;
   const empty = entries.length === 0;
   const rates = fx.data;

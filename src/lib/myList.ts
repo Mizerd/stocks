@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { findInstrument, isSymbolShaped } from '../../shared/catalog';
+import { findInstrument, isFundSymbol, isSymbolShaped } from '../../shared/catalog';
 import type { Listing } from '../../shared/types';
 
 // The visitor's personal list. It lives only in this browser's localStorage and is written
@@ -49,9 +49,9 @@ export function isDate(value: unknown): value is string {
 function entrySymbol(symbol: unknown, universe: readonly Listing[] | null): string | null {
   if (typeof symbol !== 'string') return null;
   const inst = findInstrument(symbol, universe ?? []);
-  if (inst) return inst.kind === 'stock' ? inst.symbol : null;
+  if (inst) return inst.kind !== 'index' ? inst.symbol : null;
   const upper = symbol.trim().toUpperCase();
-  return universe === null && isSymbolShaped(upper) ? upper : null;
+  return universe === null && (isSymbolShaped(upper) || isFundSymbol(upper)) ? upper : null;
 }
 
 // One stored or imported item as a valid entry, or null if it is not a covered stock.

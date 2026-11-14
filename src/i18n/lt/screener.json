@@ -86,5 +86,30 @@
     "52 sav. žemiausia",
     "52 sav. aukščiausia"
   ],
-  "sideNote": "Paryškinta geriausia kiekvienos eilutės reikšmė."
+  "sideNote": "Paryškinta geriausia kiekvienos eilutės reikšmė.",
+  "fund": {
+    "show": "Rodyti",
+    "types": ["Akcijos", "Fondai"],
+    "lead": "{n} fondų: Estijos II ir III pakopos pensijų fondai. Fondų kaina – vieneto vertė, skelbiama kartą per darbo dieną.",
+    "fCat": "Fondo rūšis",
+    "fCo": "Valdymo įmonė",
+    "cat": {
+      "equity": "Akcijų",
+      "bond": "Obligacijų",
+      "mixed": "Mišrūs",
+      "pension2": "II pakopos pensijų",
+      "pension3": "III pakopos pensijų"
+    },
+    "find": "Ieškoti pagal pavadinimą arba ISIN",
+    "found": "Rasta {n} iš {total} fondų",
+    "cName": "Fondas",
+    "cType": "Rūšis",
+    "cNav": "Vieneto vertė",
+    "cDay": "Paskutinė diena",
+    "cRet": "Grąža per 1 m.",
+    "cFee": "Išlaidos",
+    "cRisk": "Rizika",
+    "emptyH": "Nė vienas fondas neatitinka šių filtrų.",
+    "partial": "Nepavyko įkelti kai kurių fondų sąrašų: {list}"
+  }
 }

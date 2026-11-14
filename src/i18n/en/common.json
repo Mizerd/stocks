@@ -35,7 +35,7 @@
   ],
   "delay": "Quotes delayed up to 15 min · US stock pages real-time",
   "rgLabel": "Range",
-  "foot1": "Market data from Nasdaq, Nasdaq Nordic, Nasdaq Baltic, Euronext and the ECB; delays are shown next to each price. Not investment advice.",
+  "foot1": "Market data from Nasdaq, Nasdaq Nordic, Nasdaq Baltic, Euronext and the ECB, pension fund NAVs from Pensionikeskus; delays are shown next to each price. Not investment advice.",
   "fData": "Data sources",
   "fKeys": "Keyboard shortcuts",
   "closed": "Market closed",
@@ -55,6 +55,8 @@
   "cbLabel": "Colour-blind palette",
   "unavailable": "Not available",
   "index": "Index",
+  "fund": "Fund",
+  "navOn": "NAV · {date}",
   "notFoundH": "This page does not exist.",
   "backHome": "Back to the overview",
   "aboutTitle": "Data sources",
@@ -69,7 +71,7 @@
   "srcOk": "Responding",
   "srcDown": "Not responding",
   "srcChecking": "Checking…",
-  "srcNote": "{brand} only shows figures a source actually publishes. Where a source has no figure, the page shows a dash. The covered universe is {n} stocks and {m} indices.",
+  "srcNote": "{brand} only shows figures a source actually publishes. Where a source has no figure, the page shows a dash. The covered universe is {n} stocks, {k} funds and {m} indices.",
   "srcRows": [
     [
       "USA (Nasdaq, NYSE)",
@@ -90,6 +92,11 @@
       "Vilnius, Riga, Tallinn",
       "Nasdaq Baltic",
       "Delayed 15 min"
+    ],
+    [
+      "Estonian pension funds",
+      "Pensionikeskus (Estonian pension registry) statistics",
+      "NAV once a day, with history"
     ],
     [
       "Exchange rates",

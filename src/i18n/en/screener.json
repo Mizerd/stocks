@@ -86,5 +86,30 @@
     "52-week low",
     "52-week high"
   ],
-  "sideNote": "The best value in each row is shown in bold."
+  "sideNote": "The best value in each row is shown in bold.",
+  "fund": {
+    "show": "Show",
+    "types": ["Stocks", "Funds"],
+    "lead": "{n} funds: the Estonian II and III pillar pension funds. Fund prices are NAVs, published once a business day.",
+    "fCat": "Fund type",
+    "fCo": "Fund company",
+    "cat": {
+      "equity": "Equity",
+      "bond": "Bond",
+      "mixed": "Mixed",
+      "pension2": "Pension II",
+      "pension3": "Pension III"
+    },
+    "find": "Filter by name or ISIN",
+    "found": "Found {n} of {total} funds",
+    "cName": "Fund",
+    "cType": "Type",
+    "cNav": "NAV",
+    "cDay": "Last day",
+    "cRet": "1Y return",
+    "cFee": "Fees",
+    "cRisk": "Risk",
+    "emptyH": "No fund matches these filters.",
+    "partial": "Some fund lists could not be loaded: {list}"
+  }
 }

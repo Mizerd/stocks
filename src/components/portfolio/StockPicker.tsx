@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { shortSymbol } from '../../../shared/catalog';
-import { EXCHANGES } from '../../../shared/exchanges';
 import type { Listing } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { searchInstruments, useSearchable } from '../Search';
+import { placeOf, searchInstruments, symbolLabel, useSearchable } from '../Search';
 
 interface Props {
   id: string;
@@ -20,7 +18,7 @@ export function StockPicker({ id, exclude, invalid, describedBy, onPick }: Props
   const { t } = useT();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  const results = searchInstruments(query, useSearchable()).filter((i) => i.kind === 'stock' && !exclude.includes(i.symbol));
+  const results = searchInstruments(query, useSearchable()).filter((i) => i.kind !== 'index' && !exclude.includes(i.symbol));
   const open = query.trim() !== '';
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -65,9 +63,9 @@ export function StockPicker({ id, exclude, invalid, describedBy, onPick }: Props
           {results.map((inst, i) => (
             <li key={inst.symbol} role="option" aria-selected={i === active}>
               <button type="button" className={i === active ? 'on' : ''} tabIndex={-1} onClick={() => onPick(inst)}>
-                <span className="num" style={{ fontWeight: 600 }}>{shortSymbol(inst.symbol)}</span>
+                <span className="num" style={{ fontWeight: 600 }}>{symbolLabel(inst, t)}</span>
                 <span className="clip">{inst.name}</span>
-                <span style={{ fontSize: 11.5, color: 'var(--ink3)' }}>{EXCHANGES[inst.exchange].short}</span>
+                <span className="clip" style={{ fontSize: 11.5, color: 'var(--ink3)' }}>{placeOf(inst, t)}</span>
               </button>
             </li>
           ))}

@@ -505,3 +505,49 @@ describe('average volume', () => {
     expect(averageVolume([bar(null), ...Array.from({ length: 20 }, () => bar(7))])).toBe(7);
   });
 });
+
+describe('funds', () => {
+  it('measures fund returns from the NAV on or before each period start', async () => {
+    const { fundReturns } = await import('../shared/funds');
+    const now = Date.parse('2026-11-12T12:00:00Z');
+    const navs = [
+      bar(Date.parse('2021-11-01'), 50), bar(Date.parse('2025-11-10'), 80), bar(Date.parse('2025-12-31'), 90),
+      bar(Date.parse('2026-11-05'), 99), bar(Date.parse('2026-11-12'), 100),
+    ];
+    const r = fundReturns(navs, now);
+    expect(r['1W']).toBeCloseTo((100 / 99 - 1) * 100, 6);
+    expect(r.YTD).toBeCloseTo((100 / 90 - 1) * 100, 6);
+    expect(r['1Y']).toBeCloseTo(25, 6);
+    expect(r['5Y']).toBeCloseTo(100, 6);
+    expect(fundReturns(navs.slice(-2), now)['1Y']).toBeNull();
+  });
+
+  it('accepts only ISIN-shaped fund symbols, which no stock symbol can be', async () => {
+    const { isFundSymbol, shortSymbol, toListing } = await import('../shared/catalog');
+    expect(isFundSymbol('FUND:SE0015192349')).toBe(true);
+    expect(isFundSymbol('FUND:SE001519234')).toBe(false);
+    expect(isFundSymbol('FUND:se0015192349')).toBe(false);
+    expect(isFundSymbol('FUND:../../x')).toBe(false);
+    expect(STOCKS.some((s) => isFundSymbol(s.symbol))).toBe(false);
+    expect(shortSymbol('FUND:SE0015192349')).toBe('SE0015192349');
+    expect(toListing({ symbol: 'FUND:SE0015192349', name: 'F', kind: 'fund', exchange: 'XSTO', currency: 'EUR', region: 'EU', provider: 'robur', providerId: 'SE0015192349', company: 'Swedbank Robur', category: 'equity' }))
+      .toEqual({ symbol: 'FUND:SE0015192349', name: 'F', kind: 'fund', exchange: 'XSTO', currency: 'EUR', region: 'EU', provider: 'robur', company: 'Swedbank Robur', category: 'equity' });
+  });
+
+  it('resolves a fund symbol only from the fund lists and never fetches an unlisted one', async () => {
+    const realFetch = globalThis.fetch;
+    const called: string[] = [];
+    globalThis.fetch = async (url: string | URL | Request) => {
+      called.push(String(url));
+      return new Response('<html>nothing listed</html>');
+    };
+    try {
+      expect(await resolveSymbol('FUND:SE0015192349')).toBeUndefined();
+      const res = await worker.fetch(new Request('https://example.com/api/history?symbol=FUND:SE0000000000&range=1Y'));
+      expect(res.status).toBe(404);
+      expect(called.some((url) => url.includes('SE0000000000') || url.includes('SE0015192349'))).toBe(false);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});

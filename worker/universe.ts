@@ -1,6 +1,7 @@
-import { findInstrument, isSymbolShaped, STOCKS } from '../shared/catalog';
+import { findInstrument, isFundSymbol, isSymbolShaped, STOCKS } from '../shared/catalog';
 import { EXCHANGES, lastSessionTime, latestSession, MARKET_EXCHANGES } from '../shared/exchanges';
 import type { BulkQuote, ExchangeId, Instrument, Market, Sector } from '../shared/types';
+import { findFund } from './funds';
 import { memo, shared } from './http';
 import { summary } from './market';
 import { balticShareList, quoteTime } from './providers/baltic';
@@ -254,11 +255,12 @@ const suffixOf = (symbol: string) => symbol.match(/\.[A-Z]{2}$/)?.[0] ?? '';
 const instrumentsOf = (source: Source) =>
   shared(`instruments:${source.id}`, 3600, async () => source.instruments?.() ?? (await loadSource(source)).map((item) => item.inst), 7 * 24 * 3600);
 
-// A catalogue stock, or one in its market's bulk list. Only listed symbols ever reach a provider.
+// A catalogue stock, one in its market's bulk list, or a fund on a fund list. Only listed symbols ever reach a provider.
 export async function resolveSymbol(input: string): Promise<Instrument | undefined> {
+  const symbol = input.trim().toUpperCase();
+  if (isFundSymbol(symbol)) return (await findFund(symbol))?.inst;
   const known = findInstrument(input);
   if (known) return known;
-  const symbol = input.trim().toUpperCase();
   if (!isSymbolShaped(symbol)) return undefined;
   for (const source of SOURCES.filter((s) => s.suffixes.includes(suffixOf(symbol)))) {
     const match = (await instrumentsOf(source).catch(() => [])).find((inst) => inst.symbol === symbol);

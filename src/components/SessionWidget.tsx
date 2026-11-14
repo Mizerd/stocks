@@ -122,6 +122,7 @@ export function SessionWidget() {
   const now = useNow();
   const match = useMatch('/stock/:symbol');
   const { listing } = useInstrument(match?.params.symbol ?? '');
-  if (listing) return <ExchangeSession session={sessionState(EXCHANGES[listing.exchange], now)} now={now} />;
+  // A fund's NAV is struck once a day whatever the exchange does.
+  if (listing && listing.kind !== 'fund') return <ExchangeSession session={sessionState(EXCHANGES[listing.exchange], now)} now={now} />;
   return <BlocSessions now={now} />;
 }

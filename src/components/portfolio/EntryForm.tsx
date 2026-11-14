@@ -1,9 +1,10 @@
 import { useId, useState, type FormEvent } from 'react';
-import { findInstrument, shortSymbol } from '../../../shared/catalog';
+import { findInstrument } from '../../../shared/catalog';
 import type { Listing } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { isDate, NOTE_MAX, parseDecimal, type ListEntry } from '../../lib/myList';
 import { useListings } from '../../lib/universe';
+import { symbolLabel } from '../Search';
 import { StockPicker } from './StockPicker';
 
 interface Props {
@@ -71,7 +72,7 @@ export function EntryForm({ entry, taken, onSave, onCancel }: Props) {
           <>
             <span className="lbl">{t('portfolio.fStock')}</span>
             <p className="ef-picked">
-              <span className="num" style={{ fontWeight: 600 }}>{shortSymbol(inst.symbol)}</span>
+              <span className="num" style={{ fontWeight: 600 }}>{symbolLabel(inst, t)}</span>
               <span className="clip">{inst.name}</span>
               {!entry && <button type="button" className="link ef-change" onClick={() => setPicked(undefined)}>{t('portfolio.change')}</button>}
             </p>

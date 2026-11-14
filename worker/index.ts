@@ -2,6 +2,7 @@ import { INDICES, STOCKS, toListing } from '../shared/catalog';
 import { EXCHANGES, MARKET_EXCHANGES, MARKETS, sessionState } from '../shared/exchanges';
 import type { Instrument, Market, ProviderStatus, Range } from '../shared/types';
 import { edgeCache, LIVE_GRACE, takeBackgroundWork } from './http';
+import { fundEntries, toFundRow } from './funds';
 import { detail, history, PROVIDERS, summary, upcoming } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
@@ -74,6 +75,13 @@ async function summaries(instruments: Instrument[], maxAge: number) {
   return failed.length ? json({ items, failed }) : json({ items, failed }, 200, maxAge, LIVE_GRACE);
 }
 
+// Every fund with its latest NAV. NAVs are published once a day.
+async function funds(): Promise<Response> {
+  const { items, failed } = await fundEntries();
+  const body = { items: items.map(toFundRow), failed };
+  return failed.length ? json(body, 200, 300) : json(body, 200, 3600, DAY);
+}
+
 async function status(): Promise<Response> {
   const probes: Record<string, Instrument> = {
     nasdaq: STOCKS.find((s) => s.provider === 'nasdaq')!,
@@ -94,6 +102,10 @@ async function status(): Promise<Response> {
     timed(id as ProviderStatus['provider'], () => PROVIDERS[inst.provider].daily(inst, 0.1)),
   );
   checks.push(timed('ecb', fxRates));
+  checks.push(...(['pensionikeskus'] as const).map((id) =>
+    timed(id, async () => {
+      if (!(await fundEntries()).items.some((e) => e.inst.provider === id)) throw new Error('No funds listed');
+    })));
   return json({ checkedAt: new Date().toISOString(), providers: await Promise.all(checks) });
 }
 
@@ -117,13 +129,20 @@ async function route(url: URL): Promise<Response> {
     case '/api/history': {
       const range = url.searchParams.get('range') as Range;
       if (!RANGES.includes(range)) throw new HttpError(400, 'Unknown range');
-      const data = await history(await instrumentParam(url), range);
-      if (!data) return json({ unavailable: true }, 200, 300);
-      // Past days do not change; the chart takes the latest price from the quote.
+      const inst = await instrumentParam(url);
+      const data = await history(inst, range);
+      const fund = inst.kind === 'fund';
+      if (!data) return json({ unavailable: true }, 200, fund ? 3600 : 300);
+      // Past days do not change; the chart takes the latest price from the quote. Fund NAVs come once a day.
+      if (fund) return json(data, 200, 3 * 3600, DAY);
       return range === '1D' ? json(data, 200, 120, LIVE_GRACE) : json(data, 200, 900, 3600);
     }
-    case '/api/detail':
-      return json(await detail(await instrumentParam(url)), 200, 60, LIVE_GRACE);
+    case '/api/detail': {
+      const inst = await instrumentParam(url);
+      return inst.kind === 'fund' ? json(await detail(inst), 200, 3600, DAY) : json(await detail(inst), 200, 60, LIVE_GRACE);
+    }
+    case '/api/funds':
+      return funds();
     case '/api/upcoming':
       return json(await upcoming(await instrumentParam(url)), 200, 6 * 3600, DAY);
     case '/api/fx':
@@ -132,7 +151,9 @@ async function route(url: URL): Promise<Response> {
       return json(await balticNews(url.searchParams.get('lang') === 'lt' ? 'lt' : 'en'), 200, 300, 900);
     case '/api/about': {
       const lang = url.searchParams.get('lang') === 'lt' ? 'lt' : 'en';
-      const data = await about(await instrumentParam(url), lang);
+      const inst = await instrumentParam(url);
+      // Funds have no encyclopedia article of their own.
+      const data = inst.kind === 'fund' ? null : await about(inst, lang);
       if (!data) return json({ unavailable: true }, 200, DAY, 7 * DAY);
       // An English fallback for a Lithuanian reader is kept for an hour only, in case the Lithuanian fetch merely failed.
       return json(data, 200, data.lang === lang ? DAY : 3600, 7 * DAY);

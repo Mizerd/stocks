@@ -50,7 +50,8 @@
     "M": "Žaliavos",
     "R": "Nekilnojamasis turtas",
     "X": "Grynieji pinigai",
-    "O": "Kita"
+    "O": "Kita",
+    "N": "Fondai"
   },
   "divEmpty": "Duomenų šaltiniai šių pozicijų dividendų neskelbia.",
   "divKnown": "žinoma {n} iš {m} pozicijų",

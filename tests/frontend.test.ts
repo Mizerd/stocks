@@ -689,3 +689,54 @@ describe('default 1-day chart', () => {
     expect(denseIntraday(session(10, 1))).toBe(false);
   });
 });
+
+describe('funds in the browser', () => {
+  const fundRow = (over: Partial<import('../shared/types').FundRow>): import('../shared/types').FundRow => ({
+    symbol: 'FUND:SE0015192349', name: 'Swedbank Robur Access Edge Global C', kind: 'fund', exchange: 'XSTO', currency: 'EUR', region: 'EU',
+    provider: 'robur', company: 'Swedbank Robur', category: 'equity', isin: 'SE0015192349', navDate: '2026-11-12', price: 19.43,
+    change: -0.02, changePct: -0.1, time: '2026-11-12T17:00:00.000Z', ongoingCharge: 0.3, risk: 4, return1Y: 17.5, history: false, ...over,
+  });
+  const pension = fundRow({
+    symbol: 'FUND:EE3600019766', name: 'LHV Pensionifond Julge', exchange: 'XTAL', region: 'BAL', provider: 'pensionikeskus', company: 'LHV',
+    category: 'pension2', isin: 'EE3600019766', price: 2.59, change: null, changePct: null, ongoingCharge: null, risk: null, return1Y: 8.2, history: true,
+  });
+
+  it('finds funds by name, ISIN and company, after stocks', async () => {
+    const { searchInstruments } = await import('../src/components/Search');
+    const all: Listing[] = [{ symbol: 'SWED-A.ST', name: 'Swedbank', kind: 'stock', exchange: 'XSTO', currency: 'SEK', region: 'EU', provider: 'nordic' }, fundRow({}), pension];
+    expect(searchInstruments('swedbank', all).map((i) => i.symbol)).toEqual(['SWED-A.ST', 'FUND:SE0015192349']);
+    expect(searchInstruments('ee36000197', all).map((i) => i.symbol)).toEqual(['FUND:EE3600019766']);
+    expect(searchInstruments('lhv', all).map((i) => i.symbol)).toEqual(['FUND:EE3600019766']);
+  });
+
+  it('filters and sorts the screener fund list, unknown figures last', async () => {
+    const { filterFunds, sortFunds } = await import('../src/lib/screener');
+    const funds = [fundRow({}), pension, fundRow({ symbol: 'FUND:SE0000000001', isin: 'SE0000000001', name: 'Robur Bond', category: 'bond', ongoingCharge: null, return1Y: 2 })];
+    expect(filterFunds(funds, '', { fundCats: ['pension2'], companies: [] }).map((f) => f.isin)).toEqual(['EE3600019766']);
+    expect(filterFunds(funds, 'se00000', { fundCats: [], companies: ['Swedbank Robur'] }).map((f) => f.isin)).toEqual(['SE0000000001']);
+    expect(sortFunds(funds, 'ret', true, 'en').map((f) => f.isin)).toEqual(['SE0015192349', 'EE3600019766', 'SE0000000001']);
+    expect(sortFunds(funds, 'fee', false, 'en').map((f) => f.isin)).toEqual(['SE0015192349', 'EE3600019766', 'SE0000000001']);
+  });
+
+  it('keeps the screener type and fund filters in the address', () => {
+    const state = parseState(new URLSearchParams('type=funds&fcat=bond,nope&fco=LHV&fsort=fee&forder=asc'));
+    expect(state).toMatchObject({ type: 'funds', fundCats: ['bond'], companies: ['LHV'], fsort: 'fee', fdesc: false });
+    expect(toSearchParams(state).toString()).toBe('type=funds&fcat=bond&fco=LHV&fsort=fee&forder=asc');
+    expect(parseState(new URLSearchParams('')).type).toBe('stocks');
+  });
+
+  it('keeps a saved fund in My list, before and after the universe loads', () => {
+    expect(cleanEntry({ symbol: 'FUND:EE3600019766', quantity: 10, buyPrice: 2 })).toEqual({ symbol: 'FUND:EE3600019766', quantity: 10, buyPrice: 2 });
+    expect(cleanEntry({ symbol: 'FUND:EE3600019766' }, [pension])).toEqual({ symbol: 'FUND:EE3600019766' });
+    expect(cleanEntry({ symbol: 'FUND:SE0000000000' }, [pension])).toBeNull();
+  });
+
+  it('values a fund held in My list from its NAV and files it under funds', async () => {
+    const { fundSummary } = await import('../src/lib/funds');
+    const nav = fundSummary(pension);
+    expect(nav).toMatchObject({ price: 2.59, change: 0, freshness: 'eod', dividend: null });
+    const valuation = valuePortfolio([{ symbol: pension.symbol, quantity: 100, buyPrice: 2 }], [nav], fx, 0);
+    expect(valuation.positions[0].valueEur).toBeCloseTo(259, 6);
+    expect(allocation(valuation, 0)).toEqual([{ sector: 'N', valueEur: valuation.totalEur, share: 1 }]);
+  });
+});

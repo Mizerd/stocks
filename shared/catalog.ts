@@ -182,14 +182,22 @@ export function findInstrument<T extends Listing = Instrument>(input: string, un
   );
 }
 
-// The shape of every symbol the site uses: ticker, then the exchange suffix outside the US.
+// The shape of every stock symbol the site uses: ticker, then the exchange suffix outside the US.
 export const isSymbolShaped = (text: string) => /^[A-Z0-9][A-Z0-9-]{0,15}(\.[A-Z]{2})?$/.test(text);
+
+// Funds have no ticker: their symbol is "FUND:" and the ISIN, which no stock symbol can look like.
+export const FUND_PREFIX = 'FUND:';
+export const isFundSymbol = (text: string) => /^FUND:[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(text);
+export const fundSymbol = (isin: string) => FUND_PREFIX + isin;
 
 // The fields the browser uses; the provider's identifier and the Wikipedia title stay on the server.
 export function toListing(inst: Instrument): Listing {
-  const { symbol, name, kind, exchange, currency, region, sector, provider } = inst;
-  return { symbol, name, kind, exchange, currency, region, sector, provider };
+  const { symbol, name, kind, exchange, currency, region, sector, provider, company, category } = inst;
+  return kind === 'fund'
+    ? { symbol, name, kind, exchange, currency, region, provider, company, category }
+    : { symbol, name, kind, exchange, currency, region, sector, provider };
 }
 
-// Ticker as printed in tables: without the exchange suffix.
-export const shortSymbol = (symbol: string) => symbol.split('.')[0];
+// Ticker as printed in tables: without the exchange suffix. A fund shows its ISIN.
+export const shortSymbol = (symbol: string) =>
+  symbol.startsWith(FUND_PREFIX) ? symbol.slice(FUND_PREFIX.length) : symbol.split('.')[0];

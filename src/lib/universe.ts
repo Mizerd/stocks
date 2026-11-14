@@ -3,6 +3,7 @@ import { findInstrument } from '../../shared/catalog';
 import { EXCHANGES, MARKET_EXCHANGES, MARKETS, sessionState } from '../../shared/exchanges';
 import type { BulkQuote, Listing, Market, StockSummary } from '../../shared/types';
 import { fetchJson } from './api';
+import { loadFunds } from './funds';
 
 // Every covered stock (from /api/universe) and their latest prices (from /api/quotes), one request
 // per market. Quotes refresh every minute while one of the market's exchanges is open, less often
@@ -27,11 +28,13 @@ export interface MarketState {
 
 let listings: Promise<Listing[]> | undefined;
 
-// The universe changes rarely, so it is loaded once per visit.
+// The universe changes rarely, so it is loaded once per visit. Funds are part of it; a fund list that
+// fails to load leaves the stocks searchable.
 export function loadListings(): Promise<Listing[]> {
-  listings ??= Promise.all(
-    MARKETS.map((market) => fetchJson<MarketList<Listing>>(`/api/universe?market=${market}`).then((r) => r.items)),
-  ).then((parts) => parts.flat());
+  listings ??= Promise.all([
+    ...MARKETS.map((market) => fetchJson<MarketList<Listing>>(`/api/universe?market=${market}`).then((r) => r.items)),
+    loadFunds().catch(() => [] as Listing[]),
+  ]).then((parts) => parts.flat());
   listings.catch(() => (listings = undefined));
   return listings;
 }

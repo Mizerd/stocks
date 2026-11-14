@@ -108,5 +108,41 @@
     "I": "Pramonė",
     "M": "Žaliavos",
     "R": "Nekilnojamasis turtas"
+  },
+  "fund": {
+    "cat": {
+      "equity": "Akcijų fondas",
+      "bond": "Obligacijų fondas",
+      "mixed": "Mišrusis fondas",
+      "pension2": "Pensijų fondas · II pakopa",
+      "pension3": "Pensijų fondas · III pakopa"
+    },
+    "noChart": "„{company}“ skelbia tik naujausią kiekvieno fondo vieneto vertę, todėl kainų istorijos grafiko nėra. Ši grąža – pačios fondų valdymo įmonės skaičiai.",
+    "facts": "Fondo duomenys",
+    "navDate": "Vieneto vertės data",
+    "nav": "Vieneto vertė",
+    "currency": "Valiuta",
+    "fee": "Einamosios išlaidos",
+    "feeYear": "{v} per metus",
+    "risk": "Rizikos rodiklis (SRI)",
+    "riskOf": "{n} iš 7",
+    "type": "Rūšis",
+    "company": "Valdymo įmonė",
+    "inception": "Įsteigtas",
+    "benchmark": "Lyginamasis indeksas",
+    "style": "Valdymas",
+    "indexFund": "Indeksinis fondas",
+    "active": "Aktyviai valdomas",
+    "range52": "52 savaičių intervalas",
+    "source": "Šaltinis",
+    "src": {
+      "robur": "„Swedbank Robur“ fondų sąrašas",
+      "pensionikeskus": "„Pensionikeskus“, Estija"
+    },
+    "ret": "Grąža",
+    "retNoteSrc": "Vieneto vertės pokytis atskaičius išlaidas, kaip jį skelbia fondų valdymo įmonė. Ankstesnė grąža negarantuoja būsimos.",
+    "retNoteCalc": "Vieneto vertės pokytis atskaičius išlaidas, apskaičiuotas pagal paskelbtas dienos vieneto vertes. Ankstesnė grąža negarantuoja būsimos.",
+    "periods": ["1 savaitė", "1 mėnuo", "3 mėnesiai", "6 mėnesiai", "Šiemet", "1 metai", "3 metai", "5 metai"],
+    "chartNote": "Viena vieneto vertė kiekvieną darbo dieną"
   }
 }

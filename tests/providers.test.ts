@@ -442,3 +442,86 @@ describe('Nasdaq quote details', () => {
     expect(parseNextDividend({ dividends: { rows: null } }, '2026-11-13')).toBeNull();
   });
 });
+
+describe('fund sources', () => {
+  // The Robur list page embeds its rows as escaped JSON inside a Next.js script string.
+  const roburRow = (over: Record<string, unknown>) => ({
+    name: 'Swedbank Robur Access Edge Global C', isin: 'SE0015192349', currency: 'EUR', closePrice: 19.4277, closePriceDate: '2026-11-12',
+    returnD1: -0.1, returnW1: 1.2, returnM1: -1.8, returnM3: 2.2, returnM6: 10.8, returnM0: 19, returnM12: 17.5, returnM36UA: 58.4,
+    returnM60UA: null, ongoingCharge: 0.3, summaryRiskIndicator: 4, inceptionDate: '2020-09-15', customAttributes29: 'MSCI World Net',
+    indexFund: true, globalAssetClassId: '$$BCG$EQUTY', ratingM36: 4, ...over,
+  });
+  const roburPage = (rows: unknown[]) => {
+    const state = JSON.stringify({ total: rows.length, page: 1, rows });
+    const escaped = JSON.stringify(`5:["$","$L18",null,{"state":{"queries":[{"state":{"data":${state},"dataUpdateCount":1}}]}}]`).slice(1, -1);
+    return `<html><script>self.__next_f.push([1,"${escaped}"])</script></html>`;
+  };
+
+  it('reads Swedbank Robur share classes with NAV, returns, fees and risk, and skips broken rows', async () => {
+    const { parseRoburList } = await import('../worker/providers/robur');
+    const now = Date.parse('2026-11-14T10:00:00Z');
+    const entries = parseRoburList(roburPage([
+      roburRow({}),
+      roburRow({ isin: 'SE0000000001', name: 'Bond A', globalAssetClassId: '$$BCG$FXINC', currency: 'SEK', returnD1: null }),
+      roburRow({ isin: 'bad', name: 'Broken' }),
+      roburRow({ isin: 'SE0000000019', closePrice: null }),
+      roburRow({ isin: 'SE0000000027', closePriceDate: '2022-02-25' }),
+    ]), now);
+    expect(entries.map((e) => e.inst.symbol)).toEqual(['FUND:SE0015192349', 'FUND:SE0000000001']);
+    const [edge, bond] = entries;
+    expect(edge.inst).toMatchObject({ kind: 'fund', provider: 'robur', providerId: 'SE0015192349', company: 'Swedbank Robur', category: 'equity', currency: 'EUR' });
+    expect(edge.facts).toMatchObject({ navDate: '2026-11-12', ongoingCharge: 0.3, risk: 4, benchmark: 'MSCI World Net', indexFund: true, history: false });
+    expect(edge.facts.returns).toMatchObject({ '1W': 1.2, YTD: 19, '1Y': 17.5, '3Y': 58.4, '5Y': null });
+    expect(edge.prevClose).toBeCloseTo(19.4277 / 0.999, 6);
+    expect(bond.inst.category).toBe('bond');
+    expect(bond.prevClose).toBeNull();
+    expect(parseRoburList('<html>no list</html>')).toEqual([]);
+  });
+
+  it('reads the Estonian pension registry pages and NAV downloads', async () => {
+    const { decodeUtf16, parseNavRows, parsePensionFundIds, pensionEntries } = await import('../worker/providers/pensionikeskus');
+    const html = `<input type="checkbox" value="EPI"  name="f[]" id="EPI" /><label for="EPI">EPI-II index</label>
+      <input type="checkbox" value="38"  name="f[]" id="fund_38" />
+                <label for="fund_38">LHV Pensionifond Julge</label>
+      <input type="checkbox" value="57" checked="checked" name="f[]" id="fund_57" /><label for="fund_57">Luminor 16-50 pension fund </label>`;
+    const ids = parsePensionFundIds(html);
+    expect(ids).toEqual([{ id: '38', name: 'LHV Pensionifond Julge' }, { id: '57', name: 'Luminor 16-50 pension fund' }]);
+
+    const text = 'Date\tFund\tShortname\tISIN\tNAV\tChange %\r\n'
+      + '2025-11-12\tLHV Pensionifond Julge\tLXK75\tEE3600019766\t2,39650\t0\r\n'
+      + '2026-11-11\tLHV Pensionifond Julge\tLXK75\tEE3600019766\t2,60831\t0\r\n'
+      + '2026-11-12\tLuminor 16-50 pension fund \tNPK75\tEE3600103503\t2,00872\t1.41\r\n'
+      + '2026-11-12\tLHV Pensionifond Julge\tLXK75\tEE3600019766\t2,59189\t0.87\r\n';
+    // The download is UTF-16 little-endian with a byte-order mark.
+    const bytes = new Uint8Array(2 + text.length * 2);
+    bytes.set([0xff, 0xfe]);
+    for (let i = 0; i < text.length; i++) bytes[2 + 2 * i] = text.charCodeAt(i);
+    const rows = parseNavRows(decodeUtf16(bytes));
+    expect(rows).toHaveLength(4);
+    expect(rows[3]).toEqual({ day: '2026-11-12', name: 'LHV Pensionifond Julge', isin: 'EE3600019766', nav: 2.59189 });
+
+    const entries = pensionEntries('ii', ids, rows.slice(1), rows.slice(0, 1));
+    expect(entries.map((e) => e.inst.symbol)).toEqual(['FUND:EE3600019766', 'FUND:EE3600103503']);
+    expect(entries[0].inst).toMatchObject({ provider: 'pensionikeskus', providerId: 'ii:38', company: 'LHV', category: 'pension2', currency: 'EUR' });
+    expect(entries[0]).toMatchObject({ price: 2.59189, prevClose: 2.60831 });
+    expect(entries[0].facts.returns['1Y']).toBeCloseTo((2.59189 / 2.3965 - 1) * 100, 6);
+    expect(entries[1]).toMatchObject({ price: 2.00872, prevClose: null });
+    expect(entries[1].inst.company).toBe('Luminor');
+  });
+
+  it('quotes a fund NAV as end of day, never live', async () => {
+    const { fundProvider } = await import('../worker/providers/funds');
+    const inst = { symbol: 'FUND:EE3600019766', name: 'LHV Pensionifond Julge', kind: 'fund' as const, exchange: 'XTAL' as const, currency: 'EUR', region: 'BAL' as const, provider: 'pensionikeskus' as const, providerId: 'ii:38' };
+    const facts = {
+      isin: 'EE3600019766', company: 'LHV', category: 'pension2' as const, navDate: '2026-11-12', ongoingCharge: null, risk: null, inception: null,
+      benchmark: null, indexFund: null, returns: { '1W': null, '1M': null, '3M': null, '6M': null, YTD: null, '1Y': null, '3Y': null, '5Y': null }, history: true, source: 'pensionikeskus' as const,
+    };
+    const provider = fundProvider(async () => [{ inst, facts, price: 2.5, prevClose: 2.4, time: '2026-11-12T16:00:00.000Z' }], async () => []);
+    const quote = await provider.quote(inst, Promise.resolve([]));
+    expect(quote).toMatchObject({ price: 2.5, freshness: 'eod', volume: null });
+    expect(quote.changePct).toBeCloseTo((2.5 / 2.4 - 1) * 100, 6);
+    expect(await provider.intraday(inst)).toBeNull();
+    expect((await provider.details!(inst)).fund?.isin).toBe('EE3600019766');
+    await expect(provider.quote({ ...inst, symbol: 'FUND:EE0000000000' }, Promise.resolve([]))).rejects.toThrow();
+  });
+});

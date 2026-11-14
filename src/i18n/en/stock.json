@@ -108,5 +108,41 @@
     "I": "Industrials",
     "M": "Materials",
     "R": "Real estate"
+  },
+  "fund": {
+    "cat": {
+      "equity": "Equity fund",
+      "bond": "Bond fund",
+      "mixed": "Mixed fund",
+      "pension2": "Pension fund · II pillar",
+      "pension3": "Pension fund · III pillar"
+    },
+    "noChart": "{company} publishes each fund’s latest NAV only, so there is no price history to chart. These returns are the fund company’s own figures.",
+    "facts": "Fund facts",
+    "navDate": "NAV date",
+    "nav": "NAV per unit",
+    "currency": "Currency",
+    "fee": "Ongoing charges",
+    "feeYear": "{v} a year",
+    "risk": "Risk indicator (SRI)",
+    "riskOf": "{n} of 7",
+    "type": "Type",
+    "company": "Fund company",
+    "inception": "Launched",
+    "benchmark": "Benchmark index",
+    "style": "Management",
+    "indexFund": "Index fund",
+    "active": "Actively managed",
+    "range52": "52-week range",
+    "source": "Source",
+    "src": {
+      "robur": "Swedbank Robur fund list",
+      "pensionikeskus": "Pensionikeskus, Estonia"
+    },
+    "ret": "Returns",
+    "retNoteSrc": "Change in the NAV per unit, after fees, as the fund company publishes it. Past returns do not predict future ones.",
+    "retNoteCalc": "Change in the NAV per unit, after fees, measured on the published daily NAVs. Past returns do not predict future ones.",
+    "periods": ["1 week", "1 month", "3 months", "6 months", "This year", "1 year", "3 years", "5 years"],
+    "chartNote": "One NAV per business day"
   }
 }

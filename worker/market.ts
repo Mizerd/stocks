@@ -2,13 +2,17 @@ import { toListing } from '../shared/catalog';
 import { EXCHANGES, latestSession, zonedParts, zonedTime, type Exchange } from '../shared/exchanges';
 import type { Candle, History, Instrument, IntradaySession, ProviderId, Range, StockDetail, StockSummary, Upcoming } from '../shared/types';
 import { edgeKeep, edgeRead, memo, shared } from './http';
+import { fundReturns } from '../shared/funds';
 import { baltic } from './providers/baltic';
 import { euronext } from './providers/euronext';
+import { FUND_YEARS } from './providers/funds';
 import { nasdaq } from './providers/nasdaq';
 import { nordic } from './providers/nordic';
+import { pensionikeskus } from './providers/pensionikeskus';
 import { NO_EXTRAS, NO_UPCOMING, type Intraday, type Provider } from './providers/provider';
+import { robur } from './providers/robur';
 
-export const PROVIDERS: Record<ProviderId, Provider> = { nasdaq, nordic, euronext, baltic };
+export const PROVIDERS: Record<ProviderId, Provider> = { nasdaq, nordic, euronext, baltic, robur, pensionikeskus };
 
 const DAY = 24 * 3600 * 1000;
 const WARMUP_BARS = 50;
@@ -21,7 +25,11 @@ const RANGE_DAYS: Record<Exclude<Range, '1D' | 'YTD'>, number> = {
 
 // Parsed candles are kept per isolate. The summary window feeds most routes, so with `edge` it is also
 // kept in the data centre's edge cache, at the cost of two more subrequests.
+// A fund's NAVs change once a day: its whole history is one series, kept for hours.
 function daily(inst: Instrument, years: number, edge = true): Promise<Candle[]> {
+  if (inst.kind === 'fund') {
+    return shared(`navs:${inst.symbol}`, 3 * 3600, () => PROVIDERS[inst.provider].daily(inst, FUND_YEARS), 24 * 3600);
+  }
   const keep = edge && years === SUMMARY_YEARS ? shared : memo;
   return keep(`daily:${inst.symbol}:${years}`, 900, () => PROVIDERS[inst.provider].daily(inst, years));
 }
@@ -54,6 +62,8 @@ export function yearStats(daily: Candle[], price: number) {
 }
 
 export async function history(inst: Instrument, range: Range): Promise<History | null> {
+  // Funds have one NAV a day: no intraday chart.
+  if (inst.kind === 'fund' && (range === '1D' || range === '5D')) return null;
   if (range === '1D') {
     const day = await memo(`intraday:${inst.symbol}`, 60, () => oneDay(inst, new Date()));
     return day && { symbol: inst.symbol, range, interval: 'intraday', warmup: 0, ...day };
@@ -162,5 +172,10 @@ export async function detail(inst: Instrument): Promise<StockDetail> {
     summary(inst),
     provider.details ? provider.details(inst).catch(() => NO_EXTRAS) : NO_EXTRAS,
   ]);
+  // A fund whose source publishes its NAV history: returns measured on that history.
+  if (extras.fund?.history) {
+    const navs = await daily(inst, FUND_YEARS).catch(() => []);
+    if (navs.length > 0) return { summary: sum, ...extras, fund: { ...extras.fund, returns: fundReturns(navs) } };
+  }
   return { summary: sum, ...extras };
 }

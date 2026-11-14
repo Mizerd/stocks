@@ -244,6 +244,31 @@
   .rt-k{display:block;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--ink3);font-weight:500}
 }
 
+/* Screener fund list: same card treatment as the stock results on phones. */
+.ft-cols{grid-template-columns:minmax(180px,2fr) minmax(96px,1fr) 124px 88px 78px 64px 56px;gap:10px}
+.ft .c-co{display:block;font-size:12px;color:var(--ink3)}
+.ft .tbl-row{padding-top:6px;padding-bottom:6px}
+@media (max-width:1023px){
+  .ft{min-width:640px}
+  .ft-cols{grid-template-columns:minmax(150px,1.6fr) 120px 84px 70px 58px 50px;gap:8px}
+  .ft .c-type{display:none}
+}
+@media (max-width:640px){
+  .ft{min-width:0}
+  .ft .tbl-head{display:flex;gap:6px;overflow-x:auto;margin:0 -16px;padding:4px 16px 10px;scrollbar-width:none}
+  .ft .tbl-head::-webkit-scrollbar{display:none}
+  .ft .tbl-head .th{flex:none;min-height:44px;padding:0 14px;border:1px solid var(--hair);border-radius:999px}
+  .ft .tbl-head .th.on{border-color:var(--ink3);background:var(--sel)}
+  .ft .tbl-row{position:relative;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-areas:"name name name price" "name name name chg" "ret fee risk risk";gap:2px 10px;padding:10px 2px}
+  .ft .c-name{grid-area:name;font-size:14px}
+  .ft .c-name::after{content:'';position:absolute;inset:0}
+  .ft .c-price{grid-area:price;font-size:15px;font-weight:500}
+  .ft .c-chg{grid-area:chg}
+  .ft .c-1y{grid-area:ret}.ft .c-fee{grid-area:fee}.ft .c-risk{grid-area:risk}
+  .ft .c-1y,.ft .c-fee,.ft .c-risk{margin-top:8px;text-align:left!important;white-space:nowrap}
+  .ft .rt-k{display:block;font-size:11px;color:var(--ink3);font-weight:500}
+}
+
 /* Side-by-side comparison: the label column stays put while the figures scroll. */
 .sbs-k{position:sticky;left:0;z-index:1;background:var(--card)}
 

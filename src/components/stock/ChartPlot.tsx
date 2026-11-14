@@ -40,6 +40,8 @@ interface Props {
   type: ChartType;
   shown: Record<Indicator, boolean>;
   label: string;
+  // Given, the readout shows this name and the close alone, for series with one value a day (fund NAVs).
+  valueLabel?: string;
 }
 
 // The time an intraday chart spans: a session from its first bar, or the US pre-market up to the open.
@@ -264,7 +266,7 @@ const RsiSvg = memo(function RsiSvg({ paths }: { paths: Paths }) {
   );
 });
 
-export function ChartPlot({ history, exchange, type, shown, label }: Props) {
+export function ChartPlot({ history, exchange, type, shown, label, valueLabel }: Props) {
   const { t } = useT();
   const { lang } = useSettings();
   // Formatting builds Intl formatters, so the axis labels are made once, not on every hover.
@@ -304,10 +306,16 @@ export function ChartPlot({ history, exchange, type, shown, label }: Props) {
     <div>
       <div className="num" style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', minHeight: 20, fontSize: 12, color: 'var(--ink2)' }}>
         <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{barDate(bar.t)}</span>
-        <span>{t('stock.o')} {f.price(bar.o)}</span>
-        <span>{t('stock.h')} {f.price(bar.h)}</span>
-        <span>{t('stock.l')} {f.price(bar.l)}</span>
-        <span>{t('stock.c')} {f.price(bar.c)}</span>
+        {valueLabel ? (
+          <span>{valueLabel} {f.price(bar.c)}</span>
+        ) : (
+          <>
+            <span>{t('stock.o')} {f.price(bar.o)}</span>
+            <span>{t('stock.h')} {f.price(bar.h)}</span>
+            <span>{t('stock.l')} {f.price(bar.l)}</span>
+            <span>{t('stock.c')} {f.price(bar.c)}</span>
+          </>
+        )}
         <span className={direction(change)} style={{ fontWeight: 500 }}>{f.pct(change)}</span>
         {drawn.sma20 && <span style={{ color: 'var(--brass)' }}>SMA 20 {f.price(sma20[active])}</span>}
         {drawn.sma50 && <span>SMA 50 {f.price(sma50[active])}</span>}

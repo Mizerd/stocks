@@ -6,8 +6,21 @@ import { EXCHANGES } from '../../shared/exchanges';
 import type { Listing } from '../../shared/types';
 import { useT } from '../i18n';
 import { direction, useFormat } from '../lib/format';
+import { fundSummary, loadedFunds, withoutCompany } from '../lib/funds';
 import { prefetchProps } from '../lib/prefetch';
 import { loadedStocks, useListings } from '../lib/universe';
+
+// What a search result is: an index, a fund's company and ISIN, or a stock's exchange.
+export function placeOf(inst: Listing, t: (key: string) => string): string {
+  if (inst.kind === 'index') return t('common.index');
+  if (inst.kind === 'fund') return [inst.company, shortSymbol(inst.symbol)].filter(Boolean).join(' · ');
+  return EXCHANGES[inst.exchange].short;
+}
+
+// The first column of a result: the ticker, or "Fund" for a fund, whose ISIN is too long for it.
+export function symbolLabel(inst: Listing, t: (key: string) => string): string {
+  return inst.kind === 'fund' ? t('common.fund') : shortSymbol(inst.symbol);
+}
 
 // Until the universe has loaded, the catalogue is searched.
 export function useSearchable(): Listing[] {
@@ -15,7 +28,7 @@ export function useSearchable(): Listing[] {
   return useMemo(() => (universe && universe.length > 0 ? [...INDICES, ...universe] : [...STOCKS, ...INDICES]), [universe]);
 }
 
-// Symbol or name starting with the query first, then containing it.
+// Symbol or name starting with the query first, then containing it. A fund is also found by its ISIN and company.
 export function searchInstruments(query: string, all: readonly Listing[]): Listing[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -24,8 +37,9 @@ export function searchInstruments(query: string, all: readonly Listing[]): Listi
   for (const i of all) {
     const symbol = i.symbol.toLowerCase();
     const name = i.name.toLowerCase();
-    if (symbol.startsWith(q) || name.startsWith(q)) starts.push(i);
-    else if (symbol.includes(q) || name.includes(q)) contains.push(i);
+    const isin = i.kind === 'fund' ? shortSymbol(symbol) : '';
+    if (symbol.startsWith(q) || name.startsWith(q) || (isin && isin.startsWith(q))) starts.push(i);
+    else if (symbol.includes(q) || name.includes(q) || (i.company ?? '').toLowerCase().includes(q)) contains.push(i);
   }
   return [...starts, ...contains].slice(0, 8);
 }
@@ -41,7 +55,7 @@ export function Search({ expanded, onExpandedChange }: { expanded: boolean; onEx
   const [active, setActive] = useState(0);
   const results = searchInstruments(query, useSearchable());
   // Prices only from the quote lists already loaded for the page: nothing is fetched while typing.
-  const quotes = new Map(results.length > 0 ? loadedStocks().map((s) => [s.symbol, s]) : []);
+  const quotes = new Map(results.length > 0 ? [...loadedStocks(), ...loadedFunds().map(fundSummary)].map((s) => [s.symbol, s]) : []);
 
   // "/" jumps to the search field from anywhere on the page.
   useEffect(() => {
@@ -132,11 +146,11 @@ export function Search({ expanded, onExpandedChange }: { expanded: boolean; onEx
               return (
                 <li key={inst.symbol} role="option" aria-selected={i === active}>
                   <Link to={`/stock/${inst.symbol}`} className={i === active ? 'on' : ''} tabIndex={-1} onClick={() => go(inst)} {...prefetchProps(inst.symbol)}>
-                    <span className="num" style={{ fontWeight: 600 }}>{shortSymbol(inst.symbol)}</span>
+                    <span className="num" style={{ fontWeight: 600 }}>{symbolLabel(inst, t)}</span>
                     <span style={{ minWidth: 0 }}>
-                      <span className="clip" style={{ display: 'block' }}>{inst.name}</span>
+                      <span className="clip" style={{ display: 'block' }}>{inst.kind === 'fund' ? withoutCompany(inst.name, inst.company) : inst.name}</span>
                       <span className="clip" style={{ display: 'block', fontSize: 11.5, color: 'var(--ink3)' }}>
-                        {inst.kind === 'index' ? t('common.index') : EXCHANGES[inst.exchange].short}
+                        {placeOf(inst, t)}
                       </span>
                     </span>
                     {quote && (
