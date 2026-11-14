@@ -4,7 +4,7 @@ import { EXCHANGES, isCurrentQuote, lastSessionTime, sessionState, tradingDayOfY
 import type { Candle, Listing } from '../shared/types';
 import { memo, shared, takeBackgroundWork } from '../worker/http';
 import worker from '../worker/index';
-import { currentSession, history, previousSession, previousTradingDay, toWeekly, yearStats } from '../worker/market';
+import { currentSession, history, previousSession, previousTradingDay, toWeekly, yearStats, averageVolume } from '../worker/market';
 import { resolveSymbol, tickerSymbol, toSector } from '../worker/universe';
 
 const DAY = 24 * 3600 * 1000;
@@ -489,5 +489,19 @@ describe('1D history outside the session', () => {
     expect(await history(ignitis, '1D')).toMatchObject({ prevClose: 22.05, session: { kind: 'previous', day: '2026-11-12' } });
     expect(called.map((url) => url.match(/start=([\d-]+)/)![1])).toEqual(['2026-11-13', '2026-11-12']);
     expect(takeBackgroundWork()).toEqual([]);
+  });
+});
+
+describe('average volume', () => {
+  const bar = (v: number | null) => ({ t: 0, o: 1, h: 1, l: 1, c: 1, v });
+
+  it('averages the last three months of sessions', () => {
+    const bars = [...Array.from({ length: 40 }, () => bar(1000)), ...Array.from({ length: 63 }, () => bar(200))];
+    expect(averageVolume(bars)).toBe(200);
+  });
+
+  it('skips missing volumes and needs enough sessions', () => {
+    expect(averageVolume([...Array.from({ length: 30 }, () => bar(null)), ...Array.from({ length: 19 }, () => bar(5))])).toBeNull();
+    expect(averageVolume([bar(null), ...Array.from({ length: 20 }, () => bar(7))])).toBe(7);
   });
 });

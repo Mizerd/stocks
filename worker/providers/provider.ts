@@ -1,4 +1,4 @@
-import type { Candle, Instrument, Quote, StockDetail } from '../../shared/types';
+import type { Candle, Instrument, Quote, StockDetail, Upcoming } from '../../shared/types';
 
 export interface Intraday {
   // The regular session.
@@ -20,12 +20,14 @@ export interface Provider {
   // For sources that keep the intraday prices of past days.
   pastIntraday?(inst: Instrument, day: string): Promise<Intraday | null>;
   details?(inst: Instrument): Promise<DetailExtras>;
+  upcoming?(inst: Instrument): Promise<Upcoming>;
 }
 
 export const NO_EXTRAS: DetailExtras = {
   isin: null, industry: null, description: null, quarterlyEps: [], quarterlyRevenue: [], analysts: null,
-  upcoming: { earnings: null, dividend: null },
 };
+
+export const NO_UPCOMING: Upcoming = { earnings: null, dividend: null };
 
 export function emptyFundamentals() {
   return { marketCap: null, pe: null, eps: null, dividend: null, dividendYield: null, avgVolume: null };

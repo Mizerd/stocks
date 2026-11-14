@@ -1,12 +1,12 @@
 import { toListing } from '../shared/catalog';
 import { EXCHANGES, latestSession, zonedParts, zonedTime, type Exchange } from '../shared/exchanges';
-import type { Candle, History, Instrument, IntradaySession, ProviderId, Range, StockDetail, StockSummary } from '../shared/types';
+import type { Candle, History, Instrument, IntradaySession, ProviderId, Range, StockDetail, StockSummary, Upcoming } from '../shared/types';
 import { edgeKeep, edgeRead, memo, shared } from './http';
 import { baltic } from './providers/baltic';
 import { euronext } from './providers/euronext';
 import { nasdaq } from './providers/nasdaq';
 import { nordic } from './providers/nordic';
-import { NO_EXTRAS, type Intraday, type Provider } from './providers/provider';
+import { NO_EXTRAS, NO_UPCOMING, type Intraday, type Provider } from './providers/provider';
 
 export const PROVIDERS: Record<ProviderId, Provider> = { nasdaq, nordic, euronext, baltic };
 
@@ -30,8 +30,14 @@ export function summary(inst: Instrument, edge = true): Promise<StockSummary> {
   return memo(`summary:${inst.symbol}`, 60, async () => {
     const bars = daily(inst, SUMMARY_YEARS, edge);
     const [candles, quote] = await Promise.all([bars, PROVIDERS[inst.provider].quote(inst, bars)]);
-    return { ...toListing(inst), ...quote, ...yearStats(candles, quote.price) };
+    return { ...toListing(inst), ...quote, avgVolume: quote.avgVolume ?? averageVolume(candles), ...yearStats(candles, quote.price) };
   });
+}
+
+// Mean daily volume over about three months of sessions, for sources that publish none.
+export function averageVolume(daily: Candle[]): number | null {
+  const volumes = daily.slice(-63).flatMap((c) => (c.v ? [c.v] : []));
+  return volumes.length >= 20 ? Math.round(volumes.reduce((sum, v) => sum + v, 0) / volumes.length) : null;
 }
 
 export function yearStats(daily: Candle[], price: number) {
@@ -143,6 +149,11 @@ export function toWeekly(daily: Candle[]): Candle[] {
     }
   }
   return weeks;
+}
+
+export async function upcoming(inst: Instrument): Promise<Upcoming> {
+  const provider = PROVIDERS[inst.provider];
+  return provider.upcoming ? provider.upcoming(inst).catch(() => NO_UPCOMING) : NO_UPCOMING;
 }
 
 export async function detail(inst: Instrument): Promise<StockDetail> {

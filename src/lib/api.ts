@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { EXCHANGES, sessionState } from '../../shared/exchanges';
-import type { CompanyAbout, FxRates, History, NewsItem, Range, StockDetail, StockSummary } from '../../shared/types';
+import type { CompanyAbout, FxRates, History, NewsItem, Range, StockDetail, StockSummary, Upcoming } from '../../shared/types';
 
 interface Entry {
   time: number;
@@ -195,6 +195,13 @@ export const DEFAULT_RANGE: Range = '6M';
 // Loads what a stock page shows first, ahead of the page or alongside the universe list it waits for.
 export function prefetchStock(symbol: string, range = DEFAULT_RANGE): Promise<unknown> {
   return Promise.all([fetchJson(detailPath(symbol)), fetchJson(historyPath(symbol, range))]).catch(() => undefined);
+}
+
+export const upcomingPath = (symbol: string) => `/api/upcoming?symbol=${encodeURIComponent(symbol)}`;
+
+// Next earnings and dividend dates; a request of its own so the main stock request stays light.
+export function useUpcoming(symbol: string) {
+  return useApi<Upcoming>(upcomingPath(symbol));
 }
 
 export type AboutResult = CompanyAbout | { unavailable: true };

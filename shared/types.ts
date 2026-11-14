@@ -120,7 +120,6 @@ export interface StockDetail {
   quarterlyEps: QuarterFigure[];
   quarterlyRevenue: QuarterFigure[];
   analysts: { buy: number; hold: number; sell: number; target: number | null } | null;
-  upcoming: Upcoming;
 }
 
 // Dates still to come, as calendar days at the exchange ("2026-12-09").

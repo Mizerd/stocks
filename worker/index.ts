@@ -2,7 +2,7 @@ import { INDICES, STOCKS, toListing } from '../shared/catalog';
 import { EXCHANGES, MARKET_EXCHANGES, MARKETS, sessionState } from '../shared/exchanges';
 import type { Instrument, Market, ProviderStatus, Range } from '../shared/types';
 import { edgeCache, LIVE_GRACE, takeBackgroundWork } from './http';
-import { detail, history, PROVIDERS, summary } from './market';
+import { detail, history, PROVIDERS, summary, upcoming } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
 import { about } from './providers/wikipedia';
@@ -124,6 +124,8 @@ async function route(url: URL): Promise<Response> {
     }
     case '/api/detail':
       return json(await detail(await instrumentParam(url)), 200, 60, LIVE_GRACE);
+    case '/api/upcoming':
+      return json(await upcoming(await instrumentParam(url)), 200, 6 * 3600, DAY);
     case '/api/fx':
       return json(await fxRates(), 200, 3600, 2 * DAY);
     case '/api/news':

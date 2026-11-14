@@ -15,7 +15,7 @@ import { Returns } from '../components/stock/Returns';
 import { Upcoming } from '../components/stock/Upcoming';
 import { ErrorNotice, Loading, Notice } from '../components/ui';
 import { useT } from '../i18n';
-import { aboutPath, fetchJson, historyPath, prefetchStock, useDetail, useFx } from '../lib/api';
+import { aboutPath, fetchJson, historyPath, prefetchStock, upcomingPath, useDetail, useFx, useUpcoming } from '../lib/api';
 import { direction, useFormat } from '../lib/format';
 import { similarStocks } from '../lib/market';
 import { BENCHMARK } from '../lib/returns';
@@ -53,6 +53,7 @@ function HeroPrice({ summary }: { summary: StockSummary }) {
 function StockPage({ inst }: { inst: Listing }) {
   const { t, lang } = useT();
   const { data: detail, error, loading } = useDetail(inst.symbol);
+  const { data: upcoming } = useUpcoming(inst.symbol);
   const isStock = inst.kind === 'stock';
   const market = useMarket();
   const fx = useFx().data;
@@ -65,7 +66,7 @@ function StockPage({ inst }: { inst: Listing }) {
     if (!isStock) return;
     const benchmark = BENCHMARK[inst.region];
     const histories = (['1Y', '5Y'] as const).flatMap((range) => [historyPath(inst.symbol, range), historyPath(benchmark, range)]);
-    for (const path of [aboutPath(inst.symbol, lang), ...histories]) fetchJson(path).catch(() => undefined);
+    for (const path of [aboutPath(inst.symbol, lang), upcomingPath(inst.symbol), ...histories]) fetchJson(path).catch(() => undefined);
   }, [inst, isStock, lang]);
 
   useEffect(() => {
@@ -103,7 +104,7 @@ function StockPage({ inst }: { inst: Listing }) {
             {detail ? <KeyFigures summary={detail.summary} /> : loading ? <Loading height={300} /> : error && <ErrorNotice height={300} />}
           </section>
           {detail?.analysts && <AnalystView analysts={detail.analysts} summary={detail.summary} />}
-          {detail && <Upcoming upcoming={detail.upcoming} summary={detail.summary} />}
+          {detail && upcoming && <Upcoming upcoming={upcoming} summary={detail.summary} />}
         </aside>
       </section>
 

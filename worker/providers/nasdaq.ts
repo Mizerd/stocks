@@ -1,7 +1,7 @@
 import type { Candle, ExchangeId, ExtendedQuote, Instrument, QuarterFigure, Quote, Upcoming } from '../../shared/types';
 import { US_PREMARKET_OPEN, zonedParts, zonedTime } from '../../shared/exchanges';
 import { cachedJson, daysAgo, fetchText, isoDay, LIVE_GRACE, num, shared, UpstreamError } from '../http';
-import type { DetailExtras, Intraday, Provider } from './provider';
+import { NO_UPCOMING, type DetailExtras, type Intraday, type Provider } from './provider';
 
 const API = 'https://api.nasdaq.com/api';
 const NEW_YORK = 'America/New_York';
@@ -203,16 +203,12 @@ export const nasdaq: Provider = {
 
   async details(inst): Promise<DetailExtras> {
     const id = inst.providerId;
-    const [profile, epsData, financials, target, earningsDate, dividends] = await Promise.all([
+    const [profile, epsData, financials, target] = await Promise.all([
       tryGet(`/company/${id}/company-profile`, 24 * 3600),
       tryGet(`/quote/${id}/eps`, 6 * 3600),
       tryGet(`/company/${id}/financials?frequency=2`, 24 * 3600),
       tryGet(`/analyst/${id}/targetprice`, 6 * 3600),
-      inst.kind === 'stock' ? tryGet(`/analyst/${id}/earnings-date`, 6 * 3600) : null,
-      // Nasdaq has dividend history for its own listings only.
-      inst.kind === 'stock' && inst.exchange === 'XNAS' ? tryGet(`/quote/${id}/dividends?assetclass=stocks`, 6 * 3600) : null,
     ]);
-    const today = zonedParts(new Date(), NEW_YORK).day;
 
     const quarterlyEps: QuarterFigure[] = (epsData?.earningsPerShare ?? [])
       .filter((q: any) => q.type === 'PreviousQuarter')
@@ -239,8 +235,19 @@ export const nasdaq: Provider = {
       analysts: consensus
         ? { buy: consensus.buy, hold: consensus.hold, sell: consensus.sell, target: consensus.priceTarget ?? null }
         : null,
-      upcoming: { earnings: parseEarningsDate(earningsDate, today), dividend: parseNextDividend(dividends, today) },
     };
+  },
+
+  async upcoming(inst): Promise<Upcoming> {
+    if (inst.kind !== 'stock') return NO_UPCOMING;
+    const id = inst.providerId;
+    const [earningsDate, dividends] = await Promise.all([
+      tryGet(`/analyst/${id}/earnings-date`, 6 * 3600),
+      // Nasdaq has dividend history for its own listings only.
+      inst.exchange === 'XNAS' ? tryGet(`/quote/${id}/dividends?assetclass=stocks`, 6 * 3600) : null,
+    ]);
+    const today = zonedParts(new Date(), NEW_YORK).day;
+    return { earnings: parseEarningsDate(earningsDate, today), dividend: parseNextDividend(dividends, today) };
   },
 };
 
