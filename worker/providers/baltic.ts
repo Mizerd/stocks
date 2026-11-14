@@ -1,5 +1,5 @@
 import type { Candle, Instrument, Quote } from '../../shared/types';
-import { EXCHANGES, zonedParts, zonedTime, type Exchange } from '../../shared/exchanges';
+import { EXCHANGES, zonedParts, zonedTime, type Exchange, lastSessionTime } from '../../shared/exchanges';
 import { fetchBytes, fetchText, daysAgo, isoDay, LIVE_GRACE, num, shared, UpstreamError } from '../http';
 import { unzipFile } from '../unzip';
 import { bucket } from './nasdaq';
@@ -62,9 +62,8 @@ function parseAsOf(text: string | null): string | null {
 
 // The list page keeps refreshing its "last update" stamp after the close, so cap it at the bell.
 export function quoteTime(asOf: string | null, ex: Exchange): string {
-  const stamp = parseAsOf(asOf) ?? new Date().toISOString();
-  const close = zonedTime(zonedParts(new Date(stamp), ex.timezone).day, ex.close, ex.timezone).toISOString();
-  return stamp < close ? stamp : close;
+  // The list keeps refreshing its stamp after the bell and over weekends.
+  return lastSessionTime(ex, new Date(parseAsOf(asOf) ?? Date.now())).toISOString();
 }
 
 // The exchange's price-history export is an .xlsx file; this reads its only sheet. Columns:

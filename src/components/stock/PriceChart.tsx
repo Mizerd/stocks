@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { shortSymbol } from '../../../shared/catalog';
 import { EXCHANGES } from '../../../shared/exchanges';
 import type { History, Listing, Range, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
 import { DEFAULT_RANGE, isUnavailable, useHistory } from '../../lib/api';
-import { withLatestQuote } from '../../lib/chart';
+import { denseIntraday, withLatestQuote } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { ErrorNotice, Loading, Notice, Seg, SessionNote } from '../ui';
 import { ChartPlot } from './ChartPlot';
@@ -14,6 +14,25 @@ import type { ChartType, Indicator } from './ChartPlot';
 const RANGES: Range[] = ['1D', '5D', '1M', '6M', '1Y', '5Y'];
 
 export const chartRange = (params: URLSearchParams): Range => RANGES.find((r) => r === params.get('range')) ?? DEFAULT_RANGE;
+
+// Where the 1-day chart would be empty or a few lone steps, a month of daily closes is the default.
+const SPARSE_DEFAULT: Range = '1M';
+
+// The range a stock page opens on: 1D when the stock trades densely enough, decided once per stock.
+function useDefaultRange(inst: Listing, asked: boolean): Range | null {
+  const [chosen, setChosen] = useState<{ symbol: string; range: Range } | null>(null);
+  const noIntraday = inst.provider === 'euronext';
+  const day = useHistory(asked || noIntraday || chosen?.symbol === inst.symbol ? null : inst.symbol, '1D');
+
+  useEffect(() => {
+    if (day.loading || (!day.data && !day.error)) return;
+    const dense = day.data && !isUnavailable(day.data) && denseIntraday(day.data);
+    setChosen({ symbol: inst.symbol, range: dense ? '1D' : SPARSE_DEFAULT });
+  }, [day.data, day.error, day.loading, inst.symbol]);
+
+  if (noIntraday) return SPARSE_DEFAULT;
+  return chosen?.symbol === inst.symbol ? chosen.range : null;
+}
 const TYPES: ChartType[] = ['line', 'candles'];
 
 // In the order of the labels in stock.indL.
@@ -41,12 +60,16 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
   const [params, setParams] = useSearchParams();
   const [shown, setShown] = useState<Record<Indicator, boolean>>({ sma20: true, sma50: false, bb: false, vol: true, rsi: true });
 
-  const range = chartRange(params);
+  const asked = RANGES.find((r) => r === params.get('range'));
+  const autoRange = useDefaultRange(inst, Boolean(asked));
+  // While the default is still being chosen the chart waits, so it never flashes the wrong range.
+  const deciding = !asked && autoRange === null;
+  const range = asked ?? autoRange ?? DEFAULT_RANGE;
   const type: ChartType = params.get('type') === 'candles' ? 'candles' : 'line';
-  const { data, error, loading } = useHistory(inst.symbol, range);
+  const { data, error, loading } = useHistory(deciding ? null : inst.symbol, range);
   const loaded = data && !isUnavailable(data) && data.candles.length > data.warmup ? data : undefined;
-  const timezone = EXCHANGES[inst.exchange].timezone;
-  const history = useMemo(() => loaded && withLatestQuote(loaded, quote, timezone), [loaded, quote, timezone]);
+  const exchange = EXCHANGES[inst.exchange];
+  const history = useMemo(() => loaded && withLatestQuote(loaded, quote, exchange), [loaded, quote, exchange]);
   const change = history ? rangeReturn(history) : null;
 
   // Defaults stay out of the URL.
@@ -74,7 +97,7 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
         </>
       );
     }
-    if (loading) return <Loading height={PLOT_AREA_HEIGHT} />;
+    if (loading || deciding) return <Loading height={PLOT_AREA_HEIGHT} />;
     if (error) return <ErrorNotice height={PLOT_AREA_HEIGHT} />;
     if (range !== '1D') return <Notice height={PLOT_AREA_HEIGHT}>{t('stock.noHistory')}</Notice>;
     return <Notice height={PLOT_AREA_HEIGHT}>{t(inst.provider === 'euronext' ? 'stock.noIntradayEod' : 'stock.noIntradayYet')}</Notice>;
@@ -87,7 +110,7 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
           label={t('common.rgLabel')}
           options={RANGES.map((r, i) => ({ value: r, label: rangeLabels[i] }))}
           value={range}
-          onChange={(r) => setParam('range', r, DEFAULT_RANGE)}
+          onChange={(r) => setParam('range', r, autoRange ?? DEFAULT_RANGE)}
         />
         <Seg
           label={t('stock.typeLabel')}

@@ -190,7 +190,7 @@ export function useDetail(symbol: string) {
 }
 
 // The stock chart's range when the page address names none.
-export const DEFAULT_RANGE: Range = '6M';
+export const DEFAULT_RANGE: Range = '1D';
 
 // Loads what a stock page shows first, ahead of the page or alongside the universe list it waits for.
 export function prefetchStock(symbol: string, range = DEFAULT_RANGE): Promise<unknown> {

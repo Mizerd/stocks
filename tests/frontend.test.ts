@@ -1,6 +1,7 @@
+import { EXCHANGES } from '../shared/exchanges';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Candle, FxRates, History, Listing, StockSummary } from '../shared/types';
-import { aggregateCandles, barInterval, curvePath, nearestIndex, pointDiff, smoothPath, timeTicks, SMOOTH_MIN, withLatestQuote } from '../src/lib/chart';
+import { aggregateCandles, barInterval, curvePath, nearestIndex, pointDiff, smoothPath, timeTicks, SMOOTH_MIN, withLatestQuote, denseIntraday } from '../src/lib/chart';
 import type { XY } from '../src/lib/chart';
 import { createFormat } from '../src/lib/format';
 import { bollinger, drawable, niceTicks, rsi, sma } from '../src/lib/indicators';
@@ -535,14 +536,19 @@ describe('latest session on daily charts', () => {
   }) as unknown as StockSummary;
 
   it('adds today from the quote when the history stops at yesterday', () => {
-    const out = withLatestQuote(history, quote('2026-11-13T15:00:00Z'), 'America/New_York');
+    const out = withLatestQuote(history, quote('2026-11-13T15:00:00Z'), EXCHANGES.XNAS);
     expect(out.candles).toHaveLength(3);
     expect(out.candles[2]).toEqual({ t: Date.UTC(2026, 10, 13), o: 11.5, h: 12.5, l: 11.2, c: 12, v: 7 });
   });
 
+  it('never adds a weekend bar when a source stamps its quote on Saturday', () => {
+    const friday = { ...history, candles: [day(12, 10), day(13, 11)] };
+    expect(withLatestQuote(friday, quote('2026-11-14T09:12:00Z'), EXCHANGES.XLIT)).toBe(friday);
+  });
+
   it('leaves the history alone when the quote belongs to the last bar or the chart is not daily', () => {
-    expect(withLatestQuote(history, quote('2026-11-12T20:00:00Z'), 'America/New_York')).toBe(history);
-    expect(withLatestQuote({ ...history, interval: 'week' }, quote('2026-11-13T15:00:00Z'), 'UTC').candles).toHaveLength(2);
+    expect(withLatestQuote(history, quote('2026-11-12T20:00:00Z'), EXCHANGES.XNAS)).toBe(history);
+    expect(withLatestQuote({ ...history, interval: 'week' }, quote('2026-11-13T15:00:00Z'), EXCHANGES.XNAS).candles).toHaveLength(2);
   });
 });
 
@@ -663,5 +669,23 @@ describe('52-week range on list rows', () => {
     expect(yearRange(stock(150, null, 200))).toBeNull();
     expect(yearRange(stock(150, 100, null))).toBeNull();
     expect(yearRange(stock(150, 150, 150))).toBeNull();
+  });
+});
+
+describe('default 1-day chart', () => {
+  const minute = 60_000;
+  const session = (count: number, every: number) => ({
+    symbol: 'X', range: '1D' as const, interval: 'intraday' as const, warmup: 0, prevClose: null,
+    candles: Array.from({ length: count }, (_, i) => ({ t: i * every * minute, o: 1, h: 1, l: 1, c: 1, v: 1 })),
+  });
+
+  it('keeps 1D for stocks that trade most minutes', () => {
+    expect(denseIntraday(session(390, 1))).toBe(true);
+    expect(denseIntraday(session(60, 2))).toBe(true);
+  });
+
+  it('falls back for a few scattered trades', () => {
+    expect(denseIntraday(session(85, 5))).toBe(false);
+    expect(denseIntraday(session(10, 1))).toBe(false);
   });
 });

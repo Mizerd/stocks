@@ -1,6 +1,6 @@
 // Helpers for the hand-built SVG charts. Charts use a fixed viewBox stretched with
 // preserveAspectRatio="none", so x and y here are viewBox units, not pixels.
-import { zonedParts } from '../../shared/exchanges';
+import { lastSessionTime, zonedParts, type Exchange } from '../../shared/exchanges';
 import type { Candle, History, StockSummary } from '../../shared/types';
 import { direction } from './format';
 
@@ -43,7 +43,7 @@ function tangents(points: XY[]): number[] {
 // A smooth curve through every point. `start` is 'L' to continue an open path instead of
 // starting a new one.
 // Below this many points a curve swings between them and invents shape, so the line stays straight.
-export const SMOOTH_MIN = 24;
+export const SMOOTH_MIN = 40;
 
 // Thinly traded stocks have long gaps between trades; there the price really stays flat,
 // and a curve would turn each step into a bump.
@@ -174,10 +174,11 @@ export function toneOf(change: number | null): string {
 }
 
 // Daily histories end at the last completed session; add the current session from the live quote.
-export function withLatestQuote(history: History, quote: StockSummary | undefined, timezone: string): History {
+export function withLatestQuote(history: History, quote: StockSummary | undefined, ex: Exchange): History {
   const bars = history.candles;
   if (!quote || history.interval !== 'day' || bars.length === 0) return history;
-  const day = zonedParts(new Date(quote.time), timezone).day;
+  // Sources can stamp a quote after the bell or on a weekend; it belongs to the session it closed.
+  const day = zonedParts(lastSessionTime(ex, new Date(quote.time)), ex.timezone).day;
   const t = Date.parse(`${day}T00:00:00Z`);
   if (t <= bars[bars.length - 1].t) return history;
   const open = quote.open ?? quote.prevClose;
@@ -190,4 +191,13 @@ export function withLatestQuote(history: History, quote: StockSummary | undefine
     v: quote.volume,
   };
   return { ...history, candles: [...bars, bar] };
+}
+
+// A 1-day chart only looks right with trades in most minutes; thinly traded stocks leave a few
+// steps across an empty day, which a month of daily closes shows far better.
+export function denseIntraday(history: History): boolean {
+  const bars = history.candles;
+  if (bars.length < 30) return false;
+  const minutes = (bars[bars.length - 1].t - bars[0].t) / 60_000 + 1;
+  return bars.length / minutes >= 0.4;
 }
