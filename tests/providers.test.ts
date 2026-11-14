@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { num } from '../worker/http';
 import { STOCKS } from '../shared/catalog';
-import { baltic, parseBalticSheet, parseBalticShareList } from '../worker/providers/baltic';
+import { baltic, balticListUrl, parseBalticCapitalization, parseBalticSheet, parseBalticShareList } from '../worker/providers/baltic';
 import { parseEcbRates } from '../worker/providers/ecb';
-import { liveQuote, parseEuronextCsv, parseEuronextList } from '../worker/providers/euronext';
+import { liveQuote, parseAdmittedShares, parseEuronextCsv, parseEuronextList, parseIcbSupersector } from '../worker/providers/euronext';
 import {
   bucket, companyName, nasdaq, parseEarningsDate, parseNasdaqInfo, parseNasdaqRows, parseNasdaqTime, parseNextDividend, parseUsScreener,
   parseWatchlist, sessionBar,
 } from '../worker/providers/nasdaq';
 import { parseNewsFeed } from '../worker/providers/news';
-import { parseNordicChart, parseNordicScreener } from '../worker/providers/nordic';
+import { parseNordicChart, parseNordicScreener, parseNordicSummaryMeta } from '../worker/providers/nordic';
 import { parseLangLink, parseSitelinks, parseSummary, wikidataQuery } from '../worker/providers/wikipedia';
 import { unzipFile } from '../worker/unzip';
+import { usLiveOrder, usMoreQuotes, type UsRow } from '../worker/universe';
+import balticCapitalization from './fixtures/baltic-capitalization.html?raw';
+import euronextIcb from './fixtures/euronext-icb.html?raw';
+import euronextTradingInfo from './fixtures/euronext-tradinginfo.html?raw';
+import nokiaSummary from './fixtures/nordic-summary-nokia.json';
 
 describe('num', () => {
   it('reads provider number formats', () => {
@@ -139,6 +144,17 @@ describe('Nasdaq', () => {
     ]);
   });
 
+  it('reads a watchlist quote after the close, when Nasdaq gives the date alone, as the 16:00 close', () => {
+    const [row] = parseWatchlist({ data: [
+      { symbol: 'AAPL', lastSalePrice: '$356.27', netChange: '+1.39', percentageChange: '+0.39%', volume: '40,027,467', lastTradeTimestamp: 'Nov 13, 2026', lastTradeTimestampDateTime: '2026-11-13T00:00:00' },
+    ] });
+    expect(row.time).toBe('2026-11-13T21:00:00.000Z');
+  });
+
+  it('drops a watchlist row without any readable time', () => {
+    expect(parseWatchlist({ data: [{ symbol: 'X', lastSalePrice: '$1', lastTradeTimestamp: '', lastTradeTimestampDateTime: '2026-11-13T00:00:00' }] })).toEqual([]);
+  });
+
   it('drops the share class from company names', () => {
     expect(companyName('Alphabet Inc. Class C Capital Stock')).toBe('Alphabet Inc.');
     expect(companyName('Sea Limited American Depositary Shares each representing one Class A Ordinary Share')).toBe('Sea Limited');
@@ -188,6 +204,15 @@ describe('Euronext', () => {
     expect(rows['NL0010273215-XAMS']).toEqual({ price: 1402.2, changePct: 3.03, time: '2026-11-11T13:11:00.000Z' });
   });
 
+  it('reads the list when the date comes before the time', () => {
+    const rows = parseEuronextList({ aaData: [
+      ['<a>74SOFTWARE</a>', 'FR0011040500', '74SW', '<div>XPAR</div>', '<div class="text-right pd_currency_es">EUR <span class="pd_last_price_es">34.30</span></div>',
+        '<div class="text-right pd_percent"><span class=red>-0.29%</span></div>',
+        '<div class="text-right pointer tooltipDesign">13 Nov 2026<span class="tooltiptext">17:35 CET</span></div>'],
+    ] }, 'XPAR', new Set(['FR0011040500-XPAR']));
+    expect(rows['FR0011040500-XPAR']).toEqual({ price: 34.3, changePct: -0.29, time: '2026-11-13T16:35:00.000Z' });
+  });
+
   it('works out the change from the price and the percentage', () => {
     expect(liveQuote({ price: 110, changePct: 10, time: '' })).toEqual({ price: 110, change: 10, changePct: 10 });
   });
@@ -227,11 +252,20 @@ describe('Nasdaq Baltic', () => {
     const list = parseBalticShareList(html);
     expect(list.asOf).toBe('10.11.2026 16:22');
     expect(list.rows['LT0000115768']).toEqual({
-      isin: 'LT0000115768', ticker: 'IGN1L', name: 'Ignitis', industry: 'Utilities', home: 'VLN',
+      isin: 'LT0000115768', ticker: 'IGN1L', name: 'Ignitis', industry: 'Utilities', supersector: 'Utilities', home: 'VLN',
       last: 21.45, change: -0.05, changePct: -0.23, volume: 16933, prevClose: 21.5,
     });
     // No trade today: the last price stays, the change is unknown.
     expect(list.rows['LT0000111676']).toMatchObject({ name: 'Pieno & žvaigždės', last: 2.1, change: null, volume: 0 });
+  });
+
+  it('asks for the latest session by date until today\'s session has started', () => {
+    // Saturday, and Monday 09:00 in Vilnius before the open: Friday's list.
+    expect(balticListUrl(new Date('2026-11-14T10:00:00Z'))).toMatch(/\/shares\?date=2026-11-13$/);
+    expect(balticListUrl(new Date('2026-11-16T07:00:00Z'))).toMatch(/\/shares\?date=2026-11-13$/);
+    // In the session and after its close the same day: the plain page.
+    expect(balticListUrl(new Date('2026-11-16T10:00:00Z'))).toMatch(/\/shares$/);
+    expect(balticListUrl(new Date('2026-11-16T17:00:00Z'))).toMatch(/\/shares$/);
   });
 
   it('finds no rows in a refusal page', () => {
@@ -523,5 +557,66 @@ describe('fund sources', () => {
     expect(await provider.intraday(inst)).toBeNull();
     expect((await provider.details!(inst)).fund?.isin).toBe('EE3600019766');
     await expect(provider.quote({ ...inst, symbol: 'FUND:EE0000000000' }, Promise.resolve([]))).rejects.toThrow();
+  });
+});
+
+describe('heatmap data parsers', () => {
+  it('reads shares and the ICB supersector from a Nordic summary', () => {
+    expect(parseNordicSummaryMeta(nokiaSummary)).toEqual({ shares: 5742239696, icb: '1510', segment: 'Large Cap' });
+    expect(parseNordicSummaryMeta({ data: null })).toEqual({ shares: null, icb: null, segment: null });
+  });
+
+  it('reads admitted shares and the ICB supersector from Euronext factsheet blocks', () => {
+    expect(parseAdmittedShares(euronextTradingInfo)).toBe(388147751);
+    expect(parseIcbSupersector(euronextIcb)).toBe('1010');
+    expect(parseAdmittedShares('')).toBeNull();
+    expect(parseIcbSupersector('')).toBeNull();
+  });
+
+  it('reads each Baltic line\'s market value at the end of the period', () => {
+    const caps = parseBalticCapitalization(balticCapitalization);
+    expect(caps['LT0000128092']).toBe(295891751.37);
+    expect(Object.keys(caps)).toHaveLength(3);
+  });
+});
+
+describe('US live quotes for the heatmap', () => {
+  const screenerRow = (ticker: string, cap: number) => ({
+    symbol: ticker, name: `${ticker} Inc. Common Stock`, lastsale: '$10.00', netchange: '0.1', pctchange: '1%', volume: '100', marketCap: String(cap), sector: 'Technology', industry: '',
+  });
+
+  it('orders the catalogue first, then by market value', () => {
+    const row = (id: string, marketCap: number | null) => ({ exchange: 'XNAS', id, row: { marketCap } }) as UsRow;
+    expect(usLiveOrder([row('ZZZ', 5), row('AAPL', 1), row('YYY', null), row('XXX', 9)])).toEqual(['AAPL', 'XXX', 'ZZZ', 'YYY']);
+  });
+
+  it('quotes ranks 201 to 500, live, in watchlist calls of 20', async () => {
+    const realFetch = globalThis.fetch;
+    const asked: string[] = [];
+    // Tickers are letters only: QAAA, QAAB, ...
+    const ticker = (i: number) => `Q${[676, 26, 1].map((d) => String.fromCharCode(65 + (Math.floor(i / d) % 26))).join('')}`;
+    const rows = Array.from({ length: 600 }, (_, i) => screenerRow(ticker(i), 1e12 - i * 1e9));
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.pathname.includes('/screener/')) {
+        return new Response(JSON.stringify({ data: { rows: url.searchParams.get('exchange') === 'nasdaq' ? rows : [screenerRow('ZZZZ', 1)] } }));
+      }
+      const tickers = url.searchParams.getAll('symbol').map((s) => s.split('|')[0].toUpperCase());
+      asked.push(...tickers);
+      return new Response(JSON.stringify({ data: tickers.map((symbol) => ({
+        symbol, lastSalePrice: '$11.00', netChange: '1.00', percentageChange: '10.00%', volume: '5', lastTradeTimestamp: 'Nov 13, 2026', lastTradeTimestampDateTime: '2026-11-13T00:00:00',
+      })) }));
+    };
+    try {
+      const { items, failed } = await usMoreQuotes();
+      expect(failed).toEqual([]);
+      expect(items).toHaveLength(300);
+      expect(asked).toHaveLength(300);
+      // The catalogue's US stocks are not in this screener, so rank 201 is the 201st largest.
+      expect(items[0]).toMatchObject({ symbol: ticker(200), price: 11, changePct: 10, marketCap: 800e9, freshness: 'realtime', time: '2026-11-13T21:00:00.000Z' });
+      expect(items[299].symbol).toBe(ticker(499));
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });

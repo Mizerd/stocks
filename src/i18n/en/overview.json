@@ -45,11 +45,6 @@
   "cPrice": "Price",
   "cChg": "Change",
   "cVol": "Volume",
-  "sectors": "Sectors today",
-  "sectorsNote": "One tile per stock, coloured by today’s move. Beside each sector: the average move of all its tracked stocks in the region, every stock counted equally.",
-  "hmCap": "Tiles are sized by market capitalisation; the {n} largest of {total} stocks are shown.",
-  "hmEqual": "Tiles are all the same size, as no market capitalisation is published for these stocks; {n} of {total} are shown, the most traded first.",
-  "hmRegion": "Region",
   "editList": "Edit list",
   "sec": {
     "T": "Technology",

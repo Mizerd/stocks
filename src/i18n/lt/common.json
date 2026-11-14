@@ -116,7 +116,7 @@
   "privStoredH": "Kas saugoma šioje naršyklėje",
   "privStored": "Keli dalykai įrašomi į šios naršyklės vietinę saugyklą („local storage“), kad svetainė juos prisimintų kitą kartą:",
   "privItems": [
-    "kalba, tema ir paletė neskiriantiems spalvų – įrašoma, kai juos pasirenkate;",
+    "kalba, tema ir paletė neskiriantiems spalvų, taip pat rinkos šilumos žemėlapyje pasirinktas regionas ir plytelių dydis – įrašoma, kai juos pasirenkate;",
     "paskutinė atidaryta akcija, kad į ją grąžintų skirtukas „Akcija“ – ji saugoma tik šiame skirtuke ir pamirštama jį uždarius;",
     "jūsų asmeninis sąrašas – įrašomas, kai ką nors pridedate, redaguojate ar importuojate: akcijos ir jūsų įvestas kiekis, pirkimo kaina, pirkimo data bei pastaba, taip pat pasirinkta rikiavimo tvarka."
   ],

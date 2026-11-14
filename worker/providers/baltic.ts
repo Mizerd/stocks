@@ -1,5 +1,5 @@
 import type { Candle, Instrument, Quote } from '../../shared/types';
-import { EXCHANGES, zonedParts, zonedTime, type Exchange, lastSessionTime } from '../../shared/exchanges';
+import { EXCHANGES, zonedParts, zonedTime, type Exchange, lastSessionTime, latestSession } from '../../shared/exchanges';
 import { fetchBytes, fetchText, daysAgo, isoDay, LIVE_GRACE, num, shared, UpstreamError } from '../http';
 import { unzipFile } from '../unzip';
 import { bucket } from './nasdaq';
@@ -13,6 +13,8 @@ export interface BalticRow {
   name: string;
   // Industry name, e.g. "Utilities".
   industry: string;
+  // ICB supersector name, e.g. "Food, Beverage and Tobacco".
+  supersector: string;
   // VLN, RIG or TLN.
   home: string;
   last: number | null;
@@ -41,6 +43,7 @@ export function parseBalticShareList(html: string): { asOf: string | null; rows:
       ticker: text(1),
       name: decode(tr.match(/data-sort-by="([^"]*)"/)?.[1] ?? text(0)),
       industry: decode(cells[11]?.match(/title="([^"]*)"/)?.[1] ?? ''),
+      supersector: decode(cells[12]?.match(/title="([^"]*)"/)?.[1] ?? ''),
       home: text(13),
       last: num(text(2)),
       change: num(text(3)),
@@ -51,6 +54,19 @@ export function parseBalticShareList(html: string): { asOf: string | null; rows:
   }
   const asOf = html.match(/Last update:\s*(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})/)?.[1] ?? null;
   return { asOf, rows };
+}
+
+// The market value page, for the heatmap data script: each share line's value at the end of the period, by ISIN.
+// Cells: "Company TICKER", home market, value at the start, value at the end, change %.
+export function parseBalticCapitalization(html: string): Record<string, number> {
+  const caps: Record<string, number> = {};
+  for (const tr of html.match(/<tr>[\s\S]*?<\/tr>/g) ?? []) {
+    const isin = tr.match(/instrument\/([A-Z]{2}[A-Z0-9]{10})\/trading/)?.[1];
+    const cells = tr.match(/<td[^>]*>[\s\S]*?<\/td>/g) ?? [];
+    const cap = cells[3] ? num(cellText(cells[3])) : null;
+    if (isin && cap) caps[isin] = cap;
+  }
+  return caps;
 }
 
 // "10.11.2026 16:22" in Vilnius time -> ISO instant.
@@ -96,10 +112,18 @@ export function parseBalticSheet(xml: string): Candle[] {
   return candles.sort((a, b) => a.t - b.t);
 }
 
+// Before the open and on days without trading the plain page shows a new, empty day,
+// so the latest session's list is asked for by date until today's session has started.
+export function balticListUrl(now: Date): string {
+  const session = latestSession(EXCHANGES.XLIT, now);
+  const day = zonedParts(session.opens, 'Europe/Vilnius').day;
+  return day === zonedParts(now, 'Europe/Vilnius').day ? `${BASE}/shares` : `${BASE}/shares?date=${day}`;
+}
+
 // Parsed once a minute per data centre; both the bulk quotes and single quotes read it.
 export function balticShareList() {
   return shared('baltic:shares', 60, async () => {
-    const list = parseBalticShareList(await fetchText(`${BASE}/shares`, 'text/html'));
+    const list = parseBalticShareList(await fetchText(balticListUrl(new Date()), 'text/html'));
     if (Object.keys(list.rows).length === 0) throw new UpstreamError('Nasdaq Baltic share list is unavailable');
     return list;
   }, LIVE_GRACE);

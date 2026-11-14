@@ -45,11 +45,6 @@
   "cPrice": "Kaina",
   "cChg": "Pokytis",
   "cVol": "Apyvarta",
-  "sectors": "Sektoriai šiandien",
-  "sectorsNote": "Kiekviena plytelė – viena akcija, nuspalvinta pagal šiandienos pokytį. Prie sektoriaus – vidutinis visų jo stebimų regiono akcijų pokytis, kiekvienai akcijai suteikiant vienodą svorį.",
-  "hmCap": "Plytelių dydis atitinka rinkos kapitalizaciją; rodoma {n} didžiausių iš {total} akcijų.",
-  "hmEqual": "Visos plytelės vienodo dydžio, nes šių akcijų rinkos kapitalizacija neskelbiama; rodoma {n} iš {total}, pirmiausia – didžiausios apyvartos.",
-  "hmRegion": "Regionas",
   "editList": "Redaguoti sąrašą",
   "sec": {
     "T": "Technologijos",

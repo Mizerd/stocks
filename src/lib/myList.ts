@@ -23,7 +23,7 @@ export const NOTE_MAX = 200;
 const VERSION = 1;
 
 // Everything the site keeps in localStorage, for "Delete my data from this browser".
-const ALL_KEYS = ['lang', 'theme', 'colorBlind', 'lastStock', LIST_KEY, SORT_KEY];
+const ALL_KEYS = ['lang', 'theme', 'colorBlind', 'lastStock', 'heatmapRegion', 'heatmapSize', LIST_KEY, SORT_KEY];
 
 // Reads "1.5", "1,5", "1 234,56" and "1,234.56". Returns null for anything else.
 export function parseDecimal(text: string): number | null {

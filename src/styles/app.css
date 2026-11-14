@@ -312,19 +312,72 @@
 .sel-readout{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 10px;min-height:20px;font-size:12.5px}
 .sel-hint{font-size:11.5px;color:var(--ink3)}
 
-/* Stock heatmap: sectors as boxes, one tile per stock inside them. Tiles hide their text when it cannot fit. */
+/* Market heatmap: sectors, industries inside them, one tile per stock. The layout code decides what each tile shows. */
+.hm-bar{margin-bottom:14px}
+.hm-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:auto}
+.hm-board{min-width:0}
 .hmap{position:relative}
-.hm-group{position:absolute;display:flex;flex-direction:column;padding:2px}
-.hm-head{display:flex;align-items:center;gap:8px;min-width:0;padding:0 4px;font-size:12px;font-weight:600;white-space:nowrap}
+.hm-head{position:absolute;display:flex;align-items:center;gap:8px;min-width:0;padding:0 4px;overflow:hidden;font-size:12px;font-weight:600;white-space:nowrap;color:var(--ink)}
+.hm-head .num{flex-shrink:0}
 @media (hover:hover){.hm-head:hover{text-decoration:underline;text-underline-offset:3px}}
-.hm-tiles{position:relative;flex:1 1 0%}
-.hm-tile{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--card);border-radius:4px;container-type:size;line-height:1.15;text-align:center;transition:filter .15s}
-@media (hover:hover){.hm-tile:hover{filter:brightness(1.12)}}
-.hm-tile:focus-visible{z-index:1;outline-offset:-2px}
-.hm-sym{font-size:clamp(9px,20cqmin,24px);font-weight:600}
-.hm-chg{font-size:clamp(9px,14cqmin,17px)}
-@container (max-width:50px) or (max-height:38px){.hm-chg{display:none}}
-@container (max-width:30px) or (max-height:18px){.hm-sym{display:none}}
+.hm-ind{position:absolute;height:14px;padding:0 3px;font-size:10.5px;font-weight:600;line-height:14px;color:var(--ink2)}
+.hm-tile{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 2px;overflow:hidden;border:1px solid var(--paper);border-radius:3px;container-type:size;line-height:1.15;text-align:center;transition:filter .15s}
+@media (hover:hover){.hm-tile:hover{filter:brightness(1.1)}}
+.hm-tile:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;z-index:1}
+/* --n: the symbol's length, so long tickers shrink to the tile's width. */
+.hm-sym{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(8px,min(20cqmin,140cqw / var(--n,4)),26px);font-weight:600}
+.hm-chg{max-width:100%;overflow:hidden;white-space:nowrap;font-size:clamp(9px,14cqmin,18px)}
+.hm-logo{display:block;flex:none;width:70%;height:clamp(14px,16cqmin,30px);margin-bottom:.3em;background:currentColor;-webkit-mask:var(--logo) center/contain no-repeat;mask:var(--logo) center/contain no-repeat}
+
+/* Colour steps: fixed bins of the day's move, mixed in sRGB (hue-based spaces drift to purple in Safari). */
+.hm-flat,.hm-none{background:var(--hmflat);color:var(--ink)}
+.hm-none{background-image:repeating-linear-gradient(135deg,transparent 0 5px,color-mix(in srgb,var(--ink) 9%,transparent) 5px 6px);color:var(--ink2)}
+.hm-u1{background:color-mix(in srgb,var(--up) 18%,var(--hmflat))}.hm-d1{background:color-mix(in srgb,var(--down) 18%,var(--hmflat))}
+.hm-u2{background:color-mix(in srgb,var(--up) 34%,var(--hmflat))}.hm-d2{background:color-mix(in srgb,var(--down) 34%,var(--hmflat))}
+.hm-u3{background:color-mix(in srgb,var(--up) 52%,var(--hmflat))}.hm-d3{background:color-mix(in srgb,var(--down) 52%,var(--hmflat))}
+.hm-u4{background:color-mix(in srgb,var(--up) 70%,var(--hmflat))}.hm-d4{background:color-mix(in srgb,var(--down) 70%,var(--hmflat))}
+.hm-u5{background:color-mix(in srgb,var(--up) 90%,var(--hmflat))}.hm-d5{background:color-mix(in srgb,var(--down) 90%,var(--hmflat))}
+.hm-u6{background:var(--up)}.hm-d6{background:var(--down)}
+.hm-u1,.hm-u2,.hm-u3,.hm-u4,.hm-d1,.hm-d2,.hm-d3,.hm-d4{color:var(--ink)}
+.hm-u5,.hm-u6,.hm-d5,.hm-d6{color:var(--card)}
+.t-dark .hm-u1{background:color-mix(in srgb,var(--up) 20%,var(--hmflat))}.t-dark .hm-d1{background:color-mix(in srgb,var(--down) 20%,var(--hmflat))}
+.t-dark .hm-u3{background:color-mix(in srgb,var(--up) 48%,var(--hmflat))}.t-dark .hm-d3{background:color-mix(in srgb,var(--down) 48%,var(--hmflat))}
+.t-dark .hm-u4{background:color-mix(in srgb,var(--up) 74%,var(--hmflat))}.t-dark .hm-d4{background:color-mix(in srgb,var(--down) 78%,var(--hmflat))}
+.t-dark .hm-u5{background:color-mix(in srgb,var(--up) 88%,var(--hmflat))}.t-dark .hm-d5{background:color-mix(in srgb,var(--down) 88%,var(--hmflat))}
+.t-dark .hm-u4,.t-dark .hm-u5,.t-dark .hm-u6,.t-dark .hm-d4,.t-dark .hm-d5,.t-dark .hm-d6{color:var(--paper)}
+
+.hm-legend{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 28px;margin-top:14px}
+.hm-scale{flex:1 1 320px;max-width:560px}
+.hm-cap{margin:0 0 5px;font-size:11.5px;font-weight:600;color:var(--ink2)}
+.hm-swatches{display:grid;grid-template-columns:repeat(13,1fr)}
+.hm-swatches>span{height:10px;border-radius:2px;box-shadow:inset 0 0 0 1px var(--card)}
+.hm-ticks{position:relative;height:16px;margin-top:3px;font-size:11px;color:var(--ink3)}
+.hm-ticks span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.hm-nt{display:flex;align-items:center;gap:8px;margin:0 0 16px;font-size:12px;color:var(--ink2)}
+.hm-nt .hm-none{display:inline-block;width:26px;height:10px;border-radius:2px}
+
+.hm-card{position:absolute;top:0;left:0;z-index:3;display:flex;flex-direction:column;gap:7px;padding:12px 14px;border:1px solid var(--hair);border-radius:10px;background:var(--card);color:var(--ink);font-size:12.5px;box-shadow:0 12px 32px color-mix(in oklab,var(--ink) 18%,transparent);pointer-events:none}
+.hm-card.pinned{pointer-events:auto}
+.hm-card p{margin:0}
+.hm-card .hm-logo{width:120px;height:22px;margin:0 0 6px;-webkit-mask-position:left center;mask-position:left center}
+.hm-card-name{font-size:14px;font-weight:600;line-height:1.3}
+.hm-card-sub{font-size:12px;color:var(--ink3)}
+.hm-card-price{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px;font-weight:600}
+.hm-card-none{font-size:12px;font-weight:500;color:var(--ink2)}
+.hm-card dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0}
+.hm-card dt{color:var(--ink3)}
+.hm-card dd{margin:0;text-align:right}
+.hm-open{display:inline-flex;align-items:center;align-self:flex-start;min-height:36px}
+
+/* Expanded view: the same panel over the whole window (the Fullscreen API does not work for elements on iPhone). */
+.hm-full{position:fixed;inset:0;z-index:60;overflow:auto;overscroll-behavior:contain;padding:16px max(16px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:var(--paper)}
+
+@media (max-width:640px){
+  .hm-bar .pnl-title{flex:1 1 0%}
+  .hm-controls{order:2;flex:1 1 100%;margin-left:0}
+  .hm-head{font-size:13px}
+}
+@media (max-width:559px){.hm-ticks .minor{display:none}}
 
 /* News */
 .news{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px 36px;margin-top:14px}

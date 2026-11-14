@@ -1,18 +1,20 @@
 import { brand, type Lang } from '../config/brand';
 import { useSettings } from '../settings';
 import enCommon from './en/common.json';
+import enHeatmap from './en/heatmap.json';
 import enOverview from './en/overview.json';
 import enPortfolio from './en/portfolio.json';
 import enScreener from './en/screener.json';
 import enStock from './en/stock.json';
 import ltCommon from './lt/common.json';
+import ltHeatmap from './lt/heatmap.json';
 import ltOverview from './lt/overview.json';
 import ltPortfolio from './lt/portfolio.json';
 import ltScreener from './lt/screener.json';
 import ltStock from './lt/stock.json';
 
-const en = { common: enCommon, overview: enOverview, stock: enStock, portfolio: enPortfolio, screener: enScreener };
-const lt: typeof en = { common: ltCommon, overview: ltOverview, stock: ltStock, portfolio: ltPortfolio, screener: ltScreener };
+const en = { common: enCommon, overview: enOverview, stock: enStock, portfolio: enPortfolio, screener: enScreener, heatmap: enHeatmap };
+const lt: typeof en = { common: ltCommon, overview: ltOverview, stock: ltStock, portfolio: ltPortfolio, screener: ltScreener, heatmap: ltHeatmap };
 const messages: Record<Lang, typeof en> = { en, lt };
 
 type Vars = Record<string, string | number>;

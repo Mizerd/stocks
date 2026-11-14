@@ -128,3 +128,10 @@ export function nordicScreener(market: NordicMarket): Promise<{ fetched: string;
     return { fetched: new Date().toISOString(), rows };
   }, LIVE_GRACE);
 }
+
+// One share's summary, for the heatmap data script: shares of this line and the ICB supersector ("1510").
+export function parseNordicSummaryMeta(json: any): { shares: number | null; icb: string | null; segment: string | null } {
+  const s = json?.data?.summaryData ?? {};
+  const icb = String(s.icbCode?.value ?? '').trim();
+  return { shares: num(s.shares?.value) || null, icb: /^\d{4}$/.test(icb) ? icb : null, segment: s.insSegment?.value || null };
+}

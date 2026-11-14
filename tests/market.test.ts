@@ -5,7 +5,7 @@ import type { Candle, Listing } from '../shared/types';
 import { memo, shared, takeBackgroundWork } from '../worker/http';
 import worker from '../worker/index';
 import { currentSession, history, previousSession, previousTradingDay, toWeekly, yearStats, averageVolume } from '../worker/market';
-import { resolveSymbol, tickerSymbol, toSector } from '../worker/universe';
+import { marketData, resolveSymbol, tickerSymbol, toSector } from '../worker/universe';
 
 const DAY = 24 * 3600 * 1000;
 const bar = (t: number, c: number): Candle => ({ t, o: c, h: c + 1, l: c - 1, c, v: 100 });
@@ -112,6 +112,24 @@ describe('universe', () => {
     expect(sessionState(EXCHANGES.XSTO, new Date('2026-11-11T16:45:00Z')).isOpen).toBe(false);
     expect(sessionState(EXCHANGES.XRIS, new Date('2026-11-11T12:00:00Z')).isOpen).toBe(true);
     expect(sessionState(EXCHANGES.XRIS, new Date('2026-11-18T12:00:00Z')).isOpen).toBe(false);
+  });
+});
+
+describe('Baltic bulk quotes', () => {
+  it('keeps a share without trades as volume 0, and one that traded unchanged as a 0 move', async () => {
+    const realFetch = globalThis.fetch;
+    const row = (isin: string, ticker: string, volume: string) => `<tr><td data-sort-by="${ticker}"><a href="/statistics/en/instrument/${isin}/trading">${ticker}</a></td>
+      <td>${ticker}</td><td>2.1</td><td></td><td></td><td>2</td><td>2.2</td><td>3</td><td>${volume}</td><td>0</td><td>2.1</td>
+      <td><span title="Utilities">UTI</span></td><td><span title="Utilities">UTI</span></td><td>VLN</td></tr>`;
+    globalThis.fetch = async () => new Response(`Last update: 13.11.2026 16:30 (GMT+2) ${row('LT0000000001', 'AAA1L', '120')}${row('LT0000000002', 'BBB1L', '')}`);
+    try {
+      const { items } = await marketData('baltic');
+      const quote = (symbol: string) => items.find((i) => i.inst.symbol === symbol)?.quote;
+      expect(quote('AAA1L.VS')).toMatchObject({ changePct: 0, volume: 120 });
+      expect(quote('BBB1L.VS')).toMatchObject({ price: 2.1, volume: 0 });
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });
 

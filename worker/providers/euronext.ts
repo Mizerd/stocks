@@ -20,7 +20,8 @@ const MONTHS = 'JanFebMarAprMayJunJulAugSepOctNovDec';
 const COVERED = new Set(STOCKS.filter((s) => s.provider === 'euronext').map((s) => s.providerId));
 
 // The stock directory's table data for one market: one row per line, keyed by its "ISIN-MIC" product code.
-// Cells: name link, ISIN, symbol, market, "EUR <span>price</span>", "1.46%", "13:46 CET<span>11 Nov 2026</span>".
+// Cells: name link, ISIN, symbol, market, "EUR <span>price</span>", "1.46%", "13:46 CET<span>11 Nov 2026</span>"
+// (or "13 Nov 2026<span>17:35 CET</span>").
 // Only the `wanted` lines are read.
 export function parseEuronextList(json: any, mic: string, wanted: ReadonlySet<string>): Record<string, EuronextRow> {
   const rows: Record<string, EuronextRow> = {};
@@ -30,12 +31,14 @@ export function parseEuronextList(json: any, mic: string, wanted: ReadonlySet<st
     const id = `${cells[1]}-${mic}`;
     if (!wanted.has(id)) continue;
     const price = num(String(cells[4]).match(/pd_last_price_es">([^<]*)/)?.[1]);
-    const when = String(cells[6]).match(/(\d{2}:\d{2})[^<]*<span[^>]*>(\d{1,2}) ([A-Z][a-z]{2}) (\d{4})/);
-    if (price === null || !when) continue;
-    const month = String(MONTHS.indexOf(when[3]) / 3 + 1).padStart(2, '0');
-    const day = `${when[4]}-${month}-${when[2].padStart(2, '0')}`;
-    const stamp = `${day} ${when[1]}`;
-    if (!instants.has(stamp)) instants.set(stamp, zonedTime(day, when[1], 'Europe/Paris').toISOString());
+    // The time and the date swap places in the cell from time to time, so each is read on its own.
+    const hhmm = String(cells[6]).match(/\d{2}:\d{2}/)?.[0];
+    const date = String(cells[6]).match(/(\d{1,2}) ([A-Z][a-z]{2}) (\d{4})/);
+    if (price === null || !hhmm || !date) continue;
+    const month = String(MONTHS.indexOf(date[2]) / 3 + 1).padStart(2, '0');
+    const day = `${date[3]}-${month}-${date[1].padStart(2, '0')}`;
+    const stamp = `${day} ${hhmm}`;
+    if (!instants.has(stamp)) instants.set(stamp, zonedTime(day, hhmm, 'Europe/Paris').toISOString());
     rows[id] = { price, changePct: num(String(cells[5]).replace(/<[^>]+>/g, '')) ?? 0, time: instants.get(stamp)! };
   }
   return rows;
@@ -81,6 +84,17 @@ export function parseEuronextCsv(csv: string): Candle[] {
     });
   }
   return candles.reverse();
+}
+
+const factsheetText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+// Factsheet blocks, for the heatmap data script: "Admitted shares 388,147,751" and "SuperSector 1010, Technology".
+export function parseAdmittedShares(html: string): number | null {
+  return num(factsheetText(html).match(/Admitted shares ([\d,]+)/i)?.[1]) || null;
+}
+
+export function parseIcbSupersector(html: string): string | null {
+  return factsheetText(html).match(/SuperSector (\d{4}),/i)?.[1] ?? null;
 }
 
 // The list gives the price and the percentage change; the change in money follows from them.

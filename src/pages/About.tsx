@@ -7,7 +7,8 @@ import { PanelTitle } from '../components/ui';
 import { brand } from '../config/brand';
 import { useT } from '../i18n';
 import { useApi } from '../lib/api';
-import { useFormat } from '../lib/format';
+import { DASH, useFormat } from '../lib/format';
+import { useHeatmapMeta } from '../lib/heatmap';
 import { deleteBrowserData } from '../lib/myList';
 import { useListings } from '../lib/universe';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -54,6 +55,22 @@ function Privacy() {
   );
 }
 
+function HeatmapSources() {
+  const { t } = useT();
+  const f = useFormat();
+  const meta = useHeatmapMeta();
+  const days = meta ? Object.values(meta.sharesAsOf).sort() : [];
+  const text = { margin: '12px 0 0', maxWidth: '68ch', color: 'var(--ink2)', lineHeight: 1.6 };
+  return (
+    <section className="pnl" id="heatmap">
+      <PanelTitle>{t('heatmap.aboutTitle')}</PanelTitle>
+      <p style={text}>{t('heatmap.aboutSizes', { d: days.length ? f.date(`${days[0]}T12:00:00Z`, 'UTC') : DASH })}</p>
+      <p style={text}>{t('heatmap.aboutLogos')}</p>
+      <p style={text}><a className="link" href="/logos/credits.json">{t('heatmap.credits')}</a></p>
+    </section>
+  );
+}
+
 export function About() {
   const { t, table } = useT();
   const f = useFormat();
@@ -96,6 +113,7 @@ export function About() {
           ))}
         </div>
       </section>
+      <HeatmapSources />
       <section className="pnl" id="keys">
         <PanelTitle>{t('common.keysTitle')}</PanelTitle>
         <dl style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '10px 18px', margin: '14px 0 0' }}>

@@ -116,7 +116,7 @@
   "privStoredH": "What is kept in this browser",
   "privStored": "A few things are saved in this browser’s local storage so that the site remembers them on your next visit:",
   "privItems": [
-    "the language, theme and colour-blind palette, saved when you choose them;",
+    "the language, theme and colour-blind palette, and the region and tile size picked on the market heatmap, saved when you choose them;",
     "the stock you opened last, so that the “Stock” tab returns to it — kept only in this tab and forgotten when you close it;",
     "your personal list, saved when you add, edit or import something: the stocks, and any quantity, buy price, buy date and note you enter, plus the sort order you pick."
   ],

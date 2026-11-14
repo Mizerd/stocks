@@ -39,7 +39,7 @@ export function loadListings(): Promise<Listing[]> {
   return listings;
 }
 
-function quoteToSummary(listing: Listing, q: BulkQuote): StockSummary {
+export function quoteToSummary(listing: Listing, q: BulkQuote): StockSummary {
   return {
     ...listing, ...q, prevClose: q.price - q.change, open: null, high: null, low: null,
     pe: null, eps: null, dividend: null, dividendYield: null, avgVolume: null,
@@ -48,7 +48,7 @@ function quoteToSummary(listing: Listing, q: BulkQuote): StockSummary {
 }
 
 // A minute while one of the market's exchanges is open; otherwise until the next opening bell, at most a quarter-hour.
-function interval(market: Market): number {
+export function quoteInterval(market: Market): number {
   const now = new Date();
   const sessions = MARKET_EXCHANGES[market].map((id) => sessionState(EXCHANGES[id], now));
   if (sessions.some((s) => s.isOpen)) return OPEN_MS;
@@ -109,7 +109,7 @@ function poll(market: Market) {
         timers.delete(market);
         return;
       }
-      timers.set(market, setTimeout(() => poll(market), interval(market)));
+      timers.set(market, setTimeout(() => poll(market), quoteInterval(market)));
     });
 }
 
@@ -119,7 +119,7 @@ function onVisibility() {
   const now = Date.now();
   for (const market of MARKETS) {
     const age = now - (quotes.get(market)?.at ?? 0);
-    if (age >= interval(market) || !timers.has(market)) poll(market);
+    if (age >= quoteInterval(market) || !timers.has(market)) poll(market);
   }
 }
 

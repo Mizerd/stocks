@@ -25,10 +25,14 @@ async function tryGet(path: string, ttl: number): Promise<any | null> {
 
 const assetClass = (inst: Instrument) => (inst.kind === 'index' ? 'index' : 'stocks');
 
-// "Nov 10, 2026 9:34 AM ET" or "Nov 9, 2026" -> ISO instant.
+// "Nov 10, 2026 9:34 AM ET" or "Nov 9, 2026" (the close, 16:00) -> ISO instant.
 export function parseNasdaqTime(text: string): string {
+  return nasdaqTime(text) ?? new Date().toISOString();
+}
+
+function nasdaqTime(text: string): string | null {
   const m = text.match(/([A-Z][a-z]{2}) (\d{1,2}), (\d{4})(?: (\d{1,2}):(\d{2}) (AM|PM))?/);
-  if (!m) return new Date().toISOString();
+  if (!m) return null;
   const month = 'JanFebMarAprMayJunJulAugSepOctNovDec'.indexOf(m[1]) / 3 + 1;
   const day = `${m[3]}-${String(month).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
   let hour = m[4] ? Number(m[4]) % 12 : 16;
@@ -314,12 +318,24 @@ export interface WatchlistRow {
   time: string;
 }
 
+// After the close Nasdaq gives the session's date alone, without a time or offset ("Nov 13, 2026"),
+// the same for every row: each date is converted once.
+const closes = new Map<string, number>();
+function closeTime(text: string): number {
+  if (!closes.has(text)) {
+    if (closes.size > 20) closes.clear();
+    closes.set(text, Date.parse(nasdaqTime(text) ?? ''));
+  }
+  return closes.get(text)!;
+}
+
 // Live last-sale quotes of up to 20 shares per call.
 export function parseWatchlist(json: any): WatchlistRow[] {
   const rows: WatchlistRow[] = [];
   for (const r of json?.data ?? []) {
     const price = num(r.lastSalePrice);
-    const time = Date.parse(r.lastTradeTimestampDateTime ?? '');
+    const stamp = String(r.lastTradeTimestampDateTime ?? '');
+    const time = /[zZ]|[+-]\d\d:\d\d$/.test(stamp) ? Date.parse(stamp) : closeTime(String(r.lastTradeTimestamp ?? ''));
     if (price === null || Number.isNaN(time)) continue;
     rows.push({
       ticker: r.symbol,

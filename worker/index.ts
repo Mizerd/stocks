@@ -7,7 +7,7 @@ import { detail, history, PROVIDERS, summary, upcoming } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
 import { about } from './providers/wikipedia';
-import { marketData, resolveSymbol } from './universe';
+import { marketData, resolveSymbol, usMoreQuotes } from './universe';
 
 const RANGES: Range[] = ['1D', '5D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 // Keeps one request comfortably under the Workers free-plan limit of 50 subrequests.
@@ -54,10 +54,12 @@ function quotesMaxAge(market: Market): number {
   return trading ? 60 : 600;
 }
 
-async function quotes(market: Market): Promise<Response> {
-  const { items, failed } = await marketData(market);
-  const body = { items: items.flatMap((item) => (item.quote ? [item.quote] : [])), failed };
-  return failed.length ? json(body, 200, 30) : json(body, 200, quotesMaxAge(market), LIVE_GRACE);
+async function quotes(market: Market, part: string | null): Promise<Response> {
+  if (part !== null && !(part === '2' && market === 'us')) throw new HttpError(400, 'Unknown part');
+  const body = part === '2' ? await usMoreQuotes() : await marketData(market).then(({ items, failed }) => ({
+    items: items.flatMap((item) => (item.quote ? [item.quote] : [])), failed,
+  }));
+  return body.failed.length ? json(body, 200, 30) : json(body, 200, quotesMaxAge(market), LIVE_GRACE);
 }
 
 async function universe(market: Market): Promise<Response> {
@@ -125,7 +127,7 @@ async function route(url: URL): Promise<Response> {
     case '/api/universe':
       return universe(marketParam(url));
     case '/api/quotes':
-      return quotes(marketParam(url));
+      return quotes(marketParam(url), url.searchParams.get('part'));
     case '/api/history': {
       const range = url.searchParams.get('range') as Range;
       if (!RANGES.includes(range)) throw new HttpError(400, 'Unknown range');

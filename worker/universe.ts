@@ -75,8 +75,10 @@ function screenerClose(listed: ScreenerRow | undefined, live: WatchlistRow | und
 
 // Live quotes for this many US shares, the catalogue's and then the largest: 20 per call.
 const US_LIVE = 200;
+// The heatmap asks for the next ones apart, only while it shows the US.
+const US_HEATMAP = 500;
 
-interface UsRow {
+export interface UsRow {
   exchange: ExchangeId;
   row: ScreenerRow;
   id: string;
@@ -92,6 +94,38 @@ const usInstrument = ({ exchange, row, id }: UsRow): Instrument => ({
   sector: toSector(row.sector, row.industry, row.ticker), provider: 'nasdaq', providerId: id,
 });
 
+const nasdaqCatalogue = new Set(STOCKS.filter((s) => s.provider === 'nasdaq').map((s) => s.providerId));
+
+// Which US shares get live quotes first: the catalogue's, then the largest.
+export function usLiveOrder(rows: UsRow[]): string[] {
+  return rows
+    .map(({ id, row }) => ({ id, listed: Number(nasdaqCatalogue.has(id)), cap: row.marketCap ?? 0 }))
+    .sort((a, b) => b.listed - a.listed || b.cap - a.cap)
+    .map((r) => r.id);
+}
+
+const usLiveQuote = (r: UsRow, quote: WatchlistRow): Omit<BulkQuote, 'symbol'> => ({
+  price: quote.price, change: quote.change, changePct: quote.changePct, volume: quote.volume, marketCap: r.row.marketCap, time: quote.time, freshness: 'realtime',
+});
+
+// Live quotes for the US shares ranked after the ones /api/quotes covers, up to the heatmap's 500.
+export function usMoreQuotes(): Promise<{ items: BulkQuote[]; failed: string[] }> {
+  return memo('source:US:2', 60, async () => {
+    const rows = await usRows();
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    try {
+      const live = await usWatchlist(usLiveOrder(rows).slice(US_LIVE, US_HEATMAP));
+      const items = live.flatMap((quote) => {
+        const r = byId.get(quote.ticker);
+        return r ? [{ symbol: known(usInstrument(r)).symbol, ...usLiveQuote(r, quote) }] : [];
+      });
+      return { items, failed: [] };
+    } catch {
+      return { items: [], failed: ['US'] };
+    }
+  });
+}
+
 const usSource: Source = {
   id: 'US',
   market: 'us',
@@ -102,13 +136,7 @@ const usSource: Source = {
   },
   async load() {
     const rows = await usRows();
-    const catalogue = new Set(STOCKS.filter((s) => s.provider === 'nasdaq').map((s) => s.providerId));
-    const wanted = rows
-      .map(({ id, row }) => ({ id, listed: Number(catalogue.has(id)), cap: row.marketCap ?? 0 }))
-      .sort((a, b) => b.listed - a.listed || b.cap - a.cap)
-      .slice(0, US_LIVE)
-      .map((r) => r.id);
-    const live = new Map((await usWatchlist(wanted).catch(() => [])).map((w) => [w.ticker, w]));
+    const live = new Map((await usWatchlist(usLiveOrder(rows).slice(0, US_LIVE)).catch(() => [])).map((w) => [w.ticker, w]));
     const reference = rows.find((r) => live.get(r.id)?.change);
     const closeTime = screenerClose(reference?.row, reference && live.get(reference.id));
     return rows.map((r) => {
@@ -117,7 +145,7 @@ const usSource: Source = {
       return listed(
         usInstrument(r),
         quote
-          ? { price: quote.price, change: quote.change, changePct: quote.changePct, volume: quote.volume, marketCap: row.marketCap, time: quote.time, freshness: 'realtime' }
+          ? usLiveQuote(r, quote)
           : { price: row.price, change: row.change, changePct: row.changePct, volume: row.volume, marketCap: row.marketCap, time: closeTime, freshness: 'eod' },
       );
     });
@@ -170,9 +198,10 @@ const balticSource: Source = {
     return Object.values(list.rows).flatMap((r) => {
       const home = BALTIC[r.home];
       if (!home) return [];
-      // A share without a trade today still shows its last price, with no change.
+      // A share without a trade today still shows its last price, with no change; volume 0 tells it from one
+      // that traded unchanged.
       const quote = r.last === null ? null : {
-        price: r.last, change: r.change ?? 0, changePct: r.changePct ?? 0, volume: r.volume, marketCap: null,
+        price: r.last, change: r.change ?? 0, changePct: r.changePct ?? 0, volume: r.volume || 0, marketCap: null,
         time: times.get(home.exchange)!, freshness: 'delayed' as const,
       };
       return [listed(

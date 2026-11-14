@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 import { INDICES, STOCKS } from '../../shared/catalog';
 import type { StockSummary } from '../../shared/types';
 import { Barometer } from '../components/overview/Barometer';
+import { Heatmap } from '../components/overview/Heatmap';
 import { Highlights } from '../components/overview/Highlights';
 import { IndexPanel } from '../components/overview/IndexPanel';
 import { Movers } from '../components/overview/Movers';
 import { News } from '../components/overview/News';
-import { Sectors } from '../components/overview/Sectors';
 import { TickerTape } from '../components/overview/TickerTape';
 import { ErrorNotice, Loading } from '../components/ui';
 import { useT } from '../i18n';
@@ -96,7 +96,7 @@ export function Overview() {
           </p>
         )}
         <Highlights title={t('overview.watch')} more={{ to: '/screener', label: t('overview.manage') }} stocks={rows(HIGHLIGHTS)} />
-        <Sectors stocks={today} fx={fx.data} />
+        <Heatmap stocks={stocks} fx={fx.data} />
         <News items={news.data ?? []} />
       </main>
     </>
