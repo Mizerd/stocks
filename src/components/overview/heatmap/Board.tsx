@@ -5,7 +5,7 @@ import type { Region } from '../../../../shared/types';
 import { useT } from '../../../i18n';
 import type { Placed } from '../../../lib/heatmap';
 import { direction, useFormat } from '../../../lib/format';
-import { Card, industryLabel } from './Card';
+import { Card, industryLabel, Logo } from './Card';
 
 interface Active {
   symbol: string;
@@ -174,7 +174,7 @@ const Tiles = memo(function Tiles({ placed, region, tabStop }: { placed: Placed;
             aria-label={t('heatmap.tileAria', { name: stock.name, sym, industry: industryLabel(t, tile.industry), chg: tile.step === 'none' ? t('heatmap.noTrades') : chg, value })}
             style={at(box)}
           >
-            {tier === 'xl' && tile.logo && <span className="hm-logo" style={{ '--logo': `url(/logos/${tile.logo}.svg)` } as CSSProperties} />}
+            {tier === 'xl' && tile.logo && <Logo tile={tile} />}
             {tier !== 's' && (tier !== 'm' || symbolFits(sym, box.w)) && <span className="hm-sym" style={{ '--n': sym.length } as CSSProperties}>{sym}</span>}
             {(tier === 'xl' || tier === 'l') && <span className="hm-chg num">{chg}</span>}
           </Link>

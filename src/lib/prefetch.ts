@@ -1,6 +1,7 @@
+import { loadStock } from '../pages/lazy';
 import { prefetchStock } from './api';
 
-// Loads a stock page's data once the pointer or a finger has rested on a link to it for `delayMs`:
+// Loads a stock page's code and data once the pointer or a finger has rested on a link to it for `delayMs`:
 // one stock at a time, and each stock once per `againMs`. A touch that turns into a scroll cancels it.
 export function createPrefetcher(load: (symbol: string) => Promise<unknown>, delayMs = 100, againMs = 5 * 60_000) {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -23,7 +24,7 @@ export function createPrefetcher(load: (symbol: string) => Promise<unknown>, del
   };
 }
 
-const prefetcher = createPrefetcher((symbol) => prefetchStock(symbol));
+const prefetcher = createPrefetcher((symbol) => Promise.all([loadStock(), prefetchStock(symbol)]));
 
 const saveData = () => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
 

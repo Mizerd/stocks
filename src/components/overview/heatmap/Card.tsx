@@ -7,6 +7,13 @@ import type { Box, BoardTile } from '../../../lib/heatmap';
 import { useFormat } from '../../../lib/format';
 import { Badge, FreshnessNote } from '../../ui';
 
+// A company's logo: a one-colour mask in the tile's text colour, or the drawing as is on a light badge.
+// --r (width over height) lets wide wordmarks and square marks take a similar area.
+export function Logo({ tile }: { tile: BoardTile }) {
+  const style = { '--logo': `url(/logos/${tile.logo}.svg)`, '--r': tile.logoRatio ?? 3 } as CSSProperties;
+  return <span className={`hm-logo${tile.logoMode === 'badge' ? ' badge' : ''}`} style={style} aria-hidden="true" />;
+}
+
 export const industryLabel = (t: (key: string) => string, key: string) => (key.length === 2 ? t('heatmap.other') : t(`heatmap.icb.${key}`));
 
 interface Props {
@@ -42,7 +49,7 @@ export function Card({ tile, box, width, height, pinned }: Props) {
   return (
     <div ref={ref} className={`hm-card${pinned ? ' pinned' : ''}`} style={{ width: cardWidth }}>
       <div className="hm-card-top">
-        {tile.logo && <span className="hm-logo" style={{ '--logo': `url(/logos/${tile.logo}.svg)` } as CSSProperties} aria-hidden="true" />}
+        {tile.logo && <Logo tile={tile} />}
         <p className="hm-card-name">{stock.name}</p>
         <p className="hm-card-sub">{sym} · {EXCHANGES[stock.exchange].short} · {industryLabel(t, tile.industry)}</p>
       </div>

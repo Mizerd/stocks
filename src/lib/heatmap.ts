@@ -2,11 +2,16 @@ import { useEffect, useState } from 'react';
 import { EXCHANGES, zonedParts } from '../../shared/exchanges';
 import type { HeatmapMeta } from '../../shared/heatmap';
 import { icbSector, SECTOR_ICB } from '../../shared/icb';
-import type { BulkQuote, FxRates, Sector, StockSummary } from '../../shared/types';
+import type { BulkQuote, FxRates, Market, Region, Sector, StockSummary } from '../../shared/types';
 import { fetchJson, toEur } from './api';
 import { turnoverEur } from './market';
 import { treemap } from './treemap';
 import { quoteInterval } from './universe';
+
+const REGION_MARKETS: Record<Region, Market[]> = { US: ['us'], EU: ['nordic', 'euronext'], BAL: ['baltic'] };
+
+// Whether some of the region's stocks are still on their way.
+export const regionPending = (region: Region, pending: Market[]) => REGION_MARKETS[region].some((m) => pending.includes(m));
 
 export type Step = 'none' | 'flat' | 'u1' | 'u2' | 'u3' | 'u4' | 'u5' | 'u6' | 'd1' | 'd2' | 'd3' | 'd4' | 'd5' | 'd6';
 export type SizeBy = 'cap' | 'traded' | 'equal';
@@ -32,6 +37,8 @@ export interface BoardTile {
   traded: number | null;
   industry: string;
   logo?: string;
+  logoRatio?: number;
+  logoMode?: 'badge';
   step: Step;
 }
 export interface BoardIndustry { key: string; weight: number; tiles: BoardTile[] }
@@ -59,7 +66,7 @@ export function buildBoard(stocks: StockSummary[], meta: HeatmapMeta | null, fx:
     const value = us ? stock.marketCap : info?.shares ? toEur(info.shares * stock.price, stock.currency, fx) : null;
     const traded = turnoverEur(stock, fx);
     const weight = sizeBy === 'cap' ? value : sizeBy === 'traded' ? traded : 1;
-    return [{ stock, value, traded, weight, industry, logo: info?.logo, currency: us ? 'USD' : 'EUR', rank: value ?? traded ?? 0 }];
+    return [{ stock, value, traded, weight, industry, logo: info?.logo, logoRatio: info?.logoRatio, logoMode: info?.logoMode, currency: us ? 'USD' : 'EUR', rank: value ?? traded ?? 0 }];
   });
   const sized = candidates.filter((c) => c.weight !== null);
   const shown = sized

@@ -12,12 +12,27 @@ const BIG_UNITS: Record<Lang, [number, string][]> = {
   en: [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']],
 };
 
+// Building an Intl formatter is far slower than using one, so each is built once.
+const formatters = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat>();
+
+function numberFormat(locale: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const key = `number ${locale} ${JSON.stringify(options)}`;
+  if (!formatters.has(key)) formatters.set(key, new Intl.NumberFormat(locale, options));
+  return formatters.get(key) as Intl.NumberFormat;
+}
+
+function dateFormat(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `date ${locale} ${JSON.stringify(options)}`;
+  if (!formatters.has(key)) formatters.set(key, new Intl.DateTimeFormat(locale, options));
+  return formatters.get(key) as Intl.DateTimeFormat;
+}
+
 export function createFormat(lang: Lang) {
   const locale = LOCALE[lang];
 
   function num(value: number | null | undefined, decimals = 2, maxDecimals = decimals): string {
     if (value == null || !Number.isFinite(value)) return DASH;
-    const text = new Intl.NumberFormat(locale, {
+    const text = numberFormat(locale, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: maxDecimals,
     }).format(Math.abs(value));
@@ -60,18 +75,18 @@ export function createFormat(lang: Lang) {
   }
 
   const isoDate = (d: Date, timeZone?: string) =>
-    new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone }).format(d);
+    dateFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone }).format(d);
 
   function date(value: number | string | Date, timeZone?: string): string {
     const d = new Date(value);
     if (lang === 'lt') return isoDate(d, timeZone);
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone }).format(d);
+    return dateFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone }).format(d);
   }
 
   function dateShort(value: number | string | Date, timeZone?: string): string {
     const d = new Date(value);
     if (lang === 'lt') return isoDate(d, timeZone).slice(5);
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone }).format(d);
+    return dateFormat('en-US', { month: 'short', day: 'numeric', timeZone }).format(d);
   }
 
   function month(value: number | string | Date, withYear = false): string {
@@ -79,24 +94,24 @@ export function createFormat(lang: Lang) {
     // Intl prints Lithuanian short months as numbers in some browsers, so they are spelled out here.
     const name = lang === 'lt'
       ? LT_MONTHS[d.getUTCMonth()]
-      : new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(d);
+      : dateFormat(locale, { month: 'short', timeZone: 'UTC' }).format(d);
     if (!withYear) return name;
     return lang === 'lt' ? `${d.getUTCFullYear()} ${name}` : `${name} ${d.getUTCFullYear()}`;
   }
 
   function time(value: number | string | Date, timeZone?: string): string {
-    return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone })
+    return dateFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone })
       .format(new Date(value));
   }
 
   // A calendar day such as "2026-11-12": "Thu, Nov 12" / "lapkričio 12 d., ketvirtadienis".
   function weekdayDate(day: string): string {
     const options = lang === 'lt' ? { weekday: 'long', month: 'long' } as const : { weekday: 'short', month: 'short' } as const;
-    return new Intl.DateTimeFormat(locale, { ...options, day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
+    return dateFormat(locale, { ...options, day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
   }
 
   function longDate(value: Date): string {
-    const text = new Intl.DateTimeFormat(lang === 'lt' ? 'lt-LT' : 'en-GB', {
+    const text = dateFormat(lang === 'lt' ? 'lt-LT' : 'en-GB', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     }).format(value);
     return text.charAt(0).toUpperCase() + text.slice(1);

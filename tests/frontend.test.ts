@@ -5,12 +5,14 @@ import { aggregateCandles, barInterval, curvePath, nearestIndex, pointDiff, smoo
 import type { XY } from '../src/lib/chart';
 import { createFormat } from '../src/lib/format';
 import { bollinger, drawable, niceTicks, rsi, sma } from '../src/lib/indicators';
-import { withHistory } from '../src/lib/api';
+import { chartRange, detailPath, historyPath, withHistory } from '../src/lib/api';
+import { earlyModules, earlyPaths, type EarlyConfig } from '../src/lib/early';
 import { anyMarketOpen, barometer, currentStocks, dayMove, sectorMoves, similarStocks } from '../src/lib/market';
 import { cleanEntry, isDate, parseDecimal, parseList, serializeList, upsert } from '../src/lib/myList';
 import { allocation, listRows, portfolioReturns, sortRows, valuePortfolio, yearRange } from '../src/lib/portfolio';
 import { quarterRows } from '../src/lib/quarters';
 import { createPrefetcher } from '../src/lib/prefetch';
+import { marketProgress } from '../src/lib/universe';
 import { periodStart, rangePosition, returnSince } from '../src/lib/returns';
 import { filterStocks, NO_FILTERS, parseState, sortStocks, toSearchParams } from '../src/lib/screener';
 import { alignCloses } from '../src/lib/series';
@@ -738,5 +740,47 @@ describe('funds in the browser', () => {
     const valuation = valuePortfolio([{ symbol: pension.symbol, quantity: 100, buyPrice: 2 }], [nav], fx, 0);
     expect(valuation.positions[0].valueEur).toBeCloseTo(259, 6);
     expect(allocation(valuation, 0)).toEqual([{ sector: 'N', valueEur: valuation.totalEur, share: 1 }]);
+  });
+});
+
+describe('market loading progress', () => {
+  it('counts a market as loaded once its list and quotes are both in', () => {
+    expect(marketProgress(['us', 'nordic'], ['us', 'baltic'], [])).toEqual({ failed: [], pending: ['nordic', 'euronext', 'baltic'] });
+  });
+
+  it('reports failed markets as failed, not as still loading', () => {
+    expect(marketProgress(['us', 'nordic', 'baltic'], ['us', 'nordic'], ['euronext'])).toEqual({ failed: ['euronext'], pending: ['baltic'] });
+    expect(marketProgress([], [], ['us', 'nordic', 'euronext', 'baltic']).pending).toEqual([]);
+  });
+});
+
+describe('requests started before the app loads', () => {
+  const config: EarlyConfig = { markets: ['us', 'nordic'], indexHistory: historyPath('NDX', '1D'), chartRanges: ['1D', '1M'], defaultRange: '1D', pages: {} };
+  const paths = (pathname: string, search = '') => earlyPaths(pathname, search, config);
+
+  it('asks for what the overview loads first', () => {
+    expect(paths('/')).toEqual([
+      '/api/indices', '/api/universe?market=us', '/api/universe?market=nordic', '/api/quotes?market=us', '/api/quotes?market=nordic',
+      '/api/history?symbol=NDX&range=1D', '/api/fx', '/data/heatmap.json',
+    ]);
+  });
+
+  it('asks for a stock page exactly as the page itself does', () => {
+    for (const [pathname, search, symbol] of [['/stock/NOVO-B.CO', '?range=1M', 'NOVO-B.CO'], ['/stock/FUND%3AEE3600019832', '?range=9Y', 'FUND:EE3600019832']]) {
+      const range = chartRange(new URLSearchParams(search));
+      expect(paths(pathname, search).slice(0, 2)).toEqual([detailPath(symbol), historyPath(symbol, range)]);
+    }
+  });
+
+  it('asks for nothing on pages without data of their own', () => {
+    expect(paths('/about')).toEqual([]);
+    expect(paths('/stock/AAPL/extra')).toEqual([]);
+  });
+
+  it('fetches the code of the page opened, if it has its own', () => {
+    const pages = { stock: ['/assets/Stock.js', '/assets/AddToList.js'], screener: ['/assets/Screener.js'] };
+    expect(earlyModules('/stock/AAPL', { ...config, pages })).toEqual(pages.stock);
+    expect(earlyModules('/screener', { ...config, pages })).toEqual(pages.screener);
+    expect(earlyModules('/', { ...config, pages })).toEqual([]);
   });
 });

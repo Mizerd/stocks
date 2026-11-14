@@ -1,14 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
-import { Notice } from './components/ui';
+import { Loading, Notice } from './components/ui';
 import { useT } from './i18n';
-import { About } from './pages/About';
+import { About, Portfolio, Screener, Stock } from './pages/lazy';
 import { Overview } from './pages/Overview';
-import { Portfolio } from './pages/Portfolio';
-import { Screener } from './pages/Screener';
-import { Stock } from './pages/Stock';
 import { SettingsProvider, useSettings } from './settings';
 
 function NotFound() {
@@ -51,14 +48,16 @@ function Shell() {
     <div ref={root} className={`vp${theme === 'dark' ? ' t-dark' : ''}${colorBlind ? ' cb' : ''}`} style={{ minHeight: '100dvh' }}>
       <ScrollToTop />
       <Header />
-      <Routes>
-        <Route path="/" element={<Overview />} />
-        <Route path="/stock/:symbol" element={<Stock />} />
-        <Route path="/portfolio" element={<Portfolio />} />
-        <Route path="/screener" element={<Screener />} />
-        <Route path="/about" element={<About />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<main className="wrap page"><Loading height={420} /></main>}>
+        <Routes>
+          <Route path="/" element={<Overview />} />
+          <Route path="/stock/:symbol" element={<Stock />} />
+          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/screener" element={<Screener />} />
+          <Route path="/about" element={<About />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
       <Footer />
     </div>
   );

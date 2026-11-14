@@ -4,16 +4,12 @@ import { shortSymbol } from '../../../shared/catalog';
 import { EXCHANGES } from '../../../shared/exchanges';
 import type { History, Listing, Range, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { DEFAULT_RANGE, isUnavailable, useHistory } from '../../lib/api';
+import { CHART_RANGES, DEFAULT_RANGE, isUnavailable, useHistory } from '../../lib/api';
 import { denseIntraday, withLatestQuote } from '../../lib/chart';
 import { direction, useFormat } from '../../lib/format';
 import { ErrorNotice, Loading, Notice, Seg, SessionNote } from '../ui';
 import { ChartPlot } from './ChartPlot';
 import type { ChartType, Indicator } from './ChartPlot';
-
-const RANGES: Range[] = ['1D', '5D', '1M', '6M', '1Y', '5Y'];
-
-export const chartRange = (params: URLSearchParams): Range => RANGES.find((r) => r === params.get('range')) ?? DEFAULT_RANGE;
 
 // Where the 1-day chart would be empty or a few lone steps, a month of daily closes is the default.
 const SPARSE_DEFAULT: Range = '1M';
@@ -60,7 +56,7 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
   const [params, setParams] = useSearchParams();
   const [shown, setShown] = useState<Record<Indicator, boolean>>({ sma20: true, sma50: false, bb: false, vol: true, rsi: true });
 
-  const asked = RANGES.find((r) => r === params.get('range'));
+  const asked = CHART_RANGES.find((r) => r === params.get('range'));
   const autoRange = useDefaultRange(inst, Boolean(asked));
   // While the default is still being chosen the chart waits, so it never flashes the wrong range.
   const deciding = !asked && autoRange === null;
@@ -83,7 +79,7 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
   const rangeLabels = list('stock.ranges');
   const typeLabels = list('stock.types');
   const indicatorLabels = list('stock.indL');
-  const rangeIndex = RANGES.indexOf(range);
+  const rangeIndex = CHART_RANGES.indexOf(range);
   const session = history?.session?.kind;
   const period = session === 'previous' ? t('stock.perPrev') : session === 'premarket' ? t('stock.perPre') : list('stock.per')[rangeIndex];
 
@@ -108,7 +104,7 @@ export function PriceChart({ inst, quote }: { inst: Listing; quote?: StockSummar
       <div className="tb">
         <Seg
           label={t('common.rgLabel')}
-          options={RANGES.map((r, i) => ({ value: r, label: rangeLabels[i] }))}
+          options={CHART_RANGES.map((r, i) => ({ value: r, label: rangeLabels[i] }))}
           value={range}
           onChange={(r) => setParam('range', r, autoRange ?? DEFAULT_RANGE)}
         />

@@ -20,7 +20,7 @@
   "shown": "{n} largest of {total} stocks.",
   "unsized": "{k} without a published figure left out.",
   "sharesAsOf": "Share counts as of {d}.",
-  "logos": "Logos: Wikimedia Commons, public domain; trademarks belong to their owners.",
+  "logos": "Logos: Wikimedia Commons, public domain or CC0; trademarks belong to their owners.",
   "open": "Open {sym}",
   "cValue": "Market value",
   "cTraded": "Traded today",
@@ -33,7 +33,7 @@
   "other": "Other",
   "aboutTitle": "Market heatmap",
   "aboutSizes": "Tile sizes: US market capitalisation as published by Nasdaq; for Europe and the Baltics, the number of shares (Nasdaq Nordic, Euronext and Nasdaq Baltic, as of {d}) times the latest price. Industries follow the ICB classification.",
-  "aboutLogos": "Company names and logos are trademarks of their owners and are shown only to identify the companies. Logos: Wikimedia Commons, public domain; they are served from this site and drawn in one colour. To have a logo removed, write to us.",
+  "aboutLogos": "Company names and logos are trademarks of their owners and are shown only to identify the companies. Logos: Wikimedia Commons, files marked public domain (too simple to be protected by copyright) or CC0; they are served from this site and drawn in one colour, or as they are on a small light badge where one colour would hide their lettering. To have a logo removed, write to us.",
   "credits": "List of logo files and their sources",
   "icb": {
     "1010": "Technology",

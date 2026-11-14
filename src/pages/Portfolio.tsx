@@ -38,13 +38,14 @@ export function Portfolio() {
   const stocks = [...market.stocks, ...(funds.funds ?? []).map(fundSummary)]
     .filter((s) => entries.some((e) => e.symbol === s.symbol))
     .map((s) => withHistory(s, histories.get(s.symbol)));
-  const loading = (market.loading && market.stocks.length === 0) || (funds.funds === null && entries.some((e) => isFundSymbol(e.symbol)));
+  const missing = entries.filter((e) => !stocks.some((s) => s.symbol === e.symbol)).map((e) => e.symbol);
+  // A listed stock missing so far may be in a market that is still loading.
+  const loading = (market.loading && missing.length > 0) || (funds.funds === null && entries.some((e) => isFundSymbol(e.symbol)));
   const error = market.error;
   const empty = entries.length === 0;
   const rates = fx.data;
   const valuation = rates && !loading && !error && !empty ? valuePortfolio(entries, stocks, rates, 0) : undefined;
   const valued = valuation && valuation.positions.length > 0;
-  const missing = entries.filter((e) => !stocks.some((s) => s.symbol === e.symbol)).map((e) => e.symbol);
 
   return (
     <main className="wrap page">

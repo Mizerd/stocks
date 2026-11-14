@@ -1,5 +1,6 @@
 {
   "leadK": "Dienos santrauka · atnaujinta {t}",
+  "pending": "dar įkeliama: {list}",
   "lead": "Pirmauja sektorius „{best}“, atsilieka „{worst}“: brangsta {adv} iš {n} stebimų akcijų.",
   "ixLabel": "Indeksas",
   "ranges": [

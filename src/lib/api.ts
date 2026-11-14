@@ -16,10 +16,16 @@ const FRESH_MS = 60_000;
 // An earlier answer this recent is shown at once while a new one loads.
 const SHOW_EARLIER_MS = 15 * 60_000;
 
+function request(path: string): Promise<Response> {
+  const early = window.early?.get(path);
+  window.early?.delete(path);
+  return early ?? fetch(path);
+}
+
 export function fetchJson<T>(path: string): Promise<T> {
   const hit = cache.get(path);
   if (hit && Date.now() - hit.time < FRESH_MS) return hit.promise as Promise<T>;
-  const promise = fetch(path).then(async (res) => {
+  const promise = request(path).then(async (res) => {
     if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? `HTTP ${res.status}`);
     return res.json() as Promise<T>;
   });
@@ -183,14 +189,17 @@ export function useHistories(symbols: string[], range: Range) {
   );
 }
 
-const detailPath = (symbol: string) => `/api/detail?symbol=${encodeURIComponent(symbol)}`;
+export const detailPath = (symbol: string) => `/api/detail?symbol=${encodeURIComponent(symbol)}`;
 
 export function useDetail(symbol: string) {
   return useApi<StockDetail>(detailPath(symbol), FRESH_MS);
 }
 
-// The stock chart's range when the page address names none.
+// The stock chart's ranges, and its range when the page address names none.
+export const CHART_RANGES: Range[] = ['1D', '5D', '1M', '6M', '1Y', '5Y'];
 export const DEFAULT_RANGE: Range = '1D';
+
+export const chartRange = (params: URLSearchParams): Range => CHART_RANGES.find((r) => r === params.get('range')) ?? DEFAULT_RANGE;
 
 // Loads what a stock page shows first, ahead of the page or alongside the universe list it waits for.
 export function prefetchStock(symbol: string, range = DEFAULT_RANGE): Promise<unknown> {

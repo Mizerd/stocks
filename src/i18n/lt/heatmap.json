@@ -20,7 +20,7 @@
   "shown": "{n} didžiausių iš {total} akcijų.",
   "unsized": "{k} be skelbiamo rodiklio neįtrauktos.",
   "sharesAsOf": "Akcijų skaičius – {d} duomenimis.",
-  "logos": "Logotipai: Wikimedia Commons, viešoji sritis; prekių ženklai priklauso jų savininkams.",
+  "logos": "Logotipai: Wikimedia Commons, viešoji sritis arba CC0; prekių ženklai priklauso jų savininkams.",
   "open": "Atidaryti {sym}",
   "cValue": "Rinkos vertė",
   "cTraded": "Apyvarta šiandien",
@@ -33,7 +33,7 @@
   "other": "Kita",
   "aboutTitle": "Rinkos šilumos žemėlapis",
   "aboutSizes": "Plytelių dydis: JAV – Nasdaq skelbiama rinkos kapitalizacija; Europoje ir Baltijos šalyse – akcijų skaičius (Nasdaq Nordic, Euronext ir Nasdaq Baltic duomenimis, {d}) padaugintas iš naujausios kainos. Pramonės šakos – pagal ICB klasifikaciją.",
-  "aboutLogos": "Įmonių pavadinimai ir logotipai yra jų savininkų prekių ženklai ir rodomi tik įmonėms atpažinti. Logotipai: Wikimedia Commons, viešoji sritis; jie pateikiami iš šios svetainės ir piešiami viena spalva. Norėdami, kad logotipas būtų pašalintas, parašykite mums.",
+  "aboutLogos": "Įmonių pavadinimai ir logotipai yra jų savininkų prekių ženklai ir rodomi tik įmonėms atpažinti. Logotipai: Wikimedia Commons, failai, pažymėti kaip viešosios srities (per paprasti, kad juos saugotų autorių teisės) arba CC0; jie pateikiami iš šios svetainės ir piešiami viena spalva arba savo spalvomis ant mažo šviesaus ženklelio, kai viena spalva paslėptų jų užrašą. Norėdami, kad logotipas būtų pašalintas, parašykite mums.",
   "credits": "Logotipų failų ir jų šaltinių sąrašas",
   "icb": {
     "1010": "Technologijos",

@@ -1,5 +1,5 @@
-import { EXCHANGES, isCurrentQuote, sessionState } from '../../shared/exchanges';
-import type { FxRates, Listing, Sector, StockSummary } from '../../shared/types';
+import { EXCHANGES, isCurrentQuote, latestSession, sessionState } from '../../shared/exchanges';
+import type { ExchangeId, FxRates, Listing, Sector, StockSummary } from '../../shared/types';
 import { toEur } from './api';
 
 // The overview groups consumer staples with consumer discretionary, as the design does.
@@ -46,8 +46,14 @@ export const anyMarketOpen = (now: Date) => Object.values(EXCHANGES).some((ex) =
 
 // Stocks quoted in their exchange's latest session. Others carry an earlier session's close
 // (the US list outside its live top), which must not be mixed into today's moves.
-export const currentStocks = (stocks: StockSummary[], now: Date) =>
-  stocks.filter((s) => isCurrentQuote(EXCHANGES[s.exchange], s.time, now));
+// Each exchange's latest session is worked out once, as that takes several time zone conversions.
+export function currentStocks(stocks: StockSummary[], now: Date): StockSummary[] {
+  const opens = new Map<ExchangeId, number>();
+  return stocks.filter((s) => {
+    if (!opens.has(s.exchange)) opens.set(s.exchange, latestSession(EXCHANGES[s.exchange], now).opens.getTime());
+    return Date.parse(s.time) >= opens.get(s.exchange)!;
+  });
+}
 
 // Today's move, or null when the quote is from an earlier session.
 export const dayMove = (stock: StockSummary, now: Date) =>

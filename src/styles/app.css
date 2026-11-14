@@ -327,7 +327,11 @@
 /* --n: the symbol's length, so long tickers shrink to the tile's width. */
 .hm-sym{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(8px,min(20cqmin,140cqw / var(--n,4)),26px);font-weight:600}
 .hm-chg{max-width:100%;overflow:hidden;white-space:nowrap;font-size:clamp(9px,14cqmin,18px)}
-.hm-logo{display:block;flex:none;width:70%;height:clamp(14px,16cqmin,30px);margin-bottom:.3em;background:currentColor;-webkit-mask:var(--logo) center/contain no-repeat;mask:var(--logo) center/contain no-repeat}
+/* Logos: --r is the drawing's width over its height. The height grows as the logo gets squarer, so a wide wordmark
+   and a square mark cover a similar area; very wide ones are held to the tile's width by the mask's contain. */
+.hm-logo{--h:clamp(14px,16cqmin,30px);display:block;flex:none;max-width:78%;height:var(--h);height:calc(var(--h) * clamp(.62, sqrt(2.6 / var(--r,3)), 1.4));aspect-ratio:var(--r,3);margin-bottom:.3em;background:currentColor;-webkit-mask:var(--logo) center/contain no-repeat;mask:var(--logo) center/contain no-repeat}
+/* Light lettering on a filled shape: the drawing in its own colours on a small light badge, the same in every theme. */
+.hm-logo.badge{box-sizing:content-box;height:calc(var(--h) * .8);height:calc(var(--h) * .8 * clamp(.62, sqrt(2.6 / var(--r,3)), 1.4));padding:2px 3px;border-radius:3px;background:#fff var(--logo) center/contain no-repeat;background-origin:content-box;box-shadow:0 0 0 1px rgb(0 0 0 / .1);-webkit-mask:none;mask:none}
 
 /* Colour steps: fixed bins of the day's move, mixed in sRGB (hue-based spaces drift to purple in Safari). */
 .hm-flat,.hm-none{background:var(--hmflat);color:var(--ink)}
@@ -359,7 +363,8 @@
 .hm-card{position:absolute;top:0;left:0;z-index:3;display:flex;flex-direction:column;gap:7px;padding:12px 14px;border:1px solid var(--hair);border-radius:10px;background:var(--card);color:var(--ink);font-size:12.5px;box-shadow:0 12px 32px color-mix(in oklab,var(--ink) 18%,transparent);pointer-events:none}
 .hm-card.pinned{pointer-events:auto}
 .hm-card p{margin:0}
-.hm-card .hm-logo{width:120px;height:22px;margin:0 0 6px;-webkit-mask-position:left center;mask-position:left center}
+.hm-card .hm-logo{--h:18px;max-width:150px;margin:0 0 6px;-webkit-mask-position:left center;mask-position:left center}
+.hm-card .hm-logo.badge{background-position:left center}
 .hm-card-name{font-size:14px;font-weight:600;line-height:1.3}
 .hm-card-sub{font-size:12px;color:var(--ink3)}
 .hm-card-price{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px;font-weight:600}

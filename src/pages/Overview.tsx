@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { INDICES, STOCKS } from '../../shared/catalog';
-import type { StockSummary } from '../../shared/types';
+import type { Market, StockSummary } from '../../shared/types';
 import { Barometer } from '../components/overview/Barometer';
 import { Heatmap } from '../components/overview/Heatmap';
 import { Highlights } from '../components/overview/Highlights';
@@ -21,7 +21,8 @@ const HIGHLIGHTS = ['AAPL', 'MSFT', 'NVDA', 'ASML.AS', 'NOVO-B.CO', 'MC.PA', 'IG
 // The tape runs through the hand-checked catalogue rather than the whole universe.
 const TAPE = new Set(STOCKS.map((s) => s.symbol));
 
-function Brief({ stocks, sectors }: { stocks: StockSummary[]; sectors: SectorMove[] }) {
+// While some markets are still loading, the brief counts the ones in and says which are not.
+function Brief({ stocks, sectors, pending }: { stocks: StockSummary[]; sectors: SectorMove[]; pending: Market[] }) {
   const { t } = useT();
   const f = useFormat();
   const byMove = [...sectors].sort((a, b) => b.changePct - a.changePct);
@@ -35,7 +36,10 @@ function Brief({ stocks, sectors }: { stocks: StockSummary[]; sectors: SectorMov
       : t('overview.leadFlat', counts);
   return (
     <>
-      <p className="lbl" style={{ margin: '0 0 10px' }}>{t('overview.leadK', { t: f.stamp(latest) })}</p>
+      <p className="lbl" style={{ margin: '0 0 10px' }}>
+        {t('overview.leadK', { t: f.stamp(latest) })}
+        {pending.length > 0 && ` · ${t('overview.pending', { list: pending.map(marketName).join('; ') })}`}
+      </p>
       <h1 className="ser brief">
         {headline}
       </h1>
@@ -46,21 +50,20 @@ function Brief({ stocks, sectors }: { stocks: StockSummary[]; sectors: SectorMov
 export function Overview() {
   const { t, lang } = useT();
   usePageTitle(t('common.n1'));
-  const { stocks, failed, loading, error } = useMarket();
+  const { stocks, failed, pending, error } = useMarket();
   const listed = useMyList().entries.map((e) => e.symbol);
   // Sparklines need each stock's own summary; the visitor's list shares the requests with the highlights.
   const histories = useSummaries([...new Set([...listed, ...HIGHLIGHTS])]);
-  const { indices } = useIndices();
+  const { indices, loading: indicesLoading } = useIndices();
   const fx = useFx();
   const news = useNews(lang);
 
-  // The index chart shows once every market's quotes are in; its data loads meanwhile.
+  // The index chart waits for the index quotes; its data loads meanwhile.
   useEffect(() => {
     fetchJson(historyPath(INDICES[0].symbol, '1D')).catch(() => undefined);
   }, []);
 
-  if (loading) return <main className="wrap page"><Loading height={420} /></main>;
-  if (error || stocks.length === 0) return <main className="wrap page"><ErrorNotice height={420} /></main>;
+  if (error) return <main className="wrap page"><ErrorNotice height={420} /></main>;
 
   // Today's picture uses only quotes from each exchange's latest session.
   const today = currentStocks(stocks, new Date());
@@ -82,12 +85,18 @@ export function Overview() {
         {mine.length > 0 && <Highlights title={t('common.n3')} more={{ to: '/portfolio', label: t('overview.editList') }} stocks={mine} />}
         <section className="ov-top">
           <div style={{ minWidth: 0 }}>
-            {today.length > 0 && <Brief stocks={today} sectors={sectors} />}
-            {indices.length > 0 && <IndexPanel indices={indices} />}
+            {today.length > 0 ? <Brief stocks={today} sectors={sectors} pending={pending} /> : pending.length > 0 && <Loading height={90} />}
+            {indices.length > 0 ? <IndexPanel indices={indices} /> : indicesLoading && <div className="pnl"><Loading height={360} /></div>}
           </div>
           <aside className="side">
-            <Barometer value={barometer(today)} count={today.length} />
-            <Movers stocks={today} fx={fx.data} />
+            {today.length === 0 && pending.length > 0 ? (
+              <div className="pnl"><Loading height={300} /></div>
+            ) : (
+              <>
+                <Barometer value={barometer(today)} count={today.length} />
+                <Movers stocks={today} fx={fx.data} />
+              </>
+            )}
           </aside>
         </section>
         {failed.length > 0 && (
@@ -95,8 +104,8 @@ export function Overview() {
             {t('common.partial', { list: failed.map(marketName).join('; ') })}
           </p>
         )}
-        <Highlights title={t('overview.watch')} more={{ to: '/screener', label: t('overview.manage') }} stocks={rows(HIGHLIGHTS)} />
-        <Heatmap stocks={stocks} fx={fx.data} />
+        <Highlights title={t('overview.watch')} more={{ to: '/screener', label: t('overview.manage') }} stocks={rows(HIGHLIGHTS)} loading={pending.length > 0} />
+        <Heatmap stocks={stocks} pending={pending} fx={fx.data} />
         <News items={news.data ?? []} />
       </main>
     </>

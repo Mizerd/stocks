@@ -4,8 +4,11 @@ export interface HeatmapStockMeta {
   industry: string;
   // Shares of this line (Nordic, Euronext, Baltic); US sizes come from the quote's market cap instead.
   shares?: number;
-  // File id in /logos/<id>.svg.
+  // File id in /logos/<id>.svg, the logo's width over its height, and "badge" for a logo shown in its own colours
+  // on a light badge (light lettering on a filled shape, which a one-colour mask would fill in).
   logo?: string;
+  logoRatio?: number;
+  logoMode?: 'badge';
   // The same company is already shown through another line.
   secondary?: true;
 }

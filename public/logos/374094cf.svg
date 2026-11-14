@@ -1,9 +1,9 @@
-<svg viewBox="0 0 250 62.096"
+<svg viewBox="-5.1 -4.79 260.2 72.39" width="260.2" height="72.39"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
    version="1.0"
-   width="250"
-   height="62.096">
+  
+  >
   <path
      d="M 12.45,0 L 12.45,15.13 L 15.14,15.13 L 15.14,0 L 12.45,0 z M 16.65,3.59 L 16.65,15.09 L 28.77,15.09 L 28.77,45.18 L 39.8,45.18 L 39.8,3.59 L 16.65,3.59 z M 0,3.64 L 0,45.23 L 23.11,45.23 L 23.11,33.73 L 10.99,33.73 L 10.99,3.64 L 0,3.64 z M 24.62,33.68 L 24.62,48.86 L 27.3,48.86 L 27.3,33.68 L 24.62,33.68 z"
      style="fill:#19171a;fill-opacity:1;fill-rule:nonzero;stroke:none" />

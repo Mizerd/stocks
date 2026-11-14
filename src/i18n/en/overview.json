@@ -1,5 +1,6 @@
 {
   "leadK": "Daily brief · updated {t}",
+  "pending": "still loading: {list}",
   "lead": "{best} out in front, {worst} at the back: {adv} of {n} tracked stocks are higher.",
   "ixLabel": "Index",
   "ranges": [

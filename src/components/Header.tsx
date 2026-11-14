@@ -4,6 +4,7 @@ import { EXCHANGES, tradingDayOfYear } from '../../shared/exchanges';
 import { useT } from '../i18n';
 import { useFormat } from '../lib/format';
 import { useNow } from '../lib/useNow';
+import { loadPortfolio, loadScreener, loadStock } from '../pages/lazy';
 import { useSettings } from '../settings';
 import { Logo } from './Logo';
 import { Search } from './Search';
@@ -132,9 +133,9 @@ export function Header() {
   const [searching, setSearching] = useState(false);
   const tabs = [
     { to: '/', label: t('common.n1') },
-    { to: `/stock/${lastStock()}`, label: t('common.n2') },
-    { to: '/portfolio', label: t('common.n3') },
-    { to: '/screener', label: t('common.n4') },
+    { to: `/stock/${lastStock()}`, label: t('common.n2'), load: loadStock },
+    { to: '/portfolio', label: t('common.n3'), load: loadPortfolio },
+    { to: '/screener', label: t('common.n4'), load: loadScreener },
   ];
 
   return (
@@ -159,6 +160,7 @@ export function Header() {
                 end={i === 0}
                 className={({ isActive }) => ((i === 1 ? onStock : isActive) ? 'on' : '')}
                 aria-current={i === 1 && onStock ? 'page' : undefined}
+                onPointerEnter={tab.load}
               >
                 <svg className="tab-ic" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">{ICONS[i]}</svg>
                 <span className="tab-full">{tab.label}</span>

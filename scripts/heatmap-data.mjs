@@ -192,8 +192,9 @@ for (const [name, source] of Object.entries(SOURCES)) {
   }
   read++;
   for (const [symbol, entry] of Object.entries(result.stocks)) {
-    const logo = previous?.stocks[symbol]?.logo;
-    stocks[symbol] = logo ? { ...entry, logo } : entry;
+    // The logo fields belong to scripts/heatmap-logos.mjs and are kept as they are.
+    const { logo, logoRatio, logoMode } = previous?.stocks[symbol] ?? {};
+    stocks[symbol] = logo ? { ...entry, logo, ...(logoRatio ? { logoRatio } : {}), ...(logoMode ? { logoMode } : {}) } : entry;
   }
   Object.assign(ids, result.ids);
   if (name !== 'us') sharesAsOf[name] = result.day ?? today;

@@ -18,45 +18,48 @@ interface MarketList<T> {
 }
 
 export interface MarketState {
-  listings: Listing[] | undefined;
   stocks: StockSummary[];
-  // Markets whose quotes could not be loaded.
+  // Markets whose list or quotes could not be loaded.
   failed: Market[];
+  // Markets whose list or quotes have not arrived yet.
+  pending: Market[];
+  // Some market is still pending.
   loading: boolean;
   error: boolean;
 }
 
-let listings: Promise<Listing[]> | undefined;
+// Each market's stock list, once loaded. The universe changes rarely, so a list is loaded once per visit.
+const lists = new Map<Market, Listing[]>();
+const listRequests = new Map<Market, Promise<Listing[]>>();
 // Markets whose stock list did not load; the others still show, and the next refresh tries again.
 const missingLists = new Set<Market>();
 
 function loadMarketList(market: Market): Promise<Listing[]> {
-  return fetchJson<MarketList<Listing>>(`/api/universe?market=${market}`).then(
-    (r) => {
-      missingLists.delete(market);
-      return r.items;
-    },
-    () => {
-      missingLists.add(market);
-      return [];
-    },
-  );
+  let request = listRequests.get(market);
+  if (!request) {
+    request = fetchJson<MarketList<Listing>>(`/api/universe?market=${market}`).then(
+      (r) => {
+        missingLists.delete(market);
+        lists.set(market, r.items);
+        return r.items;
+      },
+      () => {
+        missingLists.add(market);
+        listRequests.delete(market);
+        return [];
+      },
+    );
+    listRequests.set(market, request);
+  }
+  return request;
 }
 
-// The universe changes rarely, so it is loaded once per visit. Funds are part of it; a fund list that
-// fails to load leaves the stocks searchable.
+// Every stock and fund. Funds are part of it; a fund list that fails to load leaves the stocks searchable.
 export function loadListings(): Promise<Listing[]> {
-  listings ??= Promise.all([...MARKETS.map(loadMarketList), loadFunds().catch(() => [] as Listing[])]).then((parts) => {
+  return Promise.all([...MARKETS.map(loadMarketList), loadFunds().catch(() => [] as Listing[])]).then((parts) => {
     if (missingLists.size === MARKETS.length) throw new Error('No market list loaded');
     return parts.flat();
   });
-  listings.then(
-    () => {
-      if (missingLists.size > 0) listings = undefined;
-    },
-    () => (listings = undefined),
-  );
-  return listings;
 }
 
 export function quoteToSummary(listing: Listing, q: BulkQuote): StockSummary {
@@ -80,34 +83,32 @@ export function quoteInterval(market: Market): number {
 // A market that failed is asked again soon rather than at its normal pace.
 const RETRY_MS = 20_000;
 
-let state: MarketState = { listings: undefined, stocks: [], failed: [], loading: true, error: false };
+let state: MarketState = { stocks: [], failed: [], pending: [...MARKETS], loading: true, error: false };
 const quotes = new Map<Market, { at: number; items: BulkQuote[] }>();
 const failed = new Set<Market>();
 const timers = new Map<Market, ReturnType<typeof setTimeout>>();
 const listeners = new Set<() => void>();
 
-function publish(loadedListings: Listing[] | undefined, listingError = false) {
-  const bySymbol = new Map(MARKETS.flatMap((m) => quotes.get(m)?.items ?? []).map((q) => [q.symbol, q]));
-  const stocks = (loadedListings ?? []).flatMap((l) => {
-    const q = bySymbol.get(l.symbol);
-    return q ? [quoteToSummary(l, q)] : [];
-  });
-  const settled = MARKETS.every((m) => quotes.has(m) || failed.has(m));
-  state = {
-    listings: loadedListings,
-    stocks,
-    failed: MARKETS.filter((m) => failed.has(m) || missingLists.has(m)),
-    loading: !listingError && (!loadedListings || !settled),
-    error: listingError || (settled && stocks.length === 0),
+// Markets that failed, and those still waiting for their list or quotes.
+export function marketProgress(listed: Market[], quoted: Market[], broken: Market[]): { failed: Market[]; pending: Market[] } {
+  return {
+    failed: MARKETS.filter((m) => broken.includes(m)),
+    pending: MARKETS.filter((m) => !broken.includes(m) && !(listed.includes(m) && quoted.includes(m))),
   };
-  for (const listener of listeners) listener();
 }
 
-function refresh() {
-  return loadListings().then(
-    (all) => publish(all),
-    () => publish(undefined, true),
-  );
+// Each market shows as soon as its own list and quotes are in.
+function publish() {
+  const stocks = MARKETS.flatMap((m) => {
+    const bySymbol = new Map(quotes.get(m)?.items.map((q) => [q.symbol, q]));
+    return (lists.get(m) ?? []).flatMap((l) => {
+      const q = bySymbol.get(l.symbol);
+      return q ? [quoteToSummary(l, q)] : [];
+    });
+  });
+  const progress = marketProgress([...lists.keys()], [...quotes.keys()], [...failed, ...missingLists]);
+  state = { stocks, ...progress, loading: progress.pending.length > 0, error: progress.pending.length === 0 && stocks.length === 0 };
+  for (const listener of listeners) listener();
 }
 
 function poll(market: Market) {
@@ -116,17 +117,17 @@ function poll(market: Market) {
     timers.delete(market);
     return;
   }
-  fetchJson<MarketList<BulkQuote>>(`/api/quotes?market=${market}`)
-    .then(
-      (list) => {
-        quotes.set(market, { at: Date.now(), items: list.items });
-        // Part of the market did not answer: its stocks are missing until it does.
-        if (list.failed.length > 0) failed.add(market);
-        else failed.delete(market);
-      },
-      () => failed.add(market),
-    )
-    .then(refresh)
+  const quoted = fetchJson<MarketList<BulkQuote>>(`/api/quotes?market=${market}`).then(
+    (list) => {
+      quotes.set(market, { at: Date.now(), items: list.items });
+      // Part of the market did not answer: its stocks are missing until it does.
+      if (list.failed.length > 0) failed.add(market);
+      else failed.delete(market);
+    },
+    () => failed.add(market),
+  );
+  Promise.all([loadMarketList(market), quoted])
+    .then(publish)
     .finally(() => {
       if (listeners.size === 0 || document.visibilityState === 'hidden') {
         timers.delete(market);

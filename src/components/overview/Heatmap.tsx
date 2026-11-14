@@ -1,11 +1,11 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { HeatmapMeta } from '../../../shared/heatmap';
-import type { FxRates, Region, StockSummary } from '../../../shared/types';
+import type { FxRates, Market, Region, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { buildBoard, layoutBoard, STACK_BELOW, useHeatmapMeta, useUsMore, type SizeBy } from '../../lib/heatmap';
+import { buildBoard, layoutBoard, regionPending, STACK_BELOW, useHeatmapMeta, useUsMore, type SizeBy } from '../../lib/heatmap';
 import { useFormat } from '../../lib/format';
 import { currentStocks } from '../../lib/market';
-import { quoteToSummary, useListings } from '../../lib/universe';
+import { quoteToSummary } from '../../lib/universe';
 import { Loading, PanelTitle, Seg } from '../ui';
 import { Board } from './heatmap/Board';
 import { Legend } from './heatmap/Legend';
@@ -57,8 +57,8 @@ function useInView(ref: RefObject<HTMLElement | null>) {
   return inView;
 }
 
-// stocks: every stock with its latest quote, today's or not.
-export function Heatmap({ stocks, fx }: { stocks: StockSummary[]; fx: FxRates | undefined }) {
+// stocks: every stock with its latest quote, today's or not; pending: markets still loading.
+export function Heatmap({ stocks, pending, fx }: { stocks: StockSummary[]; pending: Market[]; fx: FxRates | undefined }) {
   const [region, setRegion] = useState(() => remembered<Region>('heatmapRegion', REGIONS, 'US'));
   const [sizeBy, setSizeBy] = useState(() => remembered<SizeBy>('heatmapSize', SIZES, 'cap'));
   const [expanded, setExpanded] = useState(false);
@@ -66,16 +66,14 @@ export function Heatmap({ stocks, fx }: { stocks: StockSummary[]; fx: FxRates | 
   const expandButton = useRef<HTMLButtonElement>(null);
   const inView = useInView(section);
   const meta = useHeatmapMeta();
-  const listings = useListings();
   const more = useUsMore(region === 'US' && (inView || expanded));
 
   // US ranks 201 to 500 come live from their own request; the main list holds their previous close.
   const current = useMemo(() => {
-    const bySymbol = new Map(listings?.map((l) => [l.symbol, l]));
-    const live = new Map(more.flatMap((q) => (bySymbol.has(q.symbol) ? [[q.symbol, quoteToSummary(bySymbol.get(q.symbol)!, q)]] : [])));
-    return currentStocks(stocks.map((s) => live.get(s.symbol) ?? s), new Date());
-  }, [stocks, more, listings]);
-  const available = REGIONS.filter((r) => current.some((s) => s.region === r));
+    const live = new Map(more.map((q) => [q.symbol, q]));
+    return currentStocks(stocks.map((s) => (live.has(s.symbol) ? quoteToSummary(s, live.get(s.symbol)!) : s)), new Date());
+  }, [stocks, more]);
+  const available = REGIONS.filter((r) => regionPending(r, pending) || current.some((s) => s.region === r));
   const shown = available.includes(region) ? region : available[0];
 
   useEffect(() => {
@@ -92,6 +90,7 @@ export function Heatmap({ stocks, fx }: { stocks: StockSummary[]; fx: FxRates | 
   const panel = (inOverlay: boolean) => (
     <Panel
       stocks={current}
+      loading={regionPending(shown, pending)}
       meta={meta}
       fx={fx}
       region={shown}
@@ -125,6 +124,8 @@ export function Heatmap({ stocks, fx }: { stocks: StockSummary[]; fx: FxRates | 
 
 interface PanelProps {
   stocks: StockSummary[];
+  // The region's stocks are still on their way.
+  loading: boolean;
   meta: HeatmapMeta | null | undefined;
   fx: FxRates | undefined;
   region: Region;
@@ -139,7 +140,7 @@ interface PanelProps {
   expandButton?: RefObject<HTMLButtonElement | null>;
 }
 
-function Panel({ stocks, meta, fx, region, available, sizeBy, onRegion, onSize, expanded, open, onExpand, expandButton }: PanelProps) {
+function Panel({ stocks, loading, meta, fx, region, available, sizeBy, onRegion, onSize, expanded, open, onExpand, expandButton }: PanelProps) {
   const { t } = useT();
   const f = useFormat();
   const noteId = useId();
@@ -149,7 +150,7 @@ function Panel({ stocks, meta, fx, region, available, sizeBy, onRegion, onSize, 
   const limit = stacked && !expanded ? PHONE_LIMIT : LIMIT[region];
   // Without share counts, Europe and the Baltics fall back to the value traded.
   const size = sizeBy === 'cap' && region !== 'US' && meta === null ? 'traded' : sizeBy;
-  const ready = meta !== undefined && (fx !== undefined || size === 'equal');
+  const ready = !loading && meta !== undefined && (fx !== undefined || size === 'equal');
 
   const board = useMemo(
     () => buildBoard(stocks.filter((s) => s.region === region), meta ?? null, fx, size, limit),

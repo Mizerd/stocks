@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HeatmapMeta } from '../shared/heatmap';
 import type { FxRates, Region, StockSummary } from '../shared/types';
-import { buildBoard, colourStep, layoutBoard, type Board } from '../src/lib/heatmap';
+import { buildBoard, colourStep, layoutBoard, regionPending, type Board } from '../src/lib/heatmap';
 
 const fx: FxRates = { date: '2026-11-13', perEur: { EUR: 1, USD: 1.25, SEK: 10 } };
 
@@ -133,5 +133,14 @@ describe('heatmap layout', () => {
     expect(layoutBoard(board, 0, true)).toEqual({ sectors: [], industries: [], tiles: [], height: 0 });
     expect(layoutBoard(board, 1440, false).height).toBe(720);
     expect(layoutBoard(board, 600, false).height).toBe(420);
+  });
+});
+
+describe('heatmap regions while markets load', () => {
+  it('waits for every market of the region', () => {
+    expect(regionPending('EU', ['euronext'])).toBe(true);
+    expect(regionPending('EU', ['us', 'baltic'])).toBe(false);
+    expect(regionPending('US', ['us'])).toBe(true);
+    expect(regionPending('BAL', [])).toBe(false);
   });
 });
