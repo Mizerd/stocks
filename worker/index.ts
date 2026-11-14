@@ -7,7 +7,7 @@ import { detail, history, PROVIDERS, summary, upcoming } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
 import { about } from './providers/wikipedia';
-import { marketData, resolveSymbol, usMoreQuotes } from './universe';
+import { listChecks, marketData, resolveSymbol, usMoreQuotes } from './universe';
 
 const RANGES: Range[] = ['1D', '5D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 // Keeps one request comfortably under the Workers free-plan limit of 50 subrequests.
@@ -108,7 +108,8 @@ async function status(): Promise<Response> {
     timed(id, async () => {
       if (!(await fundEntries()).items.some((e) => e.inst.provider === id)) throw new Error('No funds listed');
     })));
-  return json({ checkedAt: new Date().toISOString(), providers: await Promise.all(checks) });
+  const [providers, lists] = await Promise.all([Promise.all(checks), listChecks()]);
+  return json({ checkedAt: new Date().toISOString(), providers, lists });
 }
 
 async function route(url: URL): Promise<Response> {

@@ -1,6 +1,6 @@
 import type { Candle, ExchangeId, ExtendedQuote, Instrument, QuarterFigure, Quote, Upcoming } from '../../shared/types';
 import { US_PREMARKET_OPEN, zonedParts, zonedTime } from '../../shared/exchanges';
-import { cachedJson, daysAgo, fetchText, isoDay, LIVE_GRACE, num, shared, UpstreamError } from '../http';
+import { cachedJson, daysAgo, fetchText, isoDay, num, shared, UpstreamError } from '../http';
 import { NO_UPCOMING, type DetailExtras, type Intraday, type Provider } from './provider';
 
 const API = 'https://api.nasdaq.com/api';
@@ -303,10 +303,12 @@ export function usScreener(exchange: ExchangeId): Promise<ScreenerRow[]> {
     const market = exchange === 'XNAS' ? 'nasdaq' : 'nyse';
     // Large and mega caps only: several hundred rows instead of seven thousand.
     const url = `${API}/screener/stocks?tableonly=true&download=true&limit=5000&marketcap=mega|large&exchange=${market}`;
-    const rows = parseUsScreener(JSON.parse(await fetchText(url)));
+    // The download is a few hundred kilobytes and can be slow far from the US.
+    const rows = parseUsScreener(JSON.parse(await fetchText(url, 'application/json', { timeoutMs: 15000 })));
     if (rows.length === 0) throw new UpstreamError(`Nasdaq screener returned no ${market} shares`);
     return rows;
-  }, LIVE_GRACE);
+    // If Nasdaq stops answering, the last list stands in for six hours; the largest shares still get live quotes.
+  }, 6 * 3600);
 }
 
 export interface WatchlistRow {

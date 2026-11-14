@@ -254,7 +254,8 @@ interface MarketData {
 }
 
 // Parsed once a minute per isolate: the quotes endpoint and symbol lookups share it.
-const loadSource = (source: Source) => memo(`source:${source.id}`, 60, () => source.load());
+// For an hour after, a warm data centre keeps serving the last list if the source has a hiccup.
+const loadSource = (source: Source) => memo(`source:${source.id}`, 60, () => source.load(), 3600);
 
 export async function marketData(market: Market): Promise<MarketData> {
   const sources = SOURCES.filter((s) => s.market === market);
@@ -275,6 +276,19 @@ export async function marketData(market: Market): Promise<MarketData> {
     if (MARKET_EXCHANGES[market].includes(inst.exchange) && !seen.has(inst.symbol)) items.push({ inst, quote: null });
   }
   return { items, failed: sources.filter((_, i) => results[i].status === 'rejected').map((s) => s.id) };
+}
+
+// Whether each market list loads, with the reason when it does not: for /api/status.
+export async function listChecks(): Promise<{ list: string; ok: boolean; ms: number; error?: string }[]> {
+  return Promise.all(SOURCES.map(async (source) => {
+    const started = Date.now();
+    try {
+      await loadSource(source);
+      return { list: source.id, ok: true, ms: Date.now() - started };
+    } catch (err) {
+      return { list: source.id, ok: false, ms: Date.now() - started, error: String((err as Error).message) };
+    }
+  }));
 }
 
 const suffixOf = (symbol: string) => symbol.match(/\.[A-Z]{2}$/)?.[0] ?? '';
