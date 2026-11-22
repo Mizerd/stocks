@@ -608,13 +608,19 @@ describe('US live quotes for the heatmap', () => {
       })) }));
     };
     try {
-      const { items, failed } = await usMoreQuotes();
+      const { items, failed } = await usMoreQuotes('2');
       expect(failed).toEqual([]);
       expect(items).toHaveLength(300);
       expect(asked).toHaveLength(300);
       // The catalogue's US stocks are not in this screener, so rank 201 is the 201st largest.
       expect(items[0]).toMatchObject({ symbol: ticker(200), price: 11, changePct: 10, marketCap: 800e9, freshness: 'realtime', time: '2026-11-13T21:00:00.000Z' });
       expect(items[299].symbol).toBe(ticker(499));
+      asked.length = 0;
+      // Part 3 is everything after rank 500: here the last 100 plus the NYSE share.
+      const rest = await usMoreQuotes('3');
+      expect(rest.items).toHaveLength(101);
+      expect(asked).toHaveLength(101);
+      expect(rest.items[0].symbol).toBe(ticker(500));
     } finally {
       globalThis.fetch = realFetch;
     }

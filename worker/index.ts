@@ -7,7 +7,7 @@ import { detail, history, PROVIDERS, summary, upcoming } from './market';
 import { fxRates } from './providers/ecb';
 import { balticNews } from './providers/news';
 import { about } from './providers/wikipedia';
-import { listChecks, marketData, resolveSymbol, usMoreQuotes } from './universe';
+import { isUsPart, listChecks, marketData, resolveSymbol, usMoreQuotes } from './universe';
 
 const RANGES: Range[] = ['1D', '5D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 // Keeps one request comfortably under the Workers free-plan limit of 50 subrequests.
@@ -55,8 +55,8 @@ function quotesMaxAge(market: Market): number {
 }
 
 async function quotes(market: Market, part: string | null): Promise<Response> {
-  if (part !== null && !(part === '2' && market === 'us')) throw new HttpError(400, 'Unknown part');
-  const body = part === '2' ? await usMoreQuotes() : await marketData(market).then(({ items, failed }) => ({
+  if (part !== null && !(market === 'us' && isUsPart(part))) throw new HttpError(400, 'Unknown part');
+  const body = part !== null ? await usMoreQuotes(part) : await marketData(market).then(({ items, failed }) => ({
     items: items.flatMap((item) => (item.quote ? [item.quote] : [])), failed,
   }));
   return body.failed.length ? json(body, 200, 30) : json(body, 200, quotesMaxAge(market), LIVE_GRACE);

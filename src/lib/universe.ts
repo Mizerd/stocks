@@ -86,6 +86,9 @@ const RETRY_MS = 20_000;
 let state: MarketState = { stocks: [], failed: [], pending: [...MARKETS], loading: true, error: false };
 const quotes = new Map<Market, { at: number; items: BulkQuote[] }>();
 const failed = new Set<Market>();
+// Live quotes of the US shares after the 200 largest, which the main list only has from its day-old bulk copy.
+const US_PARTS = ['2', '3'];
+const usLive = new Map<string, BulkQuote[]>();
 const timers = new Map<Market, ReturnType<typeof setTimeout>>();
 const listeners = new Set<() => void>();
 
@@ -100,7 +103,8 @@ export function marketProgress(listed: Market[], quoted: Market[], broken: Marke
 // Each market shows as soon as its own list and quotes are in.
 function publish() {
   const stocks = MARKETS.flatMap((m) => {
-    const bySymbol = new Map(quotes.get(m)?.items.map((q) => [q.symbol, q]));
+    const items = [...(quotes.get(m)?.items ?? []), ...(m === 'us' ? [...usLive.values()].flat() : [])];
+    const bySymbol = new Map(items.map((q) => [q.symbol, q]));
     return (lists.get(m) ?? []).flatMap((l) => {
       const q = bySymbol.get(l.symbol);
       return q ? [quoteToSummary(l, q)] : [];
@@ -126,6 +130,15 @@ function poll(market: Market) {
     },
     () => failed.add(market),
   );
+  // They show once in; a part that fails keeps the bulk copy's prices, dated by their own time.
+  if (market === 'us') {
+    for (const part of US_PARTS) {
+      fetchJson<MarketList<BulkQuote>>(`/api/quotes?market=us&part=${part}`).then((list) => {
+        usLive.set(part, list.items);
+        if (lists.has('us')) publish();
+      }, () => undefined);
+    }
+  }
   Promise.all([loadMarketList(market), quoted])
     .then(publish)
     .finally(() => {

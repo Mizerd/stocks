@@ -2,10 +2,9 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefO
 import type { HeatmapMeta } from '../../../shared/heatmap';
 import type { FxRates, Market, Region, StockSummary } from '../../../shared/types';
 import { useT } from '../../i18n';
-import { buildBoard, layoutBoard, regionFailed, regionPending, STACK_BELOW, useHeatmapMeta, useUsMore, type SizeBy } from '../../lib/heatmap';
+import { buildBoard, layoutBoard, regionFailed, regionPending, STACK_BELOW, useHeatmapMeta, type SizeBy } from '../../lib/heatmap';
 import { useFormat } from '../../lib/format';
 import { currentStocks } from '../../lib/market';
-import { quoteToSummary } from '../../lib/universe';
 import { Loading, Notice, PanelTitle, Seg } from '../ui';
 import { Board } from './heatmap/Board';
 import { Legend } from './heatmap/Legend';
@@ -45,40 +44,22 @@ function useWidth() {
   return [ref, width] as const;
 }
 
-// Whether the element is on screen (or about to be).
-function useInView(ref: RefObject<HTMLElement | null>) {
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    if (!ref.current) return;
-    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { rootMargin: '300px 0px' });
-    observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [ref]);
-  return inView;
-}
-
 // stocks: every stock with its latest quote, today's or not; pending: markets still loading.
 export function Heatmap({ stocks, pending, failed, fx }: { stocks: StockSummary[]; pending: Market[]; failed: Market[]; fx: FxRates | undefined }) {
   const [region, setRegion] = useState(() => remembered<Region>('heatmapRegion', REGIONS, 'US'));
   const [sizeBy, setSizeBy] = useState(() => remembered<SizeBy>('heatmapSize', SIZES, 'cap'));
   const [expanded, setExpanded] = useState(false);
-  const section = useRef<HTMLElement>(null);
   const expandButton = useRef<HTMLButtonElement>(null);
-  const inView = useInView(section);
   const meta = useHeatmapMeta();
-  const more = useUsMore(region === 'US' && (inView || expanded));
 
-  // US ranks 201 to 500 come live from their own request; the main list holds their previous close.
   // A region shows today's session where it has one, otherwise its latest, which the note dates.
   const current = useMemo(() => {
-    const live = new Map(more.map((q) => [q.symbol, q]));
-    const all = stocks.map((s) => (live.has(s.symbol) ? quoteToSummary(s, live.get(s.symbol)!) : s));
-    const today = currentStocks(all, new Date());
+    const today = currentStocks(stocks, new Date());
     return REGIONS.flatMap((r) => {
       const fresh = today.filter((s) => s.region === r);
-      return fresh.length > 0 ? fresh : all.filter((s) => s.region === r);
+      return fresh.length > 0 ? fresh : stocks.filter((s) => s.region === r);
     });
-  }, [stocks, more]);
+  }, [stocks]);
   const shown = region;
 
   useEffect(() => {
@@ -116,7 +97,7 @@ export function Heatmap({ stocks, pending, failed, fx }: { stocks: StockSummary[
   );
   return (
     <>
-      <section ref={section} className="pnl" inert={expanded}>{panel(false)}</section>
+      <section className="pnl" inert={expanded}>{panel(false)}</section>
       {expanded && (
         <div className="hm-full" role="dialog" aria-modal="true" onKeyDown={(e) => e.key === 'Escape' && setExpanded(false)}>
           {panel(true)}

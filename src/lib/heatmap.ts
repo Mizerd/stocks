@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { EXCHANGES, zonedParts } from '../../shared/exchanges';
 import type { HeatmapMeta } from '../../shared/heatmap';
 import { icbSector, SECTOR_ICB } from '../../shared/icb';
-import type { BulkQuote, FxRates, Market, Region, Sector, StockSummary } from '../../shared/types';
+import type { FxRates, Market, Region, Sector, StockSummary } from '../../shared/types';
 import { fetchJson, toEur } from './api';
 import { turnoverEur } from './market';
 import { treemap } from './treemap';
-import { quoteInterval } from './universe';
 
 const REGION_MARKETS: Record<Region, Market[]> = { US: ['us'], EU: ['nordic', 'euronext'], BAL: ['baltic'] };
 
@@ -186,34 +185,3 @@ export function useHeatmapMeta(): HeatmapMeta | null | undefined {
   return meta;
 }
 
-const US_MORE = '/api/quotes?market=us&part=2';
-
-// Live quotes for US ranks 201 to 500, polled only while `enabled` and the tab is visible.
-export function useUsMore(enabled: boolean): BulkQuote[] {
-  const [items, setItems] = useState<BulkQuote[]>([]);
-  useEffect(() => {
-    if (!enabled) return;
-    let alive = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const load = () => {
-      clearTimeout(timer);
-      if (document.visibilityState === 'hidden') return;
-      fetchJson<{ items: BulkQuote[] }>(US_MORE)
-        .then((list) => alive && setItems(list.items), () => undefined)
-        .finally(() => {
-          if (!alive) return;
-          clearTimeout(timer);
-          timer = setTimeout(load, quoteInterval('us'));
-        });
-    };
-    const onVisibility = () => document.visibilityState === 'visible' && load();
-    load();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      alive = false;
-      clearTimeout(timer);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [enabled]);
-  return items;
-}

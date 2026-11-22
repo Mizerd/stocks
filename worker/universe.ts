@@ -75,8 +75,10 @@ function screenerClose(listed: ScreenerRow | undefined, live: WatchlistRow | und
 
 // Live quotes for this many US shares, the catalogue's and then the largest: 20 per call.
 const US_LIVE = 200;
-// The heatmap asks for the next ones apart, only while it shows the US.
-const US_HEATMAP = 500;
+// The rest come in two more requests of their own, since one call may fetch at most 50 things:
+// the bulk list is a day behind after the close and over weekends, so every share needs its live quote.
+const US_PARTS: Record<string, [number, number]> = { '2': [US_LIVE, 500], '3': [500, Infinity] };
+export const isUsPart = (part: string) => part in US_PARTS;
 
 export interface UsRow {
   exchange: ExchangeId;
@@ -109,12 +111,13 @@ const usLiveQuote = (r: UsRow, quote: WatchlistRow): Omit<BulkQuote, 'symbol'> =
 });
 
 // Live quotes for the US shares ranked after the ones /api/quotes covers, up to the heatmap's 500.
-export function usMoreQuotes(): Promise<{ items: BulkQuote[]; failed: string[] }> {
-  return memo('source:US:2', 60, async () => {
+export function usMoreQuotes(part: string): Promise<{ items: BulkQuote[]; failed: string[] }> {
+  const [from, to] = US_PARTS[part];
+  return memo(`source:US:${part}`, 60, async () => {
     const rows = await usRows();
     const byId = new Map(rows.map((r) => [r.id, r]));
     try {
-      const live = await usWatchlist(usLiveOrder(rows).slice(US_LIVE, US_HEATMAP));
+      const live = await usWatchlist(usLiveOrder(rows).slice(from, to));
       const items = live.flatMap((quote) => {
         const r = byId.get(quote.ticker);
         return r ? [{ symbol: known(usInstrument(r)).symbol, ...usLiveQuote(r, quote) }] : [];
